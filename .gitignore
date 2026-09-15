@@ -1,0 +1,4 @@
+mvp/
+__pycache__/
+*.pyc
+*.db
