@@ -1,11 +1,6 @@
-// Correspondence Tracking System (CTS) - CSC599 Capstone, LAU
-// Entity Relationship Diagram - Revision 2.0
-// MySQL 8.0 / InnoDB  |  utf8mb4 / utf8mb4_unicode_ci  |  timestamps in UTC
-// Columns typed `decimal` are DECIMAL(12,2) in the DDL.
+// Correspondence Tracking System (CTS) 
+// Entity Relationship Diagram - 
 
-title CTS Entity Relationship Diagram - Revision 2.0
-
-// ---- Reference / organisation ----
 
 governorates [color: purple] {
   id bigint pk
@@ -937,4 +932,4 @@ users.id < record_access_log.accessed_by
 // citizens.father_id / mother_id  ->  ON DELETE SET NULL
 // reference tables -> children    ->  ON DELETE RESTRICT
 
-// 12 rules the database cannot enforce are specified in SDD section 6.12.
+
