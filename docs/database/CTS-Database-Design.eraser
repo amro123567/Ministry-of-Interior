@@ -1,0 +1,940 @@
+// Correspondence Tracking System (CTS) - CSC599 Capstone, LAU
+// Entity Relationship Diagram - Revision 2.0
+// MySQL 8.0 / InnoDB  |  utf8mb4 / utf8mb4_unicode_ci  |  timestamps in UTC
+// Columns typed `decimal` are DECIMAL(12,2) in the DDL.
+
+title CTS Entity Relationship Diagram - Revision 2.0
+
+// ---- Reference / organisation ----
+
+governorates [color: purple] {
+  id bigint pk
+  name_ar varchar(100)
+  name_en varchar(100)
+  code varchar(10)
+  is_active boolean
+  created_at timestamp
+  updated_at timestamp
+  UNIQUE (code)
+}
+
+districts [color: purple] {
+  id bigint pk
+  governorate_id bigint fk
+  name_ar varchar(100)
+  name_en varchar(100)
+  code varchar(10)
+  is_active boolean
+  created_at timestamp
+  updated_at timestamp
+  UNIQUE (governorate_id, code)
+  INDEX (governorate_id)
+}
+
+offices [color: purple] {
+  id bigint pk
+  district_id bigint fk
+  name_ar varchar(150)
+  name_en varchar(150)
+  code varchar(20)
+  office_type enum_office_type
+  address varchar(255)
+  phone varchar(30)
+  is_active boolean
+  created_at timestamp
+  updated_at timestamp
+  UNIQUE (code)
+  INDEX (district_id)
+  INDEX (is_active)
+}
+
+departments [color: purple] {
+  id bigint pk
+  parent_id bigint fk
+  name_ar varchar(150)
+  name_en varchar(150)
+  code varchar(20)
+  description varchar(500)
+  is_active boolean
+  created_at timestamp
+  updated_at timestamp
+  UNIQUE (code)
+  INDEX (parent_id)
+}
+
+courts [color: purple] {
+  id bigint pk
+  district_id bigint fk
+  name_ar varchar(150)
+  name_en varchar(150)
+  court_type enum_court_type
+  jurisdiction varchar(150)
+  is_active boolean
+  created_at timestamp
+  updated_at timestamp
+  INDEX (district_id)
+  INDEX (court_type)
+}
+
+religious_authorities [color: purple] {
+  id bigint pk
+  name_ar varchar(150)
+  name_en varchar(150)
+  religion varchar(50)
+  sect varchar(50)
+  is_active boolean
+  created_at timestamp
+  updated_at timestamp
+  INDEX (religion, sect)
+}
+
+mukhtars [color: purple] {
+  id bigint pk
+  district_id bigint fk
+  first_name_ar varchar(80)
+  last_name_ar varchar(80)
+  first_name_en varchar(80)
+  last_name_en varchar(80)
+  village_or_neighborhood varchar(150)
+  phone varchar(30)
+  email varchar(120)
+  term_start date
+  term_end date
+  is_active boolean
+  created_at timestamp
+  updated_at timestamp
+  INDEX (district_id)
+  INDEX (term_start, term_end)
+}
+
+// ---- Identity and access control ----
+
+permissions [color: yellow] {
+  id bigint pk
+  code varchar(60)
+  description varchar(255)
+  module varchar(40)
+  created_at timestamp
+  UNIQUE (code)
+  INDEX (module)
+}
+
+roles [color: yellow] {
+  id bigint pk
+  name varchar(50)
+  description varchar(255)
+  is_system boolean
+  is_active boolean
+  created_at timestamp
+  updated_at timestamp
+  UNIQUE (name)
+}
+
+role_permissions [color: yellow] {
+  role_id bigint fk
+  permission_id bigint fk
+  granted_at timestamp
+  granted_by bigint fk
+  PRIMARY_KEY (role_id, permission_id)
+  INDEX (permission_id)
+}
+
+users [color: yellow] {
+  id bigint pk
+  employee_number varchar(30)
+  username varchar(60)
+  email varchar(120)
+  first_name varchar(80)
+  middle_name varchar(80)
+  last_name varchar(80)
+  office_id bigint fk
+  department_id bigint fk
+  supervisor_id bigint fk
+  job_title varchar(120)
+  hire_date date
+  password_hash varchar(72)
+  password_changed_at timestamp
+  must_change_password boolean
+  failed_login_attempts int
+  locked_until timestamp
+  last_login_at timestamp
+  is_active boolean
+  created_at timestamp
+  updated_at timestamp
+  UNIQUE (employee_number)
+  UNIQUE (username)
+  UNIQUE (email)
+  INDEX (office_id)
+  INDEX (department_id)
+  INDEX (supervisor_id)
+  INDEX (is_active)
+}
+
+users_roles [color: yellow] {
+  user_id bigint fk
+  role_id bigint fk
+  granted_by bigint fk
+  granted_at timestamp
+  revoked_at timestamp
+  PRIMARY_KEY (user_id, role_id)
+  INDEX (role_id)
+}
+
+session_logs [color: yellow] {
+  id bigint pk
+  user_id bigint fk
+  jti char(36)
+  login_at timestamp
+  logout_at timestamp
+  expires_at timestamp
+  ip_address varchar(45)
+  user_agent varchar(255)
+  UNIQUE (jti)
+  INDEX (user_id, login_at DESC)
+}
+
+login_attempts [color: yellow] {
+  id bigint pk
+  username_attempted varchar(60)
+  user_id bigint fk
+  was_successful boolean
+  failure_reason enum_login_failure
+  ip_address varchar(45)
+  user_agent varchar(255)
+  attempted_at timestamp
+  INDEX (username_attempted, attempted_at DESC)
+  INDEX (ip_address, attempted_at DESC)
+  INDEX (was_successful, attempted_at DESC)
+}
+
+token_denylist [color: yellow] {
+  id bigint pk
+  jti char(36)
+  user_id bigint fk
+  revoked_at timestamp
+  expires_at timestamp
+  revoked_reason enum_revoke_reason
+  UNIQUE (jti)
+  INDEX (expires_at)
+}
+
+workflow_states [color: orange] {
+  id bigint pk
+  code varchar(40)
+  name_ar varchar(80)
+  name_en varchar(80)
+  is_initial boolean
+  is_final boolean
+  display_order int
+  color_hex varchar(7)
+  is_active boolean
+  created_at timestamp
+  UNIQUE (code)
+  INDEX (is_initial)
+  INDEX (is_final)
+}
+
+workflow_transitions [color: orange] {
+  id bigint pk
+  from_state_id bigint fk
+  to_state_id bigint fk
+  action_code varchar(40)
+  label_ar varchar(80)
+  label_en varchar(80)
+  requires_comment boolean
+  requires_document boolean
+  is_active boolean
+  created_at timestamp
+  UNIQUE (from_state_id, to_state_id)
+  UNIQUE (action_code)
+  INDEX (from_state_id)
+}
+
+workflow_transition_permissions [color: orange] {
+  transition_id bigint fk
+  permission_id bigint fk
+  PRIMARY_KEY (transition_id, permission_id)
+  INDEX (permission_id)
+}
+
+// ---- Document type configuration ----
+
+document_types [color: blue, textColor: white] {
+  id bigint pk
+  code varchar(40)
+  name_ar varchar(150)
+  name_en varchar(150)
+  category enum_document_category
+  subtype_table varchar(64)
+  validation_rules json
+  required_fields json
+  validity_duration_days int
+  default_sla_days int
+  default_fee_amount decimal
+  default_fee_currency char(3)
+  is_active boolean
+  created_at timestamp
+  updated_at timestamp
+  UNIQUE (code)
+  INDEX (category)
+}
+
+document_type_authorities [color: blue, textColor: white] {
+  id bigint pk
+  document_type_id bigint fk
+  authority_kind enum_authority_kind
+  office_id bigint fk
+  court_id bigint fk
+  religious_authority_id bigint fk
+  is_active boolean
+  UNIQUE (document_type_id, authority_kind, office_id, court_id, religious_authority_id)
+  INDEX (document_type_id)
+}
+
+// ---- Citizen registry ----
+
+citizens [color: pink] {
+  civil_registry_number varchar(20) pk
+  first_name_ar varchar(80)
+  middle_name_ar varchar(80)
+  last_name_ar varchar(80)
+  first_name_en varchar(80)
+  middle_name_en varchar(80)
+  last_name_en varchar(80)
+  father_id varchar(20) fk
+  mother_id varchar(20) fk
+  father_name_unregistered varchar(200)
+  mother_name_unregistered varchar(200)
+  date_of_birth date
+  place_of_birth varchar(150)
+  gender enum_gender
+  religion varchar(50)
+  sect varchar(50)
+  marital_status enum_marital_status
+  sijill_reference varchar(50)
+  registration_office_id bigint fk
+  nationality varchar(60)
+  is_deceased boolean
+  created_by bigint fk
+  created_at timestamp
+  updated_by bigint fk
+  updated_at timestamp
+  INDEX (last_name_ar, first_name_ar, date_of_birth)
+  INDEX (last_name_en, first_name_en)
+  INDEX (registration_office_id)
+  INDEX (father_id)
+  INDEX (mother_id)
+  INDEX (date_of_birth)
+  FULLTEXT (first_name_ar, middle_name_ar, last_name_ar)
+}
+
+family_records [color: pink] {
+  id bigint pk
+  family_book_number varchar(40)
+  head_of_household_id varchar(20) fk
+  registration_office_id bigint fk
+  is_active boolean
+  created_by bigint fk
+  created_at timestamp
+  updated_at timestamp
+  UNIQUE (family_book_number)
+  INDEX (head_of_household_id)
+  INDEX (registration_office_id)
+}
+
+family_members [color: pink] {
+  id bigint pk
+  family_record_id bigint fk
+  citizen_id varchar(20) fk
+  relationship enum_relationship
+  joined_date date
+  left_date date
+  left_reason varchar(255)
+  created_at timestamp
+  UNIQUE (family_record_id, citizen_id, joined_date)
+  INDEX (citizen_id)
+  INDEX (family_record_id, left_date)
+}
+
+guardianship_records [color: pink] {
+  id bigint pk
+  minor_citizen_id varchar(20) fk
+  guardian_citizen_id varchar(20) fk
+  guardianship_type enum_guardianship_type
+  court_decision_number varchar(60)
+  court_id bigint fk
+  start_date date
+  end_date date
+  status enum_record_status
+  created_by bigint fk
+  created_at timestamp
+  updated_at timestamp
+  INDEX (minor_citizen_id, status)
+  INDEX (guardian_citizen_id)
+  INDEX (court_id)
+}
+
+registry_transfers [color: pink] {
+  id bigint pk
+  citizen_id varchar(20) fk
+  family_record_id bigint fk
+  from_office_id bigint fk
+  to_office_id bigint fk
+  requested_by bigint fk
+  requested_at timestamp
+  approved_by bigint fk
+  approved_at timestamp
+  decision_reference varchar(80)
+  status enum_approval_status
+  transfer_date date
+  created_at timestamp
+  INDEX (citizen_id)
+  INDEX (from_office_id)
+  INDEX (to_office_id)
+  INDEX (status)
+}
+
+civil_status_amendments [color: pink] {
+  id bigint pk
+  citizen_id varchar(20) fk
+  field_changed varchar(60)
+  old_value varchar(500)
+  new_value varchar(500)
+  legal_basis varchar(500)
+  court_decision_number varchar(60)
+  court_id bigint fk
+  requested_by bigint fk
+  approved_by bigint fk
+  approved_at timestamp
+  amendment_date date
+  status enum_approval_status
+  created_at timestamp
+  INDEX (citizen_id, amendment_date DESC)
+  INDEX (court_id)
+  INDEX (status)
+}
+
+documents [color: blue, textColor: white] {
+  id bigint pk
+  document_type_id bigint fk
+  civil_registry_number varchar(20) fk
+  document_group_id bigint
+  document_number varchar(60)
+  issue_date date
+  expiry_date date
+  issuing_office_id bigint fk
+  attested_by_mukhtar_id bigint fk
+  physical_file_location varchar(255)
+  digital_file_path varchar(500)
+  file_hash char(64)
+  file_size int
+  mime_type varchar(100)
+  status enum_document_status
+  version int
+  is_latest boolean
+  is_deleted boolean
+  deleted_by bigint fk
+  deleted_at timestamp
+  created_by bigint fk
+  created_at timestamp
+  updated_by bigint fk
+  updated_at timestamp
+  UNIQUE (document_number)
+  UNIQUE (document_group_id, is_latest)
+  INDEX (civil_registry_number, document_type_id)
+  INDEX (status)
+  INDEX (document_group_id)
+  INDEX (created_at DESC)
+  INDEX (issuing_office_id)
+  INDEX (is_deleted)
+}
+
+birth_certificates [color: green, textColor: white] {
+  document_id bigint pk fk
+  birth_place varchar(150)
+  birth_hospital varchar(150)
+  birth_attendant varchar(150)
+  father_full_name_snapshot varchar(200)
+  mother_full_name_snapshot varchar(200)
+  registration_number varchar(60)
+  registrar_name varchar(150)
+  INDEX (registration_number)
+}
+
+marriage_certificates [color: green, textColor: white] {
+  document_id bigint pk fk
+  husband_id varchar(20) fk
+  wife_id varchar(20) fk
+  husband_name_snapshot varchar(200)
+  wife_name_snapshot varchar(200)
+  marriage_date date
+  marriage_place varchar(150)
+  court_id bigint fk
+  religious_authority_id bigint fk
+  contract_number varchar(60)
+  dowry_amount decimal
+  dowry_currency char(3)
+  status enum_union_status
+  UNIQUE (contract_number)
+  INDEX (husband_id)
+  INDEX (wife_id)
+  INDEX (status)
+}
+
+divorce_certificates [color: green, textColor: white] {
+  document_id bigint pk fk
+  marriage_certificate_id bigint fk
+  husband_id varchar(20) fk
+  wife_id varchar(20) fk
+  divorce_date date
+  divorce_place varchar(150)
+  court_id bigint fk
+  court_decision_number varchar(60)
+  divorce_type enum_divorce_type
+  divorce_reason text
+  child_custody_agreement text
+  financial_settlement text
+  settlement_amount decimal
+  settlement_currency char(3)
+  religious_authority_id bigint fk
+  sharia_court_approval varchar(80)
+  status enum_record_status
+  UNIQUE (marriage_certificate_id)
+  INDEX (husband_id)
+  INDEX (wife_id)
+  INDEX (court_decision_number)
+}
+
+death_certificates [color: green, textColor: white] {
+  document_id bigint pk fk
+  death_date date
+  death_place varchar(150)
+  death_cause varchar(255)
+  certifying_physician varchar(150)
+  burial_place varchar(150)
+  burial_date date
+  INDEX (death_date)
+}
+
+national_id_cards [color: green, textColor: white] {
+  document_id bigint pk fk
+  card_number varchar(40)
+  biometric_photo_path varchar(500)
+  biometric_photo_hash char(64)
+  fingerprint_hash char(64)
+  chip_serial_number varchar(60)
+  status enum_card_status
+  UNIQUE (card_number)
+  INDEX (status)
+}
+
+naturalization_records [color: green, textColor: white] {
+  document_id bigint pk fk
+  previous_nationality varchar(60)
+  naturalization_date date
+  decree_number varchar(60)
+  decree_date date
+  status enum_record_status
+  INDEX (decree_number)
+}
+
+name_change_records [color: green, textColor: white] {
+  document_id bigint pk fk
+  amendment_id bigint fk
+  old_first_name varchar(80)
+  old_middle_name varchar(80)
+  old_last_name varchar(80)
+  new_first_name varchar(80)
+  new_middle_name varchar(80)
+  new_last_name varchar(80)
+  reason text
+  court_decision_number varchar(60)
+  change_date date
+  INDEX (amendment_id)
+}
+
+document_validations [color: blue, textColor: white] {
+  id bigint pk
+  document_id bigint fk
+  validator_id bigint fk
+  validation_type enum_validation_type
+  status enum_validation_status
+  comments text
+  rejection_reason varchar(500)
+  validation_date timestamp
+  digital_signature text
+  signature_key_id varchar(80)
+  ip_address varchar(45)
+  user_agent varchar(255)
+  INDEX (document_id, validation_date DESC)
+  INDEX (validator_id)
+  INDEX (status)
+}
+
+physical_document_handling [color: blue, textColor: white] {
+  id bigint pk
+  document_id bigint fk
+  action enum_custody_action
+  performed_by bigint fk
+  performed_by_name_snapshot varchar(200)
+  performed_by_role_snapshot varchar(80)
+  performed_at timestamp
+  location varchar(150)
+  location_details varchar(500)
+  notes text
+  action_reason varchar(500)
+  witness_user_id bigint fk
+  witness_name varchar(200)
+  witness_signature text
+  INDEX (document_id, performed_at DESC)
+  INDEX (performed_by)
+  INDEX (location)
+}
+
+// ---- Service requests / workflow ----
+
+service_requests [color: red, textColor: white] {
+  id bigint pk
+  request_number varchar(30)
+  direction enum_direction
+  citizen_id varchar(20) fk
+  document_type_id bigint fk
+  office_id bigint fk
+  department_id bigint fk
+  workflow_state_id bigint fk
+  priority enum_priority
+  subject varchar(255)
+  notes text
+  requested_by_user_id bigint fk
+  submitted_at timestamp
+  due_date date
+  reviewed_by bigint fk
+  reviewed_at timestamp
+  approved_by bigint fk
+  approved_at timestamp
+  rejected_by bigint fk
+  rejected_at timestamp
+  rejection_reason varchar(500)
+  issued_document_id bigint fk
+  fee_amount decimal
+  fee_currency char(3)
+  created_at timestamp
+  updated_at timestamp
+  UNIQUE (request_number)
+  INDEX (citizen_id)
+  INDEX (workflow_state_id)
+  INDEX (office_id, workflow_state_id)
+  INDEX (department_id, workflow_state_id)
+  INDEX (due_date)
+  INDEX (submitted_at DESC)
+  INDEX (document_type_id)
+}
+
+request_assignments [color: red, textColor: white] {
+  id bigint pk
+  service_request_id bigint fk
+  assigned_to bigint fk
+  assigned_by bigint fk
+  assigned_at timestamp
+  unassigned_at timestamp
+  is_active boolean
+  note varchar(500)
+  UNIQUE (service_request_id, is_active)
+  INDEX (service_request_id, assigned_at DESC)
+  INDEX (assigned_to, is_active)
+}
+
+service_request_status_history [color: red, textColor: white] {
+  id bigint pk
+  service_request_id bigint fk
+  from_state_id bigint fk
+  to_state_id bigint fk
+  transition_id bigint fk
+  changed_by bigint fk
+  changed_at timestamp
+  comment text
+  INDEX (service_request_id, changed_at DESC)
+  INDEX (changed_by)
+  INDEX (to_state_id, changed_at DESC)
+}
+
+sla_records [color: red, textColor: white] {
+  id bigint pk
+  service_request_id bigint fk
+  due_date date
+  sla_status enum_sla_status
+  days_remaining int
+  overdue_by_days int
+  breached_at timestamp
+  last_checked_at timestamp
+  UNIQUE (service_request_id)
+  INDEX (sla_status)
+  INDEX (due_date)
+}
+
+payments [color: red, textColor: white] {
+  id bigint pk
+  service_request_id bigint fk
+  amount decimal
+  currency char(3)
+  method enum_payment_method
+  status enum_payment_status
+  receipt_number varchar(40)
+  collected_by bigint fk
+  paid_at timestamp
+  reversed_by bigint fk
+  reversed_at timestamp
+  reversal_reason varchar(255)
+  UNIQUE (receipt_number)
+  INDEX (service_request_id)
+  INDEX (collected_by, paid_at DESC)
+}
+
+internal_notifications [color: red, textColor: white] {
+  id bigint pk
+  recipient_user_id bigint fk
+  related_entity_type varchar(60)
+  related_entity_id varchar(40)
+  notification_type enum_notification_type
+  message varchar(500)
+  is_read boolean
+  read_at timestamp
+  created_at timestamp
+  INDEX (recipient_user_id, is_read)
+  INDEX (recipient_user_id, created_at DESC)
+}
+
+// ---- Audit and access logging ----
+
+audit_logs [color: gray, textColor: white] {
+  id bigint pk
+  actor_user_id bigint fk
+  action enum_audit_action
+  entity_type varchar(60)
+  entity_id varchar(40)
+  service_request_id bigint fk
+  old_value json
+  new_value json
+  was_successful boolean
+  failure_reason varchar(255)
+  ip_address varchar(45)
+  user_agent varchar(255)
+  occurred_at timestamp
+  INDEX (actor_user_id, occurred_at DESC)
+  INDEX (entity_type, entity_id, occurred_at DESC)
+  INDEX (action, occurred_at DESC)
+  INDEX (service_request_id)
+  INDEX (occurred_at DESC)
+}
+
+citizen_audit_log [color: gray, textColor: white] {
+  id bigint pk
+  citizen_id varchar(20) fk
+  amendment_id bigint fk
+  field_name varchar(60)
+  old_value text
+  new_value text
+  changed_by bigint fk
+  changed_at timestamp
+  reason varchar(500)
+  ip_address varchar(45)
+  INDEX (citizen_id, changed_at DESC)
+  INDEX (changed_by, changed_at DESC)
+  INDEX (amendment_id)
+}
+
+record_access_log [color: gray, textColor: white] {
+  id bigint pk
+  citizen_id varchar(20) fk
+  accessed_by bigint fk
+  access_type enum_access_type
+  accessed_at timestamp
+  ip_address varchar(45)
+  reason varchar(500)
+  INDEX (citizen_id, accessed_at DESC)
+  INDEX (accessed_by, accessed_at DESC)
+}
+
+// ---- Relationships:  parent.pk < child.fk  (one-to-many, parent on the left)
+//                     a - b  one-to-one     a <> b  many-to-many
+
+// --- Reference / organisation hierarchy ---
+governorates.id < districts.governorate_id
+districts.id < offices.district_id
+districts.id < courts.district_id
+districts.id < mukhtars.district_id
+departments.id < departments.parent_id
+
+// --- Identity and access ---
+offices.id < users.office_id
+departments.id < users.department_id
+users.id < users.supervisor_id
+roles.id <> users_roles.role_id
+users.id <> users_roles.user_id
+users.id < users_roles.granted_by
+roles.id <> role_permissions.role_id
+permissions.id <> role_permissions.permission_id
+users.id < role_permissions.granted_by
+users.id < session_logs.user_id
+users.id < login_attempts.user_id
+users.id < token_denylist.user_id
+
+// --- Workflow configuration ---
+workflow_states.id < workflow_transitions.from_state_id
+workflow_states.id < workflow_transitions.to_state_id
+workflow_transitions.id <> workflow_transition_permissions.transition_id
+permissions.id <> workflow_transition_permissions.permission_id
+
+// --- Document type configuration ---
+document_types.id < document_type_authorities.document_type_id
+offices.id < document_type_authorities.office_id
+courts.id < document_type_authorities.court_id
+religious_authorities.id < document_type_authorities.religious_authority_id
+
+// --- Citizen registry ---
+citizens.civil_registry_number < citizens.father_id
+citizens.civil_registry_number < citizens.mother_id
+offices.id < citizens.registration_office_id
+users.id < citizens.created_by
+users.id < citizens.updated_by
+
+citizens.civil_registry_number < family_records.head_of_household_id
+offices.id < family_records.registration_office_id
+users.id < family_records.created_by
+
+family_records.id < family_members.family_record_id
+citizens.civil_registry_number < family_members.citizen_id
+
+citizens.civil_registry_number < guardianship_records.minor_citizen_id
+citizens.civil_registry_number < guardianship_records.guardian_citizen_id
+courts.id < guardianship_records.court_id
+users.id < guardianship_records.created_by
+
+citizens.civil_registry_number < registry_transfers.citizen_id
+family_records.id < registry_transfers.family_record_id
+offices.id < registry_transfers.from_office_id
+offices.id < registry_transfers.to_office_id
+users.id < registry_transfers.requested_by
+users.id < registry_transfers.approved_by
+
+citizens.civil_registry_number < civil_status_amendments.citizen_id
+courts.id < civil_status_amendments.court_id
+users.id < civil_status_amendments.requested_by
+users.id < civil_status_amendments.approved_by
+
+// --- Documents: generic supertype ---
+document_types.id < documents.document_type_id
+citizens.civil_registry_number < documents.civil_registry_number
+offices.id < documents.issuing_office_id
+mukhtars.id < documents.attested_by_mukhtar_id
+users.id < documents.created_by
+users.id < documents.updated_by
+users.id < documents.deleted_by
+
+// --- Documents: specialised subtypes (one-to-one, PK is also FK) ---
+documents.id - birth_certificates.document_id
+documents.id - marriage_certificates.document_id
+documents.id - divorce_certificates.document_id
+documents.id - death_certificates.document_id
+documents.id - national_id_cards.document_id
+documents.id - naturalization_records.document_id
+documents.id - name_change_records.document_id
+
+citizens.civil_registry_number < marriage_certificates.husband_id
+citizens.civil_registry_number < marriage_certificates.wife_id
+courts.id < marriage_certificates.court_id
+religious_authorities.id < marriage_certificates.religious_authority_id
+
+marriage_certificates.document_id - divorce_certificates.marriage_certificate_id
+citizens.civil_registry_number < divorce_certificates.husband_id
+citizens.civil_registry_number < divorce_certificates.wife_id
+courts.id < divorce_certificates.court_id
+religious_authorities.id < divorce_certificates.religious_authority_id
+
+civil_status_amendments.id < name_change_records.amendment_id
+
+// --- Document validation and custody ---
+documents.id < document_validations.document_id
+users.id < document_validations.validator_id
+documents.id < physical_document_handling.document_id
+users.id < physical_document_handling.performed_by
+users.id < physical_document_handling.witness_user_id
+
+// --- Service requests ---
+citizens.civil_registry_number < service_requests.citizen_id
+document_types.id < service_requests.document_type_id
+offices.id < service_requests.office_id
+departments.id < service_requests.department_id
+workflow_states.id < service_requests.workflow_state_id
+users.id < service_requests.requested_by_user_id
+users.id < service_requests.reviewed_by
+users.id < service_requests.approved_by
+users.id < service_requests.rejected_by
+documents.id < service_requests.issued_document_id
+
+service_requests.id < request_assignments.service_request_id
+users.id < request_assignments.assigned_to
+users.id < request_assignments.assigned_by
+
+service_requests.id < service_request_status_history.service_request_id
+workflow_states.id < service_request_status_history.from_state_id
+workflow_states.id < service_request_status_history.to_state_id
+workflow_transitions.id < service_request_status_history.transition_id
+users.id < service_request_status_history.changed_by
+
+service_requests.id - sla_records.service_request_id
+
+service_requests.id < payments.service_request_id
+users.id < payments.collected_by
+users.id < payments.reversed_by
+
+users.id < internal_notifications.recipient_user_id
+
+// --- Audit ---
+users.id < audit_logs.actor_user_id
+service_requests.id < audit_logs.service_request_id
+citizens.civil_registry_number < citizen_audit_log.citizen_id
+civil_status_amendments.id < citizen_audit_log.amendment_id
+users.id < citizen_audit_log.changed_by
+citizens.civil_registry_number < record_access_log.citizen_id
+users.id < record_access_log.accessed_by
+
+
+// ---- Enumerated types (MySQL 8 native ENUM) ----
+// enum_office_type         CENTRAL, REGIONAL, DISTRICT, MOBILE
+// enum_court_type          CIVIL, SHARIA, JAAFARI, DRUZE, ECCLESIASTICAL
+// enum_gender              MALE, FEMALE
+// enum_marital_status      SINGLE, MARRIED, DIVORCED, WIDOWED
+// enum_relationship        HEAD, SPOUSE, SON, DAUGHTER, FATHER, MOTHER, OTHER
+// enum_guardianship_type   NATURAL, TESTAMENTARY, COURT_APPOINTED
+// enum_record_status       ACTIVE, INACTIVE, SUPERSEDED, CANCELLED
+// enum_approval_status     PENDING, APPROVED, REJECTED
+// enum_document_category   CIVIL_STATUS, IDENTITY, FAMILY, JUDICIAL
+// enum_document_status     DRAFT, ACTIVE, SUPERSEDED, EXPIRED, CANCELLED
+// enum_validation_type     AUTHENTICITY, COMPLETENESS, LEGAL_SUFFICIENCY
+// enum_validation_status   PENDING, APPROVED, REJECTED
+// enum_custody_action      RECEIVED, ARCHIVED, RETRIEVED, TRANSFERRED, ISSUED_TO_CITIZEN, RETURNED, DESTROYED
+// enum_union_status        ACTIVE, DISSOLVED, ANNULLED
+// enum_divorce_type        TALAQ, KHULA, JUDICIAL, MUTUAL_CONSENT, ANNULMENT
+// enum_card_status         ACTIVE, EXPIRED, LOST, STOLEN, REPLACED, CANCELLED
+// enum_direction           INCOMING, OUTGOING
+// enum_priority            LOW, NORMAL, HIGH, URGENT
+// enum_sla_status          ON_TRACK, DUE_SOON, OVERDUE, MET, BREACHED
+// enum_payment_method      CASH, BANK_TRANSFER, CHEQUE, WAIVED
+// enum_payment_status      PAID, REVERSED, VOIDED
+// enum_notification_type   ASSIGNMENT, TRANSITION, SLA_WARNING, SLA_BREACH, VALIDATION_REQUIRED, APPROVAL_REQUIRED
+// enum_access_type         VIEW_RECORD, VIEW_DOCUMENT, SEARCH_RESULT, EXPORT
+// enum_authority_kind      OFFICE, COURT, RELIGIOUS_AUTHORITY
+// enum_login_failure       UNKNOWN_USER, BAD_PASSWORD, ACCOUNT_LOCKED, ACCOUNT_INACTIVE
+// enum_revoke_reason       LOGOUT, PASSWORD_CHANGE, ROLE_CHANGE, ADMIN_REVOKE, SUSPECTED_COMPROMISE
+// enum_audit_action        USER_LOGIN, USER_LOGOUT, LOGIN_FAILED, ROLE_GRANTED, ROLE_REVOKED, PERMISSION_CHANGED, USER_CREATED, USER_DISABLED, PASSWORD_CHANGED, CITIZEN_CREATED, CITIZEN_UPDATED, REQUEST_CREATED, REQUEST_ASSIGNED, WORKFLOW_TRANSITION, REQUEST_APPROVED, REQUEST_REJECTED, DOCUMENT_UPLOADED, DOCUMENT_DOWNLOADED, DOCUMENT_VALIDATED, DOCUMENT_DELETED, PAYMENT_RECORDED, PAYMENT_REVERSED, REPORT_EXPORTED, AMENDMENT_APPROVED, TRANSFER_APPROVED
+
+// ---- Referential actions ----
+// citizens.civil_registry_number  ->  ON UPDATE CASCADE, ON DELETE RESTRICT
+// documents.id -> subtype tables  ->  ON DELETE CASCADE
+// any FK -> users.id              ->  ON DELETE RESTRICT
+// audit/access logs -> subject    ->  ON DELETE RESTRICT
+// citizens.father_id / mother_id  ->  ON DELETE SET NULL
+// reference tables -> children    ->  ON DELETE RESTRICT
+
+// 12 rules the database cannot enforce are specified in SDD section 6.12.
