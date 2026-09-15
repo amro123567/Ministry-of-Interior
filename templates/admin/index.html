@@ -1,0 +1,141 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+<div class="moi-hero">
+  <div class="moi-hero-top">
+    <div>
+      <h1>Ministry of Interior — Civil Registry</h1>
+      <p>{{ total }} records across {{ stats | map(attribute='rows') | map('length') | sum }} tables you have access to. Pick a module below, or use the menu above to browse, search, and edit records directly.</p>
+    </div>
+    <div class="moi-user-box">
+      <div class="moi-user-name">{{ current_user.first_name }} {{ current_user.last_name }}</div>
+      <div class="moi-user-role">{{ current_user.get_role_names() | join(', ') }}</div>
+      <a href="{{ url_for('logout') }}" class="moi-logout">Log out</a>
+    </div>
+  </div>
+</div>
+
+<div class="moi-grid">
+  {% for group in stats %}
+  <div class="moi-card moi-{{ group.color }}">
+    <h2>{{ group.title }}</h2>
+    <ul>
+      {% for row in group.rows %}
+      <li>
+        <a href="{{ url_for(row.endpoint) }}">
+          <span class="moi-label">{{ row.label }}</span>
+          <span class="moi-count">{{ row.count }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</div>
+
+<style>
+  .moi-hero {
+    padding: 28px 8px 12px 8px;
+  }
+  .moi-hero-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .moi-hero h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .moi-hero p {
+    color: #6c757d;
+    margin-bottom: 0;
+    max-width: 640px;
+  }
+  .moi-user-box {
+    background: #fff;
+    border-radius: 8px;
+    padding: 10px 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    text-align: right;
+    min-width: 160px;
+  }
+  .moi-user-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #1a2a3a;
+  }
+  .moi-user-role {
+    font-size: 0.78rem;
+    color: #6c757d;
+    margin-bottom: 6px;
+  }
+  .moi-logout {
+    font-size: 0.8rem;
+    color: #c0392b;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .moi-logout:hover {
+    text-decoration: underline;
+  }
+  .moi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+    padding: 8px;
+  }
+  .moi-card {
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    border-top: 4px solid #ccc;
+    padding: 18px 20px;
+  }
+  .moi-card h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    margin-bottom: 12px;
+    color: #333;
+  }
+  .moi-card ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .moi-card li + li {
+    border-top: 1px solid #f0f0f0;
+  }
+  .moi-card a {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 0;
+    text-decoration: none;
+    color: #333;
+  }
+  .moi-card a:hover .moi-label {
+    text-decoration: underline;
+  }
+  .moi-count {
+    font-weight: 700;
+    background: #f1f3f5;
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: .85rem;
+    color: #495057;
+    min-width: 32px;
+    text-align: center;
+  }
+  .moi-purple { border-top-color: #8E44AD; }
+  .moi-gold   { border-top-color: #d4ac0d; }
+  .moi-orange { border-top-color: #E67E22; }
+  .moi-teal   { border-top-color: #16A085; }
+  .moi-green  { border-top-color: #27AE60; }
+  .moi-gray   { border-top-color: #7F8C8D; }
+</style>
+{% endblock %}
