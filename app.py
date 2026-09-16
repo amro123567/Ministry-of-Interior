@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from flask import Flask, redirect, render_template, request, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_admin import Admin
@@ -17,24 +18,44 @@ def build_stats():
             ("Governorates", m.Governorate, "governorate.index_view"),
             ("Districts", m.District, "district.index_view"),
             ("Offices", m.Office, "office.index_view"),
+            ("Departments", m.Department, "department.index_view"),
             ("Courts", m.Court, "court.index_view"),
             ("Religious Authorities", m.ReligiousAuthority, "religiousauthority.index_view"),
+            ("Mukhtars", m.Mukhtar, "mukhtar.index_view"),
         ]),
-        ("Access Control", "gold", "access_control.view", [
+        ("Access Control & Security", "gold", "access_control.view", [
             ("Permissions", m.Permission, "permission.index_view"),
             ("Roles", m.Role, "role.index_view"),
             ("Role ↔ Permissions", m.RolePermission, "rolepermission.index_view"),
             ("Users", m.User, "user.index_view"),
             ("User ↔ Roles", m.UserRole, "userrole.index_view"),
         ]),
-        ("Citizens & Family", "orange", "citizens.view", [
+        ("Security & Sessions", "gray", "security.view", [
+            ("Session Logs", m.SessionLog, "sessionlog.index_view"),
+            ("Login Attempts", m.LoginAttempt, "loginattempt.index_view"),
+            ("Token Denylist", m.TokenDenylist, "tokendenylist.index_view"),
+        ]),
+        ("Workflow Configuration", "orange", "workflow.view", [
+            ("Workflow States", m.WorkflowState, "workflowstate.index_view"),
+            ("Workflow Transitions", m.WorkflowTransition, "workflowtransition.index_view"),
+            ("Transition Permissions", m.WorkflowTransitionPermission, "workflowtransitionpermission.index_view"),
+        ]),
+        ("Document Configuration", "blue", "documents.view", [
+            ("Document Types", m.DocumentType, "documenttype.index_view"),
+            ("Document Type Authorities", m.DocumentTypeAuthority, "documenttypeauthority.index_view"),
+        ]),
+        ("Citizens & Family", "pink", "citizens.view", [
             ("Citizens", m.Citizen, "citizen.index_view"),
             ("Family Records", m.FamilyRecord, "familyrecord.index_view"),
             ("Family Members", m.FamilyMember, "familymember.index_view"),
+            ("Guardianship Records", m.GuardianshipRecord, "guardianshiprecord.index_view"),
+            ("Registry Transfers", m.RegistryTransfer, "registrytransfer.index_view"),
+            ("Civil Status Amendments", m.CivilStatusAmendment, "civilstatusamendment.index_view"),
         ]),
-        ("Documents", "teal", "documents.view", [
-            ("Document Types", m.DocumentType, "documenttype.index_view"),
+        ("Documents", "blue", "documents.view", [
             ("Documents", m.Document, "document.index_view"),
+            ("Document Validations", m.DocumentValidation, "documentvalidation.index_view"),
+            ("Physical Handling", m.PhysicalDocumentHandling, "physicaldocumenthandling.index_view"),
         ]),
         ("Certificates", "green", "certificates.view", [
             ("Birth Certificates", m.BirthCertificate, "birthcertificate.index_view"),
@@ -46,10 +67,16 @@ def build_stats():
             ("Naturalization Records", m.NaturalizationRecord, "naturalizationrecord.index_view"),
             ("Name Change Records", m.NameChangeRecord, "namechangerecord.index_view"),
         ]),
-        ("Audit & Workflow", "gray", "audit.view", [
-            ("Document Validations", m.DocumentValidation, "documentvalidation.index_view"),
-            ("Physical Handling", m.PhysicalDocumentHandling, "physicaldocumenthandling.index_view"),
+        ("Service Requests & Payments", "red", "requests.view", [
             ("Service Requests", m.ServiceRequest, "servicerequest.index_view"),
+            ("Request Assignments", m.RequestAssignment, "requestassignment.index_view"),
+            ("Status History", m.ServiceRequestStatusHistory, "servicerequeststatushistory.index_view"),
+            ("SLA Records", m.SlaRecord, "slarecord.index_view"),
+            ("Payments", m.Payment, "payment.index_view"),
+            ("Notifications", m.InternalNotification, "internalnotification.index_view"),
+        ]),
+        ("Audit & Access Logs", "gray", "audit.view", [
+            ("Audit Logs", m.AuditLog, "auditlog.index_view"),
             ("Citizen Audit Log", m.CitizenAuditLog, "citizenauditlog.index_view"),
             ("Record Access Log", m.RecordAccessLog, "recordaccesslog.index_view"),
         ]),
@@ -77,6 +104,11 @@ def create_app():
     )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
+    if app.config["SECRET_KEY"] == "dev-secret-change-me":
+        # Fine for local/demo use (matches the "zero external setup" README
+        # promise); just make sure it doesn't go unnoticed before a real
+        # deployment. Set SECRET_KEY explicitly once this leaves your laptop.
+        print("WARNING: using the default SECRET_KEY. Set the SECRET_KEY env var before deploying.")
 
     db.init_app(app)
 
@@ -87,12 +119,12 @@ def create_app():
 
     @login_manager.user_loader
     def load_user(user_id):
-        return db.session.get(m.User, user_id)
+        return db.session.get(m.User, int(user_id))
 
     admin = Admin(
         app,
-        name="MOI Civil Registry",
-        theme=Bootstrap4Theme(swatch="cerulean"),
+        name="CTS — Civil Registry",
+        theme=Bootstrap4Theme(swatch="cerulean" , fluid=True),
         index_view=DashboardIndexView(name="Dashboard"),
     )
 
@@ -112,12 +144,29 @@ def create_app():
             password = request.form.get("password", "")
             user = m.User.query.filter_by(username=username).first()
 
-            if user and user.active and user.check_password(password):
+            attempt = m.LoginAttempt(
+                username_attempted=username,
+                user_id=user.id if user else None,
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get("User-Agent", "")[:255],
+            )
+
+            if user and user.is_active and user.check_password(password):
+                attempt.was_successful = True
+                db.session.add(attempt)
+                user.last_login_at = datetime.utcnow()
+                db.session.commit()
                 login_user(user)
                 flash(f"Welcome, {user.first_name} {user.last_name}.", "success")
                 next_url = request.args.get("next") or url_for("admin.index")
                 return redirect(next_url)
 
+            attempt.was_successful = False
+            attempt.failure_reason = "UNKNOWN_USER" if not user else (
+                "ACCOUNT_INACTIVE" if not user.is_active else "BAD_PASSWORD"
+            )
+            db.session.add(attempt)
+            db.session.commit()
             flash("Invalid username or password.", "error")
 
         return render_template("login.html")
@@ -138,4 +187,5 @@ def create_app():
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    debug_mode = os.environ.get("FLASK_DEBUG", "1") == "1"
+    app.run(debug=debug_mode, host="0.0.0.0", port=5000)

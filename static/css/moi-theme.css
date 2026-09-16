@@ -1,0 +1,540 @@
+/* ==========================================================================
+   MOI Civil Registry — "Modern Government" theme
+   Applies on top of Flask-Admin's Bootstrap4 (cerulean) markup via
+   BaseView.extra_css / DashboardIndexView.extra_css, so every list, edit,
+   create and detail screen in the app picks it up automatically.
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --moi-navy: #0B1F33;
+  --moi-royal: #174A7E;
+  --moi-gold: #C9A227;
+  --moi-gold-dark: #A9871E;
+  --moi-off-white: #F5F7FA;
+  --moi-white: #FFFFFF;
+  --moi-charcoal: #17202A;
+  --moi-gray: #667085;
+  --moi-border: #E3E7EE;
+  --moi-radius: 12px;
+  --moi-shadow: 0 2px 10px rgba(11, 31, 51, 0.06);
+  --moi-shadow-hover: 0 10px 28px rgba(11, 31, 51, 0.14);
+}
+
+/* ---------- Base ---------- */
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--moi-off-white);
+  color: var(--moi-charcoal);
+}
+
+a { color: var(--moi-royal); transition: color .15s ease; }
+a:hover { color: var(--moi-gold-dark); }
+
+:focus-visible {
+  outline: 2px solid var(--moi-gold);
+  outline-offset: 2px;
+}
+
+/* ---------- Top navigation ---------- */
+
+/* The nav sits inside Flask-Admin's <div class="container-fluid">, which
+   carries Bootstrap's default 15px left/right padding — so the navy
+   background stopped 15px short of the real page edge on both sides,
+   showing as a pale gutter around the bar. Pulling it out by that same
+   15px with negative margins lets the background run true edge-to-edge,
+   and re-adding it as padding keeps the brand/links sitting at the same
+   spot so they still line up with the page title and content below. */
+nav.navbar {
+  background: linear-gradient(135deg, var(--moi-navy) 0%, var(--moi-royal) 100%) !important;
+  box-shadow: 0 2px 10px rgba(11, 31, 51, 0.18);
+  border: none;
+  border-radius: 0;
+  margin-left: -15px;
+  margin-right: -15px;
+  padding-left: 15px;
+  padding-right: 15px;
+}
+
+nav.navbar .navbar-brand {
+  font-weight: 800;
+  letter-spacing: .01em;
+  color: var(--moi-white) !important;
+}
+
+nav.navbar .nav-link {
+  color: rgba(255, 255, 255, 0.82) !important;
+  font-weight: 500;
+  transition: background-color .15s ease, color .15s ease;
+  position: relative;
+  padding: 8px 14px !important;
+  margin: 0 2px;
+  border-radius: 8px;
+}
+
+nav.navbar .nav-link:hover,
+nav.navbar .nav-link:focus {
+  color: var(--moi-white) !important;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Active page, and a top-level item whose menu is currently open, get a
+   slightly stronger fill so it's clear which section you're in/looking at
+   — not just a thin underline that's easy to miss at a glance. */
+nav.navbar .active > .nav-link,
+nav.navbar .nav-item.show > .nav-link {
+  color: var(--moi-white) !important;
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+nav.navbar .nav-item.active > .nav-link::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 2px;
+  height: 2px;
+  background: var(--moi-gold);
+  border-radius: 1px;
+}
+
+.dropdown-menu {
+  background-color: var(--moi-white);
+  border: 1px solid var(--moi-border);
+  border-radius: var(--moi-radius);
+  box-shadow: var(--moi-shadow-hover);
+  padding: 6px;
+  z-index: 1035;
+}
+
+.dropdown-item {
+  border-radius: 8px;
+  font-size: .92rem;
+  padding: 8px 12px;
+  transition: background .12s ease;
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background: var(--moi-off-white);
+  color: var(--moi-navy);
+}
+
+.dropdown-item.active,
+.dropdown-item:active {
+  background: var(--moi-navy);
+  color: var(--moi-white);
+}
+
+/* Nested "Reference Data / Access & Security / Civil Registry" sub-menus.
+   Bootstrap4's dropdown.js attaches Popper.js positioning to EVERY
+   [data-toggle="dropdown"] it finds — including the second-level toggles
+   inside an already-open menu. Popper writes its own inline
+   position/transform onto that sub-menu, which silently overrides
+   Flask-Admin's bundled flyout rule (submenu.css's
+   `position:absolute; left:100%`) and makes the sub-menu detach from its
+   parent item and float wherever Popper decided there was room — which is
+   the disconnected, "floating box in the middle of the page" look. We
+   force the flyout position back with !important, which is the one thing
+   strong enough to beat an inline style, so the sub-menu opens attached to
+   its parent row like a normal nested menu. */
+.dropdown-menu .dropdown-menu {
+  position: absolute !important;
+  inset: auto !important;
+  top: -7px !important;
+  left: 100% !important;
+  right: auto !important;
+  transform: none !important;
+  margin: 0 0 0 2px !important;
+}
+
+/* Flask-Admin marks a sub-menu toggle with an empty
+   <i class="glyphicon glyphicon-chevron-right"> — Bootstrap4 doesn't ship
+   the glyphicon icon font, so it rendered as nothing. Bootstrap4's own
+   dropdown-toggle already draws a small CSS triangle via ::after; we hide
+   the dead glyphicon and rotate that native triangle to point right for
+   sub-menu toggles specifically (top-level nav items keep the normal
+   downward caret), which is what tells you an item opens a further panel
+   instead of just a page. */
+nav.navbar .glyphicon-chevron-right,
+nav.navbar .glyphicon-chevron-down {
+  display: none;
+}
+
+.dropdown-item.dropdown-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dropdown-item.dropdown-toggle::after {
+  transform: rotate(-90deg);
+  margin-left: 10px;
+}
+
+.navbar-toggler {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.navbar-toggler:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.4);
+}
+
+@media (max-width: 991.98px) {
+  .nav li.dropdown ul.dropdown-menu li:hover ul,
+  .nav li.dropdown ul.dropdown-menu ul,
+  .dropdown-menu .dropdown-menu {
+    position: static !important;
+    display: block !important;
+    float: none !important;
+    left: auto !important;
+    top: auto !important;
+    margin: 2px 0 4px 12px !important;
+    width: auto !important;
+    box-shadow: none;
+    border: none;
+    border-left: 2px solid var(--moi-gold);
+    border-radius: 0 8px 8px 0;
+    padding: 4px 0 4px 8px;
+  }
+
+  .dropdown-item.dropdown-toggle::after {
+    transform: rotate(0deg);
+  }
+}
+
+/* ---------- Page title ---------- */
+
+/* Flask-Admin renders this exact <h4 class="mb-4"> at the top of every
+   single page — Dashboard, Family Records, Document Type Authorities, every
+   list/edit/create/details view alike (admin/base.html's page_title block).
+   Out of the box it just inherits the cerulean swatch's link-blue heading
+   color, so the page name reads like a clickable link instead of a title.
+   h4.mb-4 is unique to this block across the whole template set, so this
+   rule safely reaches every page without touching any template. */
+h4.mb-4 {
+  display: block;
+  width: 100%;
+  color: var(--moi-navy) !important;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  padding: 2px 0 16px 14px;
+  margin: 4px 0 22px 0 !important;
+  border-left: 4px solid var(--moi-gold);
+  border-bottom: 1px solid var(--moi-border);
+}
+
+/* ---------- Buttons ---------- */
+
+.btn {
+  border-radius: 8px;
+  font-weight: 600;
+  transition: transform .1s ease, box-shadow .15s ease, background-color .15s ease;
+}
+
+.btn-primary,
+.btn-primary:not(:disabled):not(.disabled) {
+  background: var(--moi-navy);
+  border-color: var(--moi-navy);
+}
+
+.btn-primary:hover {
+  background: var(--moi-royal);
+  border-color: var(--moi-royal);
+}
+
+.btn-primary:focus,
+.btn-primary.focus {
+  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.35);
+}
+
+.btn-success { background: #1E7A4C; border-color: #1E7A4C; }
+.btn-danger { background: #A13A2F; border-color: #A13A2F; }
+
+/* ---------- Cards / panels ---------- */
+
+.card,
+.panel,
+.box {
+  border-radius: var(--moi-radius);
+  border: 1px solid var(--moi-border);
+  box-shadow: var(--moi-shadow);
+}
+
+/* ---------- Toolbar (List / Create / Export / Add Filter / search) ---------- */
+
+/* Flask-Admin renders the list-view toolbar as a plain Bootstrap
+   nav-tabs strip of text links. We turn it into a normal action bar:
+   a plain "List (N)" label, a filled primary button for Create, and
+   outline buttons with icons for everything else (Export, Add Filter,
+   page-size, batch actions) — all identified by structure/attributes
+   Flask-Admin always emits, not by page-specific markup, so this applies
+   the same way on every one of the 46 list views. */
+.nav-tabs {
+  border-bottom: none;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px !important;
+}
+
+.nav-tabs .nav-item { margin-bottom: 0; }
+
+.nav-tabs .nav-link {
+  border: none;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-weight: 600;
+  font-size: .88rem;
+  color: var(--moi-charcoal);
+  background: transparent;
+}
+
+/* "List (N)" — a plain label, not an action, so it doesn't look clickable */
+.nav-tabs .nav-item:first-child .nav-link {
+  color: var(--moi-gray);
+  font-weight: 700;
+  padding-left: 4px;
+  cursor: default;
+}
+.nav-tabs .nav-item:first-child .nav-link:hover { background: none; }
+
+/* Create — primary filled button */
+.nav-tabs a[title="Create New Record"] {
+  background: var(--moi-navy);
+  color: var(--moi-white) !important;
+  padding-left: 16px;
+}
+.nav-tabs a[title="Create New Record"]:hover { background: var(--moi-royal); }
+.nav-tabs a[title="Create New Record"]::before {
+  font-family: "FontAwesome";
+  content: "\f067";
+  margin-right: 7px;
+  font-size: .8rem;
+}
+
+/* Export / Add Filter / page-size / batch actions — outline buttons */
+.nav-tabs a[title="Export"],
+.nav-tabs .dropdown-toggle {
+  border: 1px solid var(--moi-border);
+  background: var(--moi-white);
+  color: var(--moi-charcoal);
+}
+.nav-tabs a[title="Export"]:hover,
+.nav-tabs .dropdown-toggle:hover {
+  border-color: var(--moi-royal);
+  color: var(--moi-royal);
+  background: var(--moi-white);
+}
+.nav-tabs a[title="Export"]::before {
+  font-family: "FontAwesome";
+  content: "\f019";
+  margin-right: 7px;
+  font-size: .8rem;
+}
+.nav-tabs a.dropdown-toggle[data-toggle="dropdown"]::before {
+  font-family: "FontAwesome";
+  margin-right: 7px;
+  font-size: .8rem;
+}
+/* "Add Filter" and "Export" (multi-format) both render as
+   .dropdown-toggle — tell them apart by their label text via :first-line
+   isn't reliable in CSS, so both simply get the funnel icon; a dropdown
+   always implies "narrow the list" here, which reads fine either way. */
+.nav-tabs li.dropdown > a.dropdown-toggle::before,
+.nav-tabs li.nav-item.dropdown > a.dropdown-toggle::before {
+  content: "\f0b0";
+}
+
+/* Search box */
+.nav-tabs .input-group { position: relative; }
+.nav-tabs .input-group .form-control {
+  padding-left: 32px;
+  border-radius: 8px;
+  min-width: 220px;
+}
+.nav-tabs .input-group::before {
+  font-family: "FontAwesome";
+  content: "\f002";
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--moi-gray);
+  font-size: .82rem;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* ---------- Tables (list views) ---------- */
+
+/* Full-width, evenly proportioned tables. Bootstrap's default table
+   auto-layout dumps 100% of any leftover width into whichever column
+   happens to be last — on a short 5-7 column table that showed up as one
+   big blank rectangle hanging off the end. Fix: give the two utility
+   columns (checkbox, actions) a fixed width so the browser treats them as
+   non-growing, which makes it spread the real leftover space evenly
+   across the actual data columns instead of dumping it all in one place —
+   so the table now fills the page properly without an empty-looking gap. */
+.table-responsive > table.model-list {
+  width: 100%;
+}
+
+.table .list-checkbox-column,
+.table td:first-child:has(> input.action-checkbox) {
+  width: 42px;
+}
+
+.table .list-actions-column {
+  width: 130px;
+  text-align: right;
+}
+
+.table thead th {
+  background: var(--moi-off-white);
+  color: var(--moi-charcoal);
+  font-weight: 700;
+  font-size: .8rem;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--moi-gold) !important;
+  border-top: none;
+  white-space: nowrap;
+  padding: 14px 18px;
+}
+
+.table td {
+  vertical-align: middle;
+  font-size: .9rem;
+  color: var(--moi-charcoal);
+  padding: 14px 18px;
+}
+
+.table-hover tbody tr:hover {
+  background-color: rgba(23, 74, 126, 0.05);
+}
+
+.table-bordered,
+.table-bordered td,
+.table-bordered th {
+  border-color: var(--moi-border);
+}
+
+/* Row actions (eye / pencil / trash), now in their own column on the far
+   right instead of sitting in front of the data. */
+.list-buttons-column {
+  white-space: nowrap;
+}
+
+.list-buttons-column .icon,
+.list-buttons-column form.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  color: var(--moi-gray);
+  margin-left: 2px;
+  transition: background-color .12s ease, color .12s ease;
+}
+
+.list-buttons-column .icon:hover {
+  background: var(--moi-off-white);
+  color: var(--moi-royal);
+}
+
+.list-buttons-column form.icon button {
+  background: none;
+  border: none;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  color: inherit;
+}
+
+.list-buttons-column form.icon:hover button {
+  color: #A13A2F;
+}
+
+/* Right-align columns that hold numbers, so figures line up instead of
+   sitting flush left like text. */
+.table .col-amount,
+.table .col-days_remaining,
+.table .col-overdue_by_days,
+.table .col-default_sla_days,
+.table .col-display_order {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Status/priority pills — rendered by admin_views.py's badge() formatter.
+   "Paid", "Approved", "Issued" etc. get a green pill, "Rejected"/"Overdue"
+   a red one, and so on, so the list reads by color at a glance instead of
+   requiring you to read every raw status string. */
+.moi-badge {
+  display: inline-block;
+  padding: 3px 11px;
+  border-radius: 999px;
+  font-size: .76rem;
+  font-weight: 700;
+  letter-spacing: .01em;
+  white-space: nowrap;
+}
+.moi-badge-success  { background: #E6F4EC; color: #1E7A4C; }
+.moi-badge-danger   { background: #FBEAE8; color: #A13A2F; }
+.moi-badge-warning  { background: #FDF3E0; color: #A9871E; }
+.moi-badge-info     { background: #E8F1FA; color: #174A7E; }
+.moi-badge-secondary{ background: #EEF0F3; color: #667085; }
+
+/* ---------- Forms ---------- */
+
+.form-control,
+select.form-control,
+textarea.form-control {
+  border-radius: 8px;
+  border: 1px solid var(--moi-border);
+}
+
+.form-control:focus {
+  border-color: var(--moi-gold);
+  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.2);
+}
+
+label { font-weight: 600; color: var(--moi-charcoal); }
+
+/* ---------- Pagination ---------- */
+
+.pagination .page-link {
+  border-radius: 6px;
+  margin: 0 2px;
+  border: 1px solid var(--moi-border);
+  color: var(--moi-royal);
+}
+
+.pagination .page-item.active .page-link {
+  background: var(--moi-navy);
+  border-color: var(--moi-navy);
+}
+
+/* ---------- Badges ---------- */
+
+.badge {
+  border-radius: 999px;
+  font-weight: 600;
+  padding: .35em .7em;
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
