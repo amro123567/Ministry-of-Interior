@@ -1,10 +1,14 @@
+from datetime import datetime
+
 from flask import redirect, url_for, request, flash
+from sqlalchemy import func
 from flask_login import current_user
 from flask_admin.contrib.sqla import ModelView
 from flask_admin import AdminIndexView, expose
 from markupsafe import Markup
 from extensions import db
 import models as m
+from i18n import L, t as _t, get_lang, COLUMNS, column_header
 
 
 # ---------------------------------------------------------------------------
@@ -94,6 +98,28 @@ class PermissionMixin:
 
 
 class BaseView(PermissionMixin, ModelView):
+    def get_column_name(self, field):
+        """Localized table headers, for every view, from one table.
+
+        Flask-Admin's own version checks this view's `column_labels` and
+        otherwise prettifies the field name, which leaves headers in English
+        whatever language the interface is in. This keeps that order with the
+        shared i18n.COLUMNS table slotted in between: a view's own
+        column_labels still wins where one is set, and an unmapped field
+        still falls back to the prettifier rather than raising.
+
+        It returns a lazy Col rather than a finished string because this runs
+        once per view at import time — before any request exists — and the
+        result is cached for the life of the process. Col carries the English
+        text as its actual value and resolves the language when Jinja renders
+        it, so one cached header serves both languages.
+        """
+        if self.column_labels and field in self.column_labels:
+            return self.column_labels[field]
+        entry = COLUMNS.get(str(field))
+        fallback = entry[0] if entry else self._prettify_name(field)
+        return column_header(field, fallback)
+
     page_size = 25
     can_view_details = True
     can_export = True
@@ -623,16 +649,16 @@ class RecordAccessLogView(ReadOnlyView):
 
 
 def register_all_views(admin):
-    GEO = "Geography & Institutions"
-    ACL = "Access Control & Security"
-    SEC = "Security & Sessions"
-    WF = "Workflow Configuration"
-    DOCCFG = "Document Configuration"
-    FAM = "Citizens & Family"
-    DOC = "Documents"
-    CERT = "Certificates"
-    REQ = "Service Requests & Payments"
-    AUDIT = "Audit & Access Logs"
+    GEO = L("Geography & Institutions")
+    ACL = L("Access Control & Security")
+    SEC = L("Security & Sessions")
+    WF = L("Workflow Configuration")
+    DOCCFG = L("Document Configuration")
+    FAM = L("Citizens & Family")
+    DOC = L("Documents")
+    CERT = L("Certificates")
+    REQ = L("Service Requests & Payments")
+    AUDIT = L("Audit & Access Logs")
 
     # ---- Nav grouping -----------------------------------------------
     # The 10 categories above used to all sit flat in the top nav bar
@@ -646,9 +672,9 @@ def register_all_views(admin):
     # below is unchanged — it still passes category=GEO / ACL / etc,
     # and Flask-Admin nests it under the right parent automatically
     # because that name was pre-registered as a sub-category here.
-    REF_DATA = "Reference Data"
-    ACCESS_SEC = "Access & Security"
-    REGISTRY = "Civil Registry"
+    REF_DATA = L("Reference Data")
+    ACCESS_SEC = L("Access & Security")
+    REGISTRY = L("Civil Registry")
 
     admin.add_category(REF_DATA)
     admin.add_category(ACCESS_SEC)
@@ -667,66 +693,286 @@ def register_all_views(admin):
     admin.add_sub_category(DOC, REGISTRY)
     admin.add_sub_category(CERT, REGISTRY)
 
-    admin.add_view(GovernorateView(m.Governorate, db.session, name="Governorates", category=GEO))
-    admin.add_view(DistrictView(m.District, db.session, name="Districts", category=GEO))
-    admin.add_view(OfficeView(m.Office, db.session, name="Offices", category=GEO))
-    admin.add_view(DepartmentView(m.Department, db.session, name="Departments", category=GEO))
-    admin.add_view(CourtView(m.Court, db.session, name="Courts", category=GEO))
-    admin.add_view(ReligiousAuthorityView(m.ReligiousAuthority, db.session, name="Religious Authorities", category=GEO))
-    admin.add_view(MukhtarView(m.Mukhtar, db.session, name="Mukhtars", category=GEO))
+    admin.add_view(GovernorateView(m.Governorate, db.session, name=L("Governorates"), category=GEO))
+    admin.add_view(DistrictView(m.District, db.session, name=L("Districts"), category=GEO))
+    admin.add_view(OfficeView(m.Office, db.session, name=L("Offices"), category=GEO))
+    admin.add_view(DepartmentView(m.Department, db.session, name=L("Departments"), category=GEO))
+    admin.add_view(CourtView(m.Court, db.session, name=L("Courts"), category=GEO))
+    admin.add_view(ReligiousAuthorityView(m.ReligiousAuthority, db.session, name=L("Religious Authorities"), category=GEO))
+    admin.add_view(MukhtarView(m.Mukhtar, db.session, name=L("Mukhtars"), category=GEO))
 
-    admin.add_view(PermissionView(m.Permission, db.session, name="Permissions", category=ACL))
-    admin.add_view(RoleView(m.Role, db.session, name="Roles", category=ACL))
-    admin.add_view(RolePermissionView(m.RolePermission, db.session, name="Role ↔ Permissions", category=ACL))
-    admin.add_view(UserView(m.User, db.session, name="Users", category=ACL))
-    admin.add_view(UserRoleView(m.UserRole, db.session, name="User ↔ Roles", category=ACL))
+    admin.add_view(PermissionView(m.Permission, db.session, name=L("Permissions"), category=ACL))
+    admin.add_view(RoleView(m.Role, db.session, name=L("Roles"), category=ACL))
+    admin.add_view(RolePermissionView(m.RolePermission, db.session, name=L("Role ↔ Permissions"), category=ACL))
+    admin.add_view(UserView(m.User, db.session, name=L("Users"), category=ACL))
+    admin.add_view(UserRoleView(m.UserRole, db.session, name=L("User ↔ Roles"), category=ACL))
 
-    admin.add_view(SessionLogView(m.SessionLog, db.session, name="Session Logs", category=SEC))
-    admin.add_view(LoginAttemptView(m.LoginAttempt, db.session, name="Login Attempts", category=SEC))
-    admin.add_view(TokenDenylistView(m.TokenDenylist, db.session, name="Token Denylist", category=SEC))
+    admin.add_view(SessionLogView(m.SessionLog, db.session, name=L("Session Logs"), category=SEC))
+    admin.add_view(LoginAttemptView(m.LoginAttempt, db.session, name=L("Login Attempts"), category=SEC))
+    admin.add_view(TokenDenylistView(m.TokenDenylist, db.session, name=L("Token Denylist"), category=SEC))
 
-    admin.add_view(WorkflowStateView(m.WorkflowState, db.session, name="Workflow States", category=WF))
-    admin.add_view(WorkflowTransitionView(m.WorkflowTransition, db.session, name="Workflow Transitions", category=WF))
-    admin.add_view(WorkflowTransitionPermissionView(m.WorkflowTransitionPermission, db.session, name="Transition Permissions", category=WF))
+    admin.add_view(WorkflowStateView(m.WorkflowState, db.session, name=L("Workflow States"), category=WF))
+    admin.add_view(WorkflowTransitionView(m.WorkflowTransition, db.session, name=L("Workflow Transitions"), category=WF))
+    admin.add_view(WorkflowTransitionPermissionView(m.WorkflowTransitionPermission, db.session, name=L("Transition Permissions"), category=WF))
 
-    admin.add_view(DocumentTypeView(m.DocumentType, db.session, name="Document Types", category=DOCCFG))
-    admin.add_view(DocumentTypeAuthorityView(m.DocumentTypeAuthority, db.session, name="Document Type Authorities", category=DOCCFG))
+    admin.add_view(DocumentTypeView(m.DocumentType, db.session, name=L("Document Types"), category=DOCCFG))
+    admin.add_view(DocumentTypeAuthorityView(m.DocumentTypeAuthority, db.session, name=L("Document Type Authorities"), category=DOCCFG))
 
-    admin.add_view(CitizenView(m.Citizen, db.session, name="Citizens", category=FAM))
-    admin.add_view(FamilyRecordView(m.FamilyRecord, db.session, name="Family Records", category=FAM))
-    admin.add_view(FamilyMemberView(m.FamilyMember, db.session, name="Family Members", category=FAM))
-    admin.add_view(GuardianshipRecordView(m.GuardianshipRecord, db.session, name="Guardianship Records", category=FAM))
-    admin.add_view(RegistryTransferView(m.RegistryTransfer, db.session, name="Registry Transfers", category=FAM))
-    admin.add_view(CivilStatusAmendmentView(m.CivilStatusAmendment, db.session, name="Civil Status Amendments", category=FAM))
+    admin.add_view(CitizenView(m.Citizen, db.session, name=L("Citizens"), category=FAM))
+    admin.add_view(FamilyRecordView(m.FamilyRecord, db.session, name=L("Family Records"), category=FAM))
+    admin.add_view(FamilyMemberView(m.FamilyMember, db.session, name=L("Family Members"), category=FAM))
+    admin.add_view(GuardianshipRecordView(m.GuardianshipRecord, db.session, name=L("Guardianship Records"), category=FAM))
+    admin.add_view(RegistryTransferView(m.RegistryTransfer, db.session, name=L("Registry Transfers"), category=FAM))
+    admin.add_view(CivilStatusAmendmentView(m.CivilStatusAmendment, db.session, name=L("Civil Status Amendments"), category=FAM))
 
-    admin.add_view(DocumentView(m.Document, db.session, name="Documents", category=DOC))
-    admin.add_view(DocumentValidationView(m.DocumentValidation, db.session, name="Document Validations", category=DOC))
-    admin.add_view(PhysicalDocumentHandlingView(m.PhysicalDocumentHandling, db.session, name="Physical Handling", category=DOC))
+    admin.add_view(DocumentView(m.Document, db.session, name=L("Documents"), category=DOC))
+    admin.add_view(DocumentValidationView(m.DocumentValidation, db.session, name=L("Document Validations"), category=DOC))
+    admin.add_view(PhysicalDocumentHandlingView(m.PhysicalDocumentHandling, db.session, name=L("Physical Handling"), category=DOC))
 
-    admin.add_view(BirthCertificateView(m.BirthCertificate, db.session, name="Birth Certificates", category=CERT))
-    admin.add_view(MarriageCertificateView(m.MarriageCertificate, db.session, name="Marriage Certificates", category=CERT))
-    admin.add_view(DivorceCertificateView(m.DivorceCertificate, db.session, name="Divorce Certificates", category=CERT))
-    admin.add_view(DeathCertificateView(m.DeathCertificate, db.session, name="Death Certificates", category=CERT))
-    admin.add_view(NationalIdCardView(m.NationalIdCard, db.session, name="National ID Cards", category=CERT))
-    admin.add_view(PassportView(m.Passport, db.session, name="Passports", category=CERT))
-    admin.add_view(NaturalizationRecordView(m.NaturalizationRecord, db.session, name="Naturalization Records", category=CERT))
-    admin.add_view(NameChangeRecordView(m.NameChangeRecord, db.session, name="Name Change Records", category=CERT))
+    admin.add_view(BirthCertificateView(m.BirthCertificate, db.session, name=L("Birth Certificates"), category=CERT))
+    admin.add_view(MarriageCertificateView(m.MarriageCertificate, db.session, name=L("Marriage Certificates"), category=CERT))
+    admin.add_view(DivorceCertificateView(m.DivorceCertificate, db.session, name=L("Divorce Certificates"), category=CERT))
+    admin.add_view(DeathCertificateView(m.DeathCertificate, db.session, name=L("Death Certificates"), category=CERT))
+    admin.add_view(NationalIdCardView(m.NationalIdCard, db.session, name=L("National ID Cards"), category=CERT))
+    admin.add_view(PassportView(m.Passport, db.session, name=L("Passports"), category=CERT))
+    admin.add_view(NaturalizationRecordView(m.NaturalizationRecord, db.session, name=L("Naturalization Records"), category=CERT))
+    admin.add_view(NameChangeRecordView(m.NameChangeRecord, db.session, name=L("Name Change Records"), category=CERT))
 
-    admin.add_view(ServiceRequestView(m.ServiceRequest, db.session, name="Service Requests", category=REQ))
-    admin.add_view(RequestAssignmentView(m.RequestAssignment, db.session, name="Request Assignments", category=REQ))
-    admin.add_view(ServiceRequestStatusHistoryView(m.ServiceRequestStatusHistory, db.session, name="Status History", category=REQ))
-    admin.add_view(SlaRecordView(m.SlaRecord, db.session, name="SLA Records", category=REQ))
-    admin.add_view(PaymentView(m.Payment, db.session, name="Payments", category=REQ))
-    admin.add_view(InternalNotificationView(m.InternalNotification, db.session, name="Notifications", category=REQ))
+    admin.add_view(ServiceRequestView(m.ServiceRequest, db.session, name=L("Service Requests"), category=REQ))
+    admin.add_view(RequestAssignmentView(m.RequestAssignment, db.session, name=L("Request Assignments"), category=REQ))
+    admin.add_view(ServiceRequestStatusHistoryView(m.ServiceRequestStatusHistory, db.session, name=L("Status History"), category=REQ))
+    admin.add_view(SlaRecordView(m.SlaRecord, db.session, name=L("SLA Records"), category=REQ))
+    admin.add_view(PaymentView(m.Payment, db.session, name=L("Payments"), category=REQ))
+    admin.add_view(InternalNotificationView(m.InternalNotification, db.session, name=L("Notifications"), category=REQ))
 
-    admin.add_view(AuditLogView(m.AuditLog, db.session, name="Audit Logs", category=AUDIT))
-    admin.add_view(CitizenAuditLogView(m.CitizenAuditLog, db.session, name="Citizen Audit Log", category=AUDIT))
-    admin.add_view(RecordAccessLogView(m.RecordAccessLog, db.session, name="Record Access Log", category=AUDIT))
+    admin.add_view(AuditLogView(m.AuditLog, db.session, name=L("Audit Logs"), category=AUDIT))
+    admin.add_view(CitizenAuditLogView(m.CitizenAuditLog, db.session, name=L("Citizen Audit Log"), category=AUDIT))
+    admin.add_view(RecordAccessLogView(m.RecordAccessLog, db.session, name=L("Record Access Log"), category=AUDIT))
+
+
+# ---------------------------------------------------------------------------
+# Dashboard
+#
+# What this builds, and why it is shaped this way:
+#
+# The dashboard answers the three questions a Directorate employee opens the
+# system to ask — "how much work is open?", "what is late?", and "where is it
+# stuck?" — and nothing else. It deliberately does NOT list every table in the
+# schema with a row count; that is a database browser, and the navbar menu
+# already does it better.
+#
+# The panels map 1:1 onto the wireframe in CTS_Design_Artifacts.pdf §5.2 and
+# the dashboard endpoints specified in the 20-day plan (Day 11): KPI summary,
+# SLA alerts, and workflow distribution.
+#
+# Scope: an Administrator or Auditor sees the whole Directorate. Everyone else
+# sees their own office only. Office rather than personal assignment, because
+# request_assignments covers only a fraction of requests — a clerk scoped to
+# her own assignments would open the system to an empty screen, which is worse
+# than slightly-too-wide a view. Section 6.9 of the SDD is where a per-user
+# queue would belong once assignment coverage is enforced.
+# ---------------------------------------------------------------------------
+
+# Only the colours live here now; the status names come from i18n.TEXT so the
+# whole system has one translation table. A status the seed data invents and
+# this map does not know still renders, in grey, with its raw code.
+_SLA_COLORS = {
+    "ON_TRACK": "#1E7A4C",
+    "DUE_SOON": "#C9A227",
+    "OVERDUE": "#A13A2F",
+    "MET": "#174A7E",
+    "BREACHED": "#7B241C",
+}
+
+
+def _dashboard_scope():
+    """Return (scope_code, office) for the signed-in user.
+
+    access_control.view is held only by Administrator and Auditor in the
+    seeded role set, which makes it a reasonable proxy for "may see the whole
+    Directorate" without inventing a new permission code.
+    """
+    if current_user.has_permission("access_control.view"):
+        return "ALL", None
+    return "OFFICE", current_user.office
+
+
+def _scoped_requests(scope, office):
+    """Base ServiceRequest query, narrowed to the user's scope."""
+    q = db.session.query(m.ServiceRequest)
+    if scope == "OFFICE" and office is not None:
+        q = q.filter(m.ServiceRequest.office_id == office.id)
+    return q
+
+
+def build_dashboard():
+    """Everything admin/index.html renders, computed in one place.
+
+    Returns a dict rather than a dozen template variables so the template
+    stays declarative and this function stays the single thing to read when a
+    figure on screen looks wrong.
+    """
+    scope, office = _dashboard_scope()
+
+    # A user without requests.view gets the identity header and nothing else,
+    # rather than an error or a page of zeros they cannot explain.
+    if not current_user.has_permission("requests.view"):
+        return {"scope": scope, "office": office, "permitted": False}
+
+    base = _scoped_requests(scope, office)
+
+    # -- Workflow distribution ------------------------------------------------
+    # Counts per state, left-joined from workflow_states so a state with no
+    # requests still appears (an empty column is information: nothing is
+    # sitting in REJECTED is a good thing to be able to see).
+    state_counts = dict(
+        base.with_entities(m.ServiceRequest.workflow_state_id, func.count(m.ServiceRequest.id))
+            .group_by(m.ServiceRequest.workflow_state_id).all()
+    )
+    states = (db.session.query(m.WorkflowState)
+              .filter(m.WorkflowState.is_active.is_(True))
+              .order_by(m.WorkflowState.display_order).all())
+    wf_total = sum(state_counts.values()) or 0
+    # workflow_states carries both names in the database, so the chart labels
+    # follow the interface language straight from the data.
+    arabic = get_lang() == "ar"
+    workflow_rows = [{
+        "code": s.code,
+        "name": (s.name_ar or s.name_en) if arabic else s.name_en,
+        "color": s.color_hex or "#667085",
+        "count": state_counts.get(s.id, 0),
+        "pct": round(state_counts.get(s.id, 0) * 100.0 / wf_total) if wf_total else 0,
+        "is_final": bool(s.is_final),
+    } for s in states]
+
+    open_count = sum(r["count"] for r in workflow_rows if not r["is_final"])
+    closed_count = sum(r["count"] for r in workflow_rows if r["is_final"])
+
+    # -- SLA ------------------------------------------------------------------
+    # sla_records is 1:1 with service_requests, so the join is safe to count
+    # against directly.
+    sla_q = (db.session.query(m.SlaRecord.sla_status, func.count(m.SlaRecord.id))
+             .join(m.ServiceRequest, m.SlaRecord.service_request_id == m.ServiceRequest.id))
+    if scope == "OFFICE" and office is not None:
+        sla_q = sla_q.filter(m.ServiceRequest.office_id == office.id)
+    sla_counts = dict(sla_q.group_by(m.SlaRecord.sla_status).all())
+    sla_total = sum(sla_counts.values()) or 0
+    sla_rows = []
+    for code, count in sorted(sla_counts.items(), key=lambda kv: -kv[1]):
+        label = _t("sla_" + code)
+        if label == "sla_" + code:          # unmapped status: show it raw
+            label = code.replace("_", " ").title()
+        sla_rows.append({
+            "code": code,
+            "label": label,
+            "color": _SLA_COLORS.get(code, "#667085"),
+            "count": count,
+            "pct": round(count * 100.0 / sla_total) if sla_total else 0,
+        })
+
+    overdue = sla_counts.get("OVERDUE", 0)
+    due_soon = sla_counts.get("DUE_SOON", 0)
+
+    # Worst current breach, so the Overdue card says how bad rather than only
+    # how many — "3 overdue" and "3 overdue, worst 41 days" are different
+    # operational situations.
+    worst_q = (db.session.query(func.max(m.SlaRecord.overdue_by_days))
+               .join(m.ServiceRequest, m.SlaRecord.service_request_id == m.ServiceRequest.id)
+               .filter(m.SlaRecord.sla_status == "OVERDUE"))
+    if scope == "OFFICE" and office is not None:
+        worst_q = worst_q.filter(m.ServiceRequest.office_id == office.id)
+    worst_overdue = worst_q.scalar() or 0
+
+    # Nearest upcoming due date among requests still open.
+    next_due_q = (db.session.query(func.min(m.SlaRecord.due_date))
+                  .join(m.ServiceRequest, m.SlaRecord.service_request_id == m.ServiceRequest.id)
+                  .filter(m.SlaRecord.sla_status == "DUE_SOON"))
+    if scope == "OFFICE" and office is not None:
+        next_due_q = next_due_q.filter(m.ServiceRequest.office_id == office.id)
+    next_due = next_due_q.scalar()
+
+    # -- Average resolution time ---------------------------------------------
+    # Computed in Python over completed requests: SQLite and MySQL disagree on
+    # date arithmetic, and the row count here is small enough that pulling the
+    # two timestamps back is cheaper than maintaining two dialects of SQL.
+    completed = base.with_entities(
+        m.ServiceRequest.submitted_at,
+        m.ServiceRequest.approved_at,
+        m.ServiceRequest.rejected_at,
+    ).all()
+    spans = []
+    for submitted_at, approved_at, rejected_at in completed:
+        finished = approved_at or rejected_at
+        if submitted_at and finished and finished >= submitted_at:
+            spans.append((finished - submitted_at).total_seconds())
+    # Same-day turnaround is normal for a counter service, and "0.0 days" reads
+    # like a broken figure rather than a fast one — so anything under a day is
+    # reported in hours.
+    if spans:
+        avg_seconds = sum(spans) / len(spans)
+        if avg_seconds < 86400:
+            avg_value = round(avg_seconds / 3600, 1)
+            avg_unit = _t("unit_hours")
+        else:
+            avg_value = round(avg_seconds / 86400, 1)
+            avg_unit = _t("unit_days")
+    else:
+        avg_value, avg_unit = None, _t("unit_days")
+
+    total_requests = base.count()
+
+    # -- KPI cards ------------------------------------------------------------
+    kpis = [
+        {
+            "key": "open", "tone": "royal",
+            "label": _t("kpi_open"),
+            "value": open_count,
+            "sub": _t("of_total", n=total_requests),
+        },
+        {
+            # The pill is a status, not a repeat of the figure beside it: the
+            # number says how many, the pill says whether it needs action
+            # today. It is omitted when the count is zero, so a clean card
+            # carries no decoration at all.
+            "key": "overdue", "tone": "danger",
+            "label": _t("kpi_overdue"),
+            "value": overdue,
+            "pill": _t("pill_action_required") if overdue else None,
+            "sub": _t("worst_late", n=worst_overdue) if overdue else _t("nothing_late"),
+        },
+        {
+            "key": "due_soon", "tone": "gold",
+            "label": _t("kpi_due_soon"),
+            "value": due_soon,
+            "pill": _t("pill_this_week") if due_soon else None,
+            "sub": _t("next_due", d=next_due.strftime("%d/%m/%Y")) if next_due else _t("none_approaching"),
+        },
+        {
+            "key": "avg", "tone": "green",
+            "label": _t("kpi_avg"),
+            "value": ("%s" % avg_value) if avg_value is not None else "\u2014",
+            "unit": avg_unit,
+            "sub": _t("across_completed", n=closed_count),
+        },
+    ]
+
+    return {
+        "permitted": True,
+        "scope": scope,
+        "office": office,
+        "kpis": kpis,
+        "sla_rows": sla_rows,
+        "sla_total": sla_total,
+        "workflow_rows": workflow_rows,
+        "workflow_total": wf_total,
+        "workflow_max": max([r["count"] for r in workflow_rows], default=0),
+        "today": datetime.now(),
+    }
 
 
 class DashboardIndexView(AdminIndexView):
-    """Dashboard itself requires login; permission-based content filtering
-    happens in app.py's build_stats()."""
+    """The dashboard. Requires login; the figures it shows are scoped to the
+    signed-in user by build_dashboard() above."""
 
     extra_css = ["/static/css/moi-theme.css"]
 
@@ -735,3 +981,10 @@ class DashboardIndexView(AdminIndexView):
 
     def inaccessible_callback(self, name, **kwargs):
         return redirect(url_for("login_page", next=request.url))
+
+    @expose("/")
+    def index(self):
+        """Override AdminIndexView.index() so the template receives its data.
+        Flask-Admin's _handle_view has already run is_accessible() by the time
+        this is called, so an anonymous visitor never reaches it."""
+        return self.render("admin/index.html", dash=build_dashboard())

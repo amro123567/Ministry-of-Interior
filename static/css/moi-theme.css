@@ -5,7 +5,7 @@
    create and detail screen in the app picks it up automatically.
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Kufi+Arabic:wght@400;500;600;700&display=swap');
 
 :root {
   --moi-navy: #0B1F33;
@@ -18,17 +18,59 @@
   --moi-gray: #667085;
   --moi-border: #E3E7EE;
   --moi-radius: 12px;
+  /* Arabic face, used wherever a lang="ar" run appears. Noto Kufi sits
+     small next to Inter at the same px size, so Arabic runs generally get a
+     slightly larger font-size where the two sit side by side. */
+  --moi-ar: 'Noto Kufi Arabic', 'Segoe UI', Tahoma, sans-serif;
+  /* One surface for the two pieces of official chrome. Header and footer
+     share it so the page reads as bracketed between them rather than as a
+     page with a bar on top and an unrelated block at the bottom. */
+  --moi-chrome: linear-gradient(165deg, #0B1F33 0%, #102B47 55%, #14314F 100%);
+  /* The white header/footer surface and the hairline that bounds it. */
+  --moi-surface: #FFFFFF;
+  --moi-surface-line: rgba(11, 31, 51, 0.10);
+  --moi-chrome-line: rgba(255, 255, 255, 0.10);
+  --moi-chrome-text: rgba(255, 255, 255, 0.72);
   --moi-shadow: 0 2px 10px rgba(11, 31, 51, 0.06);
   --moi-shadow-hover: 0 10px 28px rgba(11, 31, 51, 0.14);
 }
 
 /* ---------- Base ---------- */
 
+/* Sticky footer: the page column is at least as tall as the viewport, and
+   the footer takes the leftover space, so a short page (an empty list, a
+   small form) still closes at the bottom of the screen instead of leaving
+   the footer floating halfway up. */
+html, body { height: 100%; }
+
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: var(--moi-off-white);
+  /* Two very faint tints rather than a flat fill: the frosted header has
+     something to pick up as content scrolls under it. */
+  background:
+    radial-gradient(1100px 380px at 12% -8%, rgba(23, 74, 126, 0.05), transparent 60%),
+    radial-gradient(900px 320px at 92% -4%, rgba(201, 162, 39, 0.06), transparent 60%),
+    var(--moi-off-white);
+  background-attachment: fixed;
   color: var(--moi-charcoal);
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
 }
+
+body > .container,
+body > .container-fluid {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Everything between the navbar and the footer shares the leftover height;
+   the footer is pushed to the bottom edge by this margin. */
+.moi-footer { margin-top: auto; }
+
+h1, h2, h3, h4, h5, h6, legend { color: var(--moi-navy); }
 
 a { color: var(--moi-royal); transition: color .15s ease; }
 a:hover { color: var(--moi-gold-dark); }
@@ -38,67 +80,162 @@ a:hover { color: var(--moi-gold-dark); }
   outline-offset: 2px;
 }
 
-/* ---------- Top navigation ---------- */
+/* ---------- Header ----------
+   One bar, not two: branding, navigation and the account/language controls
+   share a single light surface bounded by a hairline, rather than a dark
+   utility strip stacked on a white header. Merging them buys ~42px of
+   vertical space on every screen and removes a colour change the eye has to
+   cross before reaching the content.
 
-/* The nav sits inside Flask-Admin's <div class="container-fluid">, which
-   carries Bootstrap's default 15px left/right padding — so the navy
-   background stopped 15px short of the real page edge on both sides,
-   showing as a pale gutter around the bar. Pulling it out by that same
-   15px with negative margins lets the background run true edge-to-edge,
-   and re-adding it as padding keeps the brand/links sitting at the same
-   spot so they still line up with the page title and content below. */
+   Sticky, because on a forty-column table losing the navigation the moment
+   you scroll is the most common complaint about admin interfaces.
+
+   The nav sits inside Flask-Admin's <div class="container-fluid">, whose
+   15px side padding the negative margins cancel so the surface runs to the
+   true page edge, with the padding putting its contents back in line with
+   the page below. */
 nav.navbar {
-  background: linear-gradient(135deg, var(--moi-navy) 0%, var(--moi-royal) 100%) !important;
-  box-shadow: 0 2px 10px rgba(11, 31, 51, 0.18);
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  background: var(--moi-surface) !important;
   border: none;
+  border-bottom: 1px solid var(--moi-surface-line);
   border-radius: 0;
+  box-shadow: 0 2px 14px rgba(11, 31, 51, 0.07);
   margin-left: -15px;
   margin-right: -15px;
-  padding-left: 15px;
-  padding-right: 15px;
+  padding: 10px 24px;
+  min-height: 84px;
 }
 
-nav.navbar .navbar-brand {
-  font-weight: 800;
-  letter-spacing: .01em;
-  color: var(--moi-white) !important;
+/* Cedar-gold hairline along the bottom edge, fading at both ends — what
+   separates the chrome from the page, and the thread tying the header to
+   the gold used for active states and footer headings. */
+nav.navbar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    rgba(201, 162, 39, 0) 0%,
+    rgba(201, 162, 39, .8) 18%,
+    rgba(201, 162, 39, .8) 82%,
+    rgba(201, 162, 39, 0) 100%);
+}
+
+nav.navbar .navbar-brand { color: var(--moi-navy) !important; }
+
+/* Flask-Admin hard-codes .navbar-dark, whose toggler icon is a white SVG
+   data-URI — invisible on a white bar. Same icon, redrawn in navy. */
+nav.navbar .navbar-toggler { border-color: rgba(11, 31, 51, 0.16); }
+nav.navbar .navbar-toggler-icon {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%230B1F33' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+nav.navbar .navbar-toggler:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.4);
+}
+
+/* ---------- Emblem + name lock-up ----------
+   Source artwork is 120x136px; at 56px tall it renders above 2x density, so
+   it stays sharp on HiDPI. Do not take it past ~136px without a
+   higher-resolution or vector original. */
+nav.navbar .navbar-brand.moi-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 2px 0;
+  margin-right: 34px;
+}
+
+.moi-brand-emblem { height: 56px; width: auto; flex-shrink: 0; display: block; }
+
+.moi-brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.25;
+  min-width: 0;
+}
+
+.moi-brand-eyebrow {
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--moi-gold-dark);
+  white-space: nowrap;
+}
+
+.moi-brand-name {
+  font-size: 1.18rem;
+  font-weight: 700;
+  letter-spacing: -.005em;
+  color: var(--moi-navy);
+  white-space: nowrap;
+}
+
+@media (max-width: 991.98px) {
+  nav.navbar { padding: 8px 16px; min-height: 0; }
+  .moi-brand-emblem { height: 42px; }
+  .moi-brand-name { font-size: 1rem; }
+  .moi-brand-eyebrow { display: none; }
+  nav.navbar .navbar-brand.moi-brand { margin-right: 0; }
 }
 
 nav.navbar .nav-link {
-  color: rgba(255, 255, 255, 0.82) !important;
+  color: var(--moi-charcoal) !important;
   font-weight: 500;
+  font-size: .95rem;
   transition: background-color .15s ease, color .15s ease;
   position: relative;
-  padding: 8px 14px !important;
+  /* 44px tall — the minimum comfortable pointer target. */
+  padding: 12px 16px !important;
   margin: 0 2px;
-  border-radius: 8px;
+  border-radius: 9px;
+  white-space: nowrap;
 }
 
 nav.navbar .nav-link:hover,
 nav.navbar .nav-link:focus {
-  color: var(--moi-white) !important;
-  background-color: rgba(255, 255, 255, 0.12);
+  color: var(--moi-royal) !important;
+  background-color: transparent;
 }
 
-/* Active page, and a top-level item whose menu is currently open, get a
-   slightly stronger fill so it's clear which section you're in/looking at
-   — not just a thin underline that's easy to miss at a glance. */
+/* Underline, not a filled box. A grey block behind the active item competes
+   with the page's own cards for attention and makes the bar look crowded;
+   a 2px rule under the label says the same thing with no extra surface.
+   Weight and colour carry it too, so the state is not signalled by colour
+   alone. */
 nav.navbar .active > .nav-link,
 nav.navbar .nav-item.show > .nav-link {
-  color: var(--moi-white) !important;
-  background-color: rgba(255, 255, 255, 0.16);
+  color: var(--moi-royal) !important;
+  background-color: transparent;
+  font-weight: 600;
 }
 
-nav.navbar .nav-item.active > .nav-link::after {
+nav.navbar .nav-link::after {
   content: "";
   position: absolute;
-  left: 14px;
-  right: 14px;
+  left: 16px;
+  right: 16px;
   bottom: 2px;
   height: 2px;
-  background: var(--moi-gold);
-  border-radius: 1px;
+  border-radius: 2px;
+  background: var(--moi-royal);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform .18s ease;
 }
+
+nav.navbar .nav-link:hover::after,
+nav.navbar .nav-link:focus::after { transform: scaleX(.45); }
+
+nav.navbar .active > .nav-link::after,
+nav.navbar .nav-item.show > .nav-link::after { transform: scaleX(1); }
 
 .dropdown-menu {
   background-color: var(--moi-white);
@@ -174,10 +311,6 @@ nav.navbar .glyphicon-chevron-down {
   margin-left: 10px;
 }
 
-.navbar-toggler {
-  border-color: rgba(255, 255, 255, 0.35);
-}
-
 .navbar-toggler:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.4);
@@ -206,26 +339,80 @@ nav.navbar .glyphicon-chevron-down {
   }
 }
 
-/* ---------- Page title ---------- */
+/* ---------- Page header (breadcrumb + title) ----------
+   Flask-Admin's stock page_title block renders a bare <h4 class="mb-4"> with
+   the view's name and nothing else. templates/admin/master.html overrides
+   that block with a breadcrumb and a bilingual title, so the old h4 rule is
+   gone rather than left behind to confuse the next person editing this file.
+   The dashboard suppresses the block entirely. */
 
-/* Flask-Admin renders this exact <h4 class="mb-4"> at the top of every
-   single page — Dashboard, Family Records, Document Type Authorities, every
-   list/edit/create/details view alike (admin/base.html's page_title block).
-   Out of the box it just inherits the cerulean swatch's link-blue heading
-   color, so the page name reads like a clickable link instead of a title.
-   h4.mb-4 is unique to this block across the whole template set, so this
-   rule safely reaches every page without touching any template. */
-h4.mb-4 {
-  display: block;
+.moi-crumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
   width: 100%;
-  color: var(--moi-navy) !important;
-  font-size: 1.5rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  padding: 2px 0 16px 14px;
-  margin: 4px 0 22px 0 !important;
+  margin: 6px 0 10px 0;
+  font-size: .78rem;
+  line-height: 1.3;
+}
+
+.moi-crumb,
+.moi-crumb-home { display: inline-flex; align-items: baseline; gap: 6px; }
+
+.moi-crumb-home {
+  text-decoration: none;
+  color: var(--moi-navy);
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 7px;
+  transition: background .12s ease, color .12s ease;
+}
+.moi-crumb-home:hover,
+.moi-crumb-home:focus {
+  background: rgba(23, 74, 126, .08);
+  color: var(--moi-navy);
+  text-decoration: none;
+}
+.moi-crumb-home svg { width: 14px; height: 14px; align-self: center; }
+
+.moi-crumbs [lang="ar"] { font-family: var(--moi-ar); font-weight: 600; }
+.moi-crumb-en { color: var(--moi-charcoal); font-size: .7rem; }
+.moi-crumb-home .moi-crumb-en { color: inherit; opacity: .7; }
+
+.moi-crumb-sep { color: #C3C9D4; font-size: .9rem; }
+
+.moi-crumb { color: var(--moi-gray); }
+.moi-crumb.is-current { color: var(--moi-charcoal); font-weight: 600; }
+
+.moi-page-head {
+  width: 100%;
+  padding: 0 0 14px 14px;
+  margin: 0 0 20px 0;
   border-left: 4px solid var(--moi-gold);
   border-bottom: 1px solid var(--moi-border);
+}
+
+/* The Bootstrap "cerulean" swatch colours headings in its link blue. On a
+   page title that reads as a washed-out link rather than a heading, so the
+   colour is stated explicitly here. (An earlier version set it on an inner
+   <span lang="ar">, which disappeared when the templates went
+   single-language — hence the rule sits on the h1 itself now.) */
+.moi-page-head h1 {
+  margin: 0;
+  line-height: 1.45;
+  font-size: 1.32rem;
+  font-weight: 700;
+  color: var(--moi-navy);
+}
+
+@media (max-width: 575.98px) {
+  /* The trail is the first thing to give up its room on a phone: the title
+     directly below it already names the page, and the parent group is rarely
+     what someone taps back to. */
+  .moi-crumbs .moi-crumb:not(.is-current) { display: none; }
+  .moi-crumbs .moi-crumb-sep:nth-of-type(n+2) { display: none; }
+  .moi-page-head h1 [lang="ar"] { font-size: 1.12rem; }
 }
 
 /* ---------- Buttons ---------- */
@@ -537,4 +724,427 @@ label { font-weight: 600; color: var(--moi-charcoal); }
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* ---------- Header controls ---------- */
+
+.moi-usernav { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+
+/* Language: borderless icon button. A bordered pill next to a bordered
+   avatar chip reads as two competing buttons; this is secondary to both the
+   navigation and the account menu, so it carries no chrome until hover. */
+.moi-lang {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 11px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--moi-gray);
+  text-decoration: none;
+  transition: background .15s ease, color .15s ease;
+}
+
+.moi-lang:hover,
+.moi-lang:focus {
+  background: rgba(11, 31, 51, 0.05);
+  color: var(--moi-navy);
+  text-decoration: none;
+}
+
+.moi-lang svg { width: 16px; height: 16px; opacity: .8; flex-shrink: 0; }
+.moi-lang > * { pointer-events: none; }
+
+/* Account block: badge, two stacked lines, chevron. */
+.moi-user-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px 6px 7px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+
+.moi-user-toggle:hover,
+.moi-user-toggle:focus,
+.moi-usermenu.show .moi-user-toggle {
+  background: rgba(11, 31, 51, 0.05);
+  text-decoration: none;
+}
+
+/* Bootstrap draws its own caret on .dropdown-toggle; this carries an SVG. */
+.moi-user-toggle::after { display: none !important; }
+
+/* The bundled dropdown script only opens a menu when the click's target IS
+   the toggle. A click landing on the badge or the name would otherwise
+   bubble up as an "outside" click and close the menu instead of opening it,
+   leaving the block dead unless you hit its padding exactly. */
+.moi-user-toggle > * { pointer-events: none; }
+
+.moi-avatar {
+  width: 34px;
+  height: 34px;
+  /* Rounded square, not a circle: it sits beside a square emblem and a
+     rectangular nav, and reads as part of the same system. */
+  border-radius: 10px;
+  background: var(--moi-navy);
+  color: #fff;
+  font-weight: 700;
+  font-size: .78rem;
+  letter-spacing: .02em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.moi-avatar-lg { width: 42px; height: 42px; font-size: .92rem; border-radius: 12px; }
+
+.moi-user-meta { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.moi-user-name { font-size: .82rem; font-weight: 600; color: var(--moi-navy); white-space: nowrap; }
+
+/* The brief asked for slate-400 here. On white that is about 2.6:1 — below
+   the 4.5:1 WCAG AA floor for text this size — so it sits at slate-500,
+   which keeps the same quiet-secondary feel at 4.8:1. */
+.moi-user-role {
+  font-size: .72rem;
+  font-weight: 500;
+  color: #64748B;
+  white-space: nowrap;
+}
+
+.moi-caret { width: 14px; height: 14px; opacity: .5; flex-shrink: 0; color: var(--moi-gray); }
+
+.moi-user-menu { min-width: 268px; padding: 8px; }
+
+.moi-user-card { display: flex; align-items: center; gap: 12px; padding: 8px 10px 10px 10px; }
+.moi-user-card-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.35; }
+.moi-user-card-name { font-size: .92rem; font-weight: 700; color: var(--moi-charcoal); }
+.moi-user-card-line { font-size: .72rem; color: var(--moi-gray); }
+
+.moi-user-action { display: flex; align-items: center; gap: 11px; }
+.moi-user-action svg { width: 17px; height: 17px; flex-shrink: 0; opacity: .75; }
+.moi-user-action > span { line-height: 1.35; }
+
+.moi-user-signout { color: #A13A2F; }
+.moi-user-signout:hover,
+.moi-user-signout:focus { background: #FDECEA; color: #A13A2F; }
+
+@media (max-width: 991.98px) {
+  .moi-usernav { margin-left: 0; margin-top: 6px; }
+}
+
+@media (max-width: 575.98px) {
+  .moi-user-meta { display: none; }
+  .moi-lang span { display: none; }
+}
+
+/* ---------- System footer ----------
+   Mirrors the header exactly, upside down: a white surface carrying the
+   emblem and the links, closed by the same dark strip that opens the page.
+   The page reads as bracketed — dark rule, white chrome, content, white
+   chrome, dark rule — instead of two unrelated blocks.
+
+   Pushed to the bottom of the viewport by the flex column on <body>, so a
+   short page still ends at the foot of the screen. */
+
+.moi-footer {
+  margin-left: -15px;
+  margin-right: -15px;
+  margin-top: auto;
+  background: var(--moi-surface);
+  border-top: 1px solid var(--moi-surface-line);
+  color: var(--moi-gray);
+  position: relative;
+}
+
+/* The header's gold hairline, repeated at the top of the footer. */
+.moi-footer::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    rgba(201, 162, 39, 0) 0%,
+    rgba(201, 162, 39, .8) 18%,
+    rgba(201, 162, 39, .8) 82%,
+    rgba(201, 162, 39, 0) 100%);
+}
+
+.moi-footer-inner {
+  padding: 34px 24px 30px 24px;
+  display: grid;
+  grid-template-columns: minmax(260px, 1.1fr) minmax(340px, 1.7fr);
+  gap: 30px 44px;
+}
+
+/* -- identity -- */
+.moi-footer-brand { min-width: 0; }
+.moi-footer-lockup { display: flex; align-items: flex-start; gap: 14px; }
+.moi-footer-emblem { height: 56px; width: auto; flex-shrink: 0; }
+
+.moi-footer-ministry {
+  margin: 0;
+  font-size: .88rem;
+  font-weight: 700;
+  color: var(--moi-navy);
+  line-height: 1.55;
+}
+.moi-footer-directorate {
+  margin: 2px 0 0 0;
+  font-size: .76rem;
+  font-weight: 600;
+  color: var(--moi-gold-dark);
+  line-height: 1.55;
+}
+.moi-footer-blurb {
+  margin: 15px 0 0 0;
+  font-size: .78rem;
+  color: var(--moi-gray);
+  line-height: 1.8;
+  max-width: 42ch;
+}
+
+/* -- link columns -- */
+.moi-footer-cols {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 26px;
+}
+
+.moi-footer-col { min-width: 0; }
+
+.moi-footer-heading {
+  margin: 0 0 13px 0;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--moi-gold-dark);
+  line-height: 1.5;
+}
+
+.moi-footer-col ul { list-style: none; margin: 0; padding: 0; }
+.moi-footer-col li { margin-bottom: 10px; }
+.moi-footer-col li:last-child { margin-bottom: 0; }
+
+.moi-footer-col a {
+  font-size: .78rem;
+  color: var(--moi-gray);
+  text-decoration: none;
+  line-height: 1.6;
+  transition: color .12s ease;
+}
+.moi-footer-col a:hover,
+.moi-footer-col a:focus {
+  color: var(--moi-navy);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.moi-footer-legal {
+  margin: 14px 0 0 0;
+  font-size: .7rem;
+  color: #8A93A3;
+  line-height: 1.75;
+}
+
+/* The dark closing strip was removed at the user's request: with the header
+   already carrying the Ministry's identity and the columns below repeating
+   the contact details, a third band of copyright and audit text was one more
+   thing to read past on every screen. The audit notice still appears where
+   it is actually needed — on the sign-in page. */
+
+@media (max-width: 900px) {
+  .moi-footer-inner { grid-template-columns: 1fr; padding: 26px 18px 22px 18px; }
+  .moi-footer-blurb { max-width: none; }
+}
+
+@media (max-width: 560px) {
+  .moi-footer-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+}
+
+/* ---------- List-screen toolbar ----------
+   Flask-Admin renders the List / Create / Export / Filter / With-selected
+   controls as a .nav-tabs row, which Bootstrap draws as browser-style tabs
+   with a hard border under them. Against a frosted header and a card-based
+   page that reads as a third, competing surface — so the row becomes a
+   single soft toolbar: a translucent panel holding pill-shaped controls. */
+
+.nav-tabs {
+  border: 1px solid rgba(11, 31, 51, 0.07);
+  background: rgba(255, 255, 255, 0.66);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  border-radius: 12px;
+  padding: 7px 8px;
+  margin-bottom: 16px;
+  gap: 2px;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(11, 31, 51, .04);
+}
+
+.nav-tabs .nav-item { margin-bottom: 0; }
+
+.nav-tabs .nav-link {
+  border: none !important;
+  border-radius: 8px;
+  padding: 7px 13px;
+  font-size: .84rem;
+  font-weight: 600;
+  /* Charcoal, not grey: these are the screen's primary actions, and
+     Bootstrap would otherwise tint the dropdown toggles with the swatch's
+     link blue. */
+  color: var(--moi-charcoal) !important;
+  background: transparent;
+  transition: background .12s ease, color .12s ease;
+}
+
+.nav-tabs .nav-link:hover,
+.nav-tabs .nav-link:focus {
+  background: rgba(11, 31, 51, 0.05);
+  color: var(--moi-navy);
+}
+
+/* The current tab is the one thing here that should look selected. */
+.nav-tabs .nav-link.active {
+  background: var(--moi-navy);
+  color: #fff !important;
+  box-shadow: 0 1px 4px rgba(11, 31, 51, .2);
+}
+
+/* Search sits inside the same toolbar; it should read as one control, not
+   as a form that wandered in. */
+.nav-tabs .form-inline .form-control,
+.nav-tabs input[type="text"] {
+  border: 1px solid rgba(11, 31, 51, 0.12);
+  border-radius: 8px;
+  background: #fff;
+  font-size: .84rem;
+  padding: 6px 11px;
+  min-width: 220px;
+}
+
+.nav-tabs .form-inline .form-control:focus {
+  border-color: var(--moi-gold);
+  box-shadow: 0 0 0 3px rgba(201, 162, 39, .18);
+}
+
+/* ---------- Data table ----------
+   Flask-Admin renders .table.table-striped.table-bordered.table-hover, which
+   draws a grid line around every cell. On a forty-column registry that reads
+   as graph paper; horizontal rules alone are enough to track a row, and
+   dropping the verticals is what makes a dense table scannable. */
+
+.table-responsive {
+  background: #fff;
+  border: 1px solid rgba(11, 31, 51, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(11, 31, 51, .04);
+  overflow: auto;
+}
+
+.table-responsive .table { margin-bottom: 0; }
+
+.model-list,
+.table-responsive .table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.model-list > thead > tr > th,
+.table-responsive .table > thead > tr > th {
+  /* Sticky header: on a long list the column you are reading stays labelled
+     instead of scrolling out of sight. */
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #F8FAFC;
+  border: none !important;
+  border-bottom: 1px solid rgba(11, 31, 51, 0.10) !important;
+  padding: 13px 16px;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.model-list > tbody > tr > td,
+.table-responsive .table > tbody > tr > td {
+  border: none !important;
+  border-bottom: 1px solid rgba(11, 31, 51, 0.055) !important;
+  padding: 13px 16px;
+  font-size: .86rem;
+  color: var(--moi-charcoal);
+  vertical-align: middle;
+}
+
+.model-list > tbody > tr:last-child > td { border-bottom: none !important; }
+
+/* Zebra striping AND a hover state fight each other — the stripe wins on
+   alternate rows and the hover barely shows. Hover is the more useful of
+   the two when you are tracking one record across many columns, so the
+   stripe goes. */
+.table-striped > tbody > tr:nth-of-type(odd) > * { background: transparent; }
+
+.model-list > tbody > tr:hover > td,
+.table-hover > tbody > tr:hover > * {
+  background: #F1F5F9;
+}
+
+/* Identifiers and figures line up on their own column edge and use tabular
+   numerals, so digits stack and a wrong length is visible at a glance. */
+.model-list td.col-id,
+.model-list td.col-request_number,
+.model-list td.col-civil_registry_number,
+.model-list td.col-document_number,
+.model-list td.col-receipt_number,
+.model-list td.col-passport_number,
+.model-list td.col-card_number,
+.model-list td.col-amount,
+.model-list td.col-days_remaining,
+.model-list td.col-overdue_by_days,
+.model-list td.col-default_sla_days,
+.model-list td.col-display_order {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Row actions: quiet until the row is under the pointer, so a screen of
+   records is not a wall of icons. */
+.list-buttons-column { white-space: nowrap; width: 1%; }
+
+.model-list .list-buttons-column a,
+.list-buttons-column .btn {
+  color: var(--moi-gray);
+  opacity: .55;
+  transition: opacity .12s ease, color .12s ease;
+}
+
+.model-list > tbody > tr:hover .list-buttons-column a,
+.model-list > tbody > tr:hover .list-buttons-column .btn { opacity: 1; }
+
+.model-list .list-buttons-column a:hover { color: var(--moi-royal); }
+
+/* Checkbox column: fixed and narrow, so it never takes width from data. */
+.list-checkbox-column,
+.model-list td:has(> .action-checkbox) { width: 1%; padding-left: 16px; padding-right: 8px; }
+
+/* Flask-Admin's bare "There are no items in the table." centred in a
+   full-width cell reads like a rendering failure. */
+.model-list .text-center {
+  padding: 34px 16px;
+  color: var(--moi-gray);
+  font-size: .86rem;
 }

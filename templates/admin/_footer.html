@@ -1,0 +1,78 @@
+{# ==========================================================================
+   System footer — included by admin/base.html, so it closes every screen.
+
+   It carries the same navy surface as the header, which brackets the page
+   between two pieces of official chrome, and it is the one place the
+   emblem appears in the chrome: a sign-off at the end of the document
+   rather than a badge repeated at the top of every screen.
+
+   Every link either resolves inside this app or points at a real Ministry
+   site. There are no placeholder "Privacy Policy / Terms" pages, because a
+   footer full of links that 404 is worse than a short one — the legal
+   column states the actual notice instead of linking to a page that does
+   not exist. Module links are permission-checked, so a clerk is never shown
+   a door that will bounce them.
+
+   Support numbers are template constants, not database rows: they are
+   deployment facts, and a phone number should not need a schema migration.
+   ========================================================================== #}
+<footer class="moi-footer">
+  <div class="moi-footer-inner">
+
+    <div class="moi-footer-brand">
+      <div class="moi-footer-lockup">
+        <img src="{{ url_for('static', filename='img/moi-emblem.png') }}"
+             alt="{{ t('emblem_alt') }}" class="moi-footer-emblem" width="120" height="136">
+        <div>
+          <p class="moi-footer-ministry">{{ t('ministry') }}</p>
+          <p class="moi-footer-directorate">{{ t('directorate') }}</p>
+        </div>
+      </div>
+      <p class="moi-footer-blurb">{{ t('footer_blurb') }}</p>
+    </div>
+
+    <nav class="moi-footer-cols" aria-label="{{ t('footer_col_system') }}">
+
+      <div class="moi-footer-col">
+        <p class="moi-footer-heading">{{ t('footer_col_system') }}</p>
+        <ul>
+          <li><a href="{{ url_for('admin.index') }}">{{ t('dashboard') }}</a></li>
+          {% if current_user.is_authenticated and current_user.has_permission('requests.view') %}
+          <li><a href="{{ url_for('servicerequest.index_view') }}">{{ nav_label('Service Requests') }}</a></li>
+          {% endif %}
+          {% if current_user.is_authenticated and current_user.has_permission('citizens.view') %}
+          <li><a href="{{ url_for('citizen.index_view') }}">{{ nav_label('Citizens') }}</a></li>
+          {% endif %}
+          {% if current_user.is_authenticated and current_user.has_permission('documents.view') %}
+          <li><a href="{{ url_for('document.index_view') }}">{{ nav_label('Documents') }}</a></li>
+          {% endif %}
+        </ul>
+      </div>
+
+      <div class="moi-footer-col">
+        <p class="moi-footer-heading">{{ t('footer_col_support') }}</p>
+        <ul>
+          <li><a href="tel:+9611123456" dir="ltr">01 &mdash; 123 456</a></li>
+          <li><a href="mailto:support@dgcs.gov.lb" dir="ltr">support@dgcs.gov.lb</a></li>
+          <li>
+            <a href="mailto:support@dgcs.gov.lb?subject=CTS%20%E2%80%94%20{{ t('footer_report_issue')|urlencode }}">
+              {{ t('footer_report_issue') }}
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="moi-footer-col">
+        <p class="moi-footer-heading">{{ t('footer_col_legal') }}</p>
+        <ul>
+          <li><a href="https://moim.gov.lb/" target="_blank" rel="noopener noreferrer">{{ t('footer_ministry_site') }}</a></li>
+          <li><a href="https://www.dgcs.gov.lb/" target="_blank" rel="noopener noreferrer">{{ t('footer_dgcs_site') }}</a></li>
+          <li><a href="https://www.dgcs.gov.lb/arabic/contact--us" target="_blank" rel="noopener noreferrer">{{ t('footer_contact') }}</a></li>
+        </ul>
+        <p class="moi-footer-legal">{{ t('footer_legal_notice') }}</p>
+      </div>
+
+    </nav>
+
+  </div>
+</footer>

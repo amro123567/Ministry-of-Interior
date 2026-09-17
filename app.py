@@ -8,6 +8,8 @@ from flask_admin.theme import Bootstrap4Theme
 from extensions import db, login_manager
 import models as m
 from admin_views import register_all_views, DashboardIndexView
+import i18n
+from i18n import L
 
 
 def build_stats():
@@ -112,6 +114,11 @@ def create_app():
 
     db.init_app(app)
 
+    # Language toggle, Arabic/English text, RTL direction, and (if flask-babel
+    # is installed) Flask-Admin's own Arabic catalogue. Registered before the
+    # admin so the menu labels can translate per request.
+    i18n.register(app)
+
     login_manager.init_app(app)
     login_manager.login_view = "login_page"
     login_manager.login_message = "Please log in to access the Civil Registry system."
@@ -125,7 +132,7 @@ def create_app():
         app,
         name="CTS — Civil Registry",
         theme=Bootstrap4Theme(swatch="cerulean" , fluid=True),
-        index_view=DashboardIndexView(name="Dashboard"),
+        index_view=DashboardIndexView(name=L("Dashboard")),
     )
 
     register_all_views(admin)
@@ -175,7 +182,23 @@ def create_app():
     @login_required
     def logout():
         logout_user()
-        flash("You have been logged out.", "info")
+        flash("You have been signed out. · تم تسجيل خروجك.", "info")
+        return redirect(url_for("login_page"))
+
+    @app.route("/switch-account")
+    @login_required
+    def switch_account():
+        """Sign out and return to the login form, ready for a different user.
+
+        Mechanically this ends the session exactly as /logout does — Flask-Login
+        holds one identity per browser session, so there is no way to "add" a
+        second account without ending the first. It exists as its own route so
+        the message the user lands on matches the button they pressed: a clerk
+        handing the terminal to a colleague is told to sign in, not told they
+        have been logged out.
+        """
+        logout_user()
+        flash("Signed out. Sign in with another account. · سجّل الدخول بحساب آخر.", "info")
         return redirect(url_for("login_page"))
 
     with app.app_context():

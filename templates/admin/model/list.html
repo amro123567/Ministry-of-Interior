@@ -117,7 +117,9 @@
                     {% endfor %}
                     {% block list_row_actions_header %}
                         {% if admin_view.column_display_actions %}
-                        <th class="list-actions-column">{{ _gettext('Actions') }}</th>
+                        {# Flask-Admin's bundled Arabic catalogue has no entry for this one, so it
+                           stayed English in the middle of an Arabic header row. Ours does. #}
+                        <th class="list-actions-column">{{ t('actions') }}</th>
                         {% endif %}
                     {% endblock %}
                 {% endblock %}
