@@ -1,5 +1,13 @@
+venv/
 mvp/
 __pycache__/
 *.pyc
-*.db
-venv/
+
+# Local configuration and credentials.
+.env
+
+# The SQLite database the project used before moving to MySQL. Kept out of
+# the repository so it cannot be mistaken for the live database.
+moi_registry.db
+moi_registry.db-wal
+moi_registry.db-shm

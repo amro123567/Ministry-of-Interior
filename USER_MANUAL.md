@@ -24,22 +24,30 @@ registry clerk, supervisor, or administrator would use.
 
 ### Steps
 
+The database is **MySQL**. There is no SQLite option: if MySQL is not
+configured or not running the application stops with an explanation instead
+of silently using a different database.
+
 ```bash
 # 1. Unzip the project and enter it
-unzip moi_flask_app.zip
-cd moi_flask_app
+cd Ministry-of-Interior
 
 # 2. Create and activate a virtual environment
 python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+venv\Scripts\activate          # macOS / Linux: source venv/bin/activate
 
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Load sample data (recommended for first run)
-python seed.py
+# 4. Create the database, the application user, and load the data
+python schema/setup_mysql.py --admin-user root --admin-password YOUR_ROOT_PASSWORD
 
-# 5. Start the app
+# 5. Copy .env.example to .env and put the settings the script printed into it
+
+# 6. Record the schema version
+python -m flask db stamp head
+
+# 7. Start the app
 python app.py
 ```
 
@@ -51,17 +59,25 @@ http://127.0.0.1:5000/
 
 You'll be redirected automatically to the **login page**.
 
-### Switching from SQLite to MySQL
+### Requirements for the database
 
-By default the app stores data in a local file, `moi_registry.db` (SQLite) —
-no server setup needed. To point it at a real MySQL database instead (e.g. the
-`civil_registry_db` schema built earlier), set an environment variable before
-starting the app:
+- **MySQL Community Server 8.x**, running. On Windows the installer sets it
+  up as a service that starts with the machine.
+- MySQL Workbench, if you want to browse the tables outside the application.
+  It ships with the same installer.
 
-```bash
-export DATABASE_URL="mysql+pymysql://username:password@host:3306/civil_registry_db"
-python app.py
-```
+Step 4 is safe to re-run. `--recreate` drops the database and rebuilds it
+from nothing, which is what to use if you want a clean start.
+
+### If the application will not start
+
+| Message | What it means |
+|---|---|
+| `Database not configured: MYSQL_PASSWORD is not set` | No `.env` file, or no password in it. Copy `.env.example` to `.env`. |
+| `Can't connect to MySQL server on '127.0.0.1'` | The MySQL service is not running. Start it from Services on Windows. |
+| `Access denied for user 'cts_app'` | The password in `.env` does not match the one given to `setup_mysql.py`. Re-run the script with the password you want. |
+| `cryptography is required for ... caching_sha2_password` | `pip install -r requirements.txt` again; MySQL 8 needs that package to authenticate. |
+| `Database not configured: DATABASE_URL points at SQLite` | An old `DATABASE_URL` is still set in your environment. Remove it. |
 
 ---
 
@@ -72,9 +88,10 @@ behind authentication — there is no anonymous access.
 
 ### Demo accounts
 
-Running `python seed.py` creates six staff accounts, each with a different
-role and a different set of permissions. Use any of these to sign in and see
-how the interface changes based on role:
+Running `python seed.py` creates 85 staff accounts across 14 roles. The six
+below are the original documented accounts; the ten position accounts in the
+next table each hold a different role, and are the quickest way to see how
+much the interface changes with permissions.
 
 | Username | Password | Role | Name | Office |
 |---|---|---|---|---|
@@ -84,6 +101,28 @@ how the interface changes based on role:
 | `nour.chami` | `Super#Nour55` | Office Supervisor | Nour Chami | Central Civil Registry Office |
 | `layal.fares` | `Clerk#Layal21` | Registry Clerk | Layal Fares | General Directorate of Passports |
 | `sara.yazbek` | `Audit#Sara33` | Auditor | Sara Yazbek | Central Civil Registry Office |
+
+### The ten positions
+
+One account per role, so each can be signed into and compared. The
+permissions column is how many of the 31 permission codes that role holds.
+
+| Username | Password | Role | Permissions | What it can do that the others cannot |
+|---|---|---|---|---|
+| `rabih.chalhoub` | `Counter#Rabih31` | Counter Clerk | 7 | Takes applications in. Cannot amend or delete anything. |
+| `joelle.sfeir` | `Vital#Joelle42` | Vital Records Officer | 13 | Births, marriages, divorces, deaths. |
+| `karim.doumit` | `Travel#Karim53` | Travel Documents Officer | 11 | ID cards and passports; no citizen editing. |
+| `nisrine.zgheib` | `Archive#Nisrine64` | Archives Officer | 9 | The only non-administrator who can delete a document. |
+| `walid.moukalled` | `Legal#Walid75` | Legal Affairs Officer | 10 | Court-ordered amendments, naturalisation, name changes. |
+| `hala.bejjani` | `Valid#Hala86` | Document Validation Officer | 7 | Records validations; that is the only thing it may write. |
+| `elias.kfoury` | `Flow#Elias97` | Workflow Administrator | 8 | Owns the workflow states and transitions. No citizen access. |
+| `maya.traboulsi` | `Sec#Maya18` | Information Security Officer | 4 | Sessions, sign-ins and the audit trail. No citizen data at all. |
+| `bassam.naaman` | `Access#Bassam29` | Access Control Officer | 6 | Provisions staff accounts; cannot delete one. |
+| `randa.achkar` | `Geo#Randa40` | Geography & Institutions Officer | 6 | Maintains the administrative map. Nothing else. |
+
+The remaining 69 regional staff accounts share the demo password
+`Moi#Demo2026`; their usernames are `firstname.lastname` and they are listed
+under **Access Control → Users**.
 
 **These are demo credentials only.** Change them (or delete these accounts
 and create real ones) before any real deployment — see Section 13.
@@ -271,16 +310,25 @@ them, just not modify them here.
   that isn't indexed for that box (each autocomplete only searches specific
   fields, e.g. citizen boxes search name and registry number, not date of
   birth).
-- **Deleted the wrong record** — there's no built-in "undo." If you're using
-  the default SQLite database, you can stop the app, delete `moi_registry.db`,
-  and re-run `python seed.py` to reset to the demo dataset. On a real MySQL
-  deployment, restore from a backup.
+- **Deleted the wrong record** — there's no built-in "undo." Re-run
+  `python seed.py` to reset to the demo dataset, or restore from a backup on
+  a real deployment. Note that most records cannot be deleted at all: the
+  database refuses to remove a citizen who has documents, and audit rows
+  cannot be deleted by anyone.
 - **Want to reset all demo data** — run `python seed.py` again at any time;
   it clears every table and reloads the standard demo dataset.
-- **Changed something in `models.py`** — after editing model fields, delete
-  `moi_registry.db` (SQLite only) and restart the app so the schema regenerates,
-  or use a migration tool (Flask-Migrate/Alembic) for a production MySQL setup
-  where you can't just drop the database.
+- **Changed something in `models.py`** — the schema is versioned, so do not
+  drop the database. Generate a migration and apply it:
+
+  ```bash
+  python -m flask db migrate -m "what changed"   # then review the file
+  python -m flask db upgrade
+  python schema/generate_mysql_ddl.py > schema/mysql_schema.sql
+  ```
+
+  Regenerating the DDL keeps the install script in step with the model; skip
+  it and a fresh install will build a schema the application no longer
+  matches.
 
 ---
 

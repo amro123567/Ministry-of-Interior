@@ -59,19 +59,38 @@ def label(view, context, model, name):
     return _humanize(value)
 
 
+# A permission code that no role can ever hold, used where an action must be
+# closed off outright rather than left to be derived. Nothing issues it, so
+# has_permission() always answers False for it.
+NEVER = "__never__"
+
+
 class PermissionMixin:
     """
-    Ties a Flask-Admin view's visibility and edit/create/delete actions to
+    Ties a Flask-Admin view's visibility and its create/edit/delete actions to
     the current user's permission codes (looked up through Roles ->
     RolePermission -> Permission, based on the tables already in the schema).
 
     Subclasses set:
-      - view_permission: permission code required to see/browse this table
-      - edit_permission: permission code required to create/edit/delete
-                          rows (None = never editable through the UI)
+      - view_permission:   code required to see/browse this table
+      - edit_permission:   code required to modify an existing row
+      - create_permission: code required to add a row.   Left unset, it is
+                           derived from edit_permission as <module>.create
+      - delete_permission: code required to remove a row. Left unset, it is
+                           derived from edit_permission as <module>.delete
+                           Set to NEVER to close the action off entirely.
+
+    Creating, amending and destroying a civil record are three different
+    authorities in a registry, and a clerk who may open a file is not
+    thereby entitled to erase one. Deriving the two extra codes rather than
+    requiring every view to spell them out keeps that true by default: a view
+    that says `edit_permission = "citizens.edit"` now demands citizens.create
+    to add and citizens.delete to remove, without further ceremony.
     """
     view_permission = None
     edit_permission = None
+    create_permission = None
+    delete_permission = None
 
     def is_accessible(self):
         if not current_user.is_authenticated:
@@ -84,17 +103,31 @@ class PermissionMixin:
             return redirect(url_for("admin.index"))
         return redirect(url_for("login_page", next=request.url))
 
+    def _derived(self, action):
+        """<module>.<action> taken from this view's edit permission."""
+        if not self.edit_permission or "." not in self.edit_permission:
+            return None
+        return f"{self.edit_permission.rsplit('.', 1)[0]}.{action}"
+
+    def _allows(self, code):
+        # has_permission(None) answers True by design (an unguarded view is
+        # open to any signed-in user), so an absent code must be refused here
+        # rather than handed on.
+        if not code:
+            return False
+        return current_user.is_authenticated and current_user.has_permission(code)
+
     @property
     def can_create(self):
-        return current_user.is_authenticated and current_user.has_permission(self.edit_permission) and self.edit_permission is not None
+        return self._allows(self.create_permission or self._derived("create"))
 
     @property
     def can_edit(self):
-        return current_user.is_authenticated and current_user.has_permission(self.edit_permission) and self.edit_permission is not None
+        return self._allows(self.edit_permission)
 
     @property
     def can_delete(self):
-        return current_user.is_authenticated and current_user.has_permission(self.edit_permission) and self.edit_permission is not None
+        return self._allows(self.delete_permission or self._derived("delete"))
 
 
 class BaseView(PermissionMixin, ModelView):
@@ -521,10 +554,14 @@ class NameChangeRecordView(CertificateBaseView):
 # ---------- Validation & Physical Custody (view: audit.view / edit varies) ----------
 
 class DocumentValidationView(BaseView):
-    # Any role with audit.view can see validations; editing requires the
-    # dedicated documents.validate permission (only Admin & Supervisor).
+    # Any role with audit.view can see validations; recording or amending one
+    # requires the dedicated documents.validate permission. A validation is
+    # never deleted through the UI — withdrawing an approval means recording
+    # a new validation, not erasing the old one.
     view_permission = "audit.view"
     edit_permission = "documents.validate"
+    create_permission = "documents.validate"
+    delete_permission = NEVER
     column_filters = ["status", "validation_type"]
     column_default_sort = ("validation_date", True)
     column_list = ["document", "validator", "validation_type", "status", "validation_date"]
@@ -536,8 +573,13 @@ class DocumentValidationView(BaseView):
 
 
 class PhysicalDocumentHandlingView(BaseView):
+    # A custody trail is append-only: entries are added as the file moves and
+    # corrected if mis-keyed, but removing one would break the chain it exists
+    # to prove.
     view_permission = "audit.view"
     edit_permission = "documents.edit"
+    create_permission = "documents.create"
+    delete_permission = NEVER
     column_filters = ["action", "location"]
     column_default_sort = ("performed_at", True)
     column_list = ["document", "action", "performer", "location", "performed_at"]

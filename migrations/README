@@ -1,0 +1,33 @@
+Single-database configuration for Flask.
+
+Schema history for the Correspondence Tracking System.
+
+A note on what is in here, because it is not obvious from the filenames.
+
+  97cf8ffed47d  baseline -- the schema as db.create_all() built it, before
+                any hardening. Empty on purpose: it marks the starting point.
+  0002_indexes  the ~30 indexes SDD 6.6.1 documents as present and which did
+                not exist (D-04, Critical).
+  0003_checks   the SDD 6.5.7 rules expressible as CHECK constraints.
+  0004_refactions  the ON DELETE / ON UPDATE actions of R-12 / D-28.
+  0005_triggers the automation and the rules a CHECK cannot express.
+
+Revisions 0002 to 0005 were written against SQLite, which is what the
+project ran on at the time. The system now runs on MySQL, where the schema
+is created by schema/mysql_schema.sql -- generated from models.py and
+carrying every index, constraint and trigger in one pass -- and the database
+is then brought up to date with:
+
+    python -m flask db stamp head
+
+So on MySQL these four revisions are never executed. They are kept because
+they are the record of how the schema was hardened and what each change was
+for, and because Alembic needs an unbroken chain: the database records
+0005_triggers in alembic_version, and any future revision is added on top of
+it. Deleting them would strand that version and break every `flask db`
+command.
+
+New changes go in new revisions, generated against MySQL:
+
+    python -m flask db migrate -m "what changed"   # then review the file
+    python -m flask db upgrade

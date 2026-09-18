@@ -1107,3 +1107,256 @@ class RecordAccessLog(db.Model):
 
     def __repr__(self):
         return f"{self.access_type} on {self.citizen_id}"
+
+# =====================================================================
+# SCHEMA HARDENING — indexes, referential actions and check constraints
+#
+# Declared here, after the models, rather than scattered through forty-six
+# `__table_args__` blocks. Every entry cites the clause of the Software
+# Design Document it implements, so the schema can be read against the
+# design rather than taken on trust.
+#
+# SDD §6.6.1 tabulates roughly thirty indexes as "present, and the query
+# each supports". None of them existed in the implementation: the database
+# carried primary-key and unique indexes only, and the three highest
+# -frequency queries in the system each resolved to a full table scan.
+# §6.6.2 records the same finding for `citizens` as D-04 (Critical).
+#
+# Where a clause names a column the corrected v2 schema does not have, the
+# deviation is stated rather than silently dropped — see DEVIATIONS below.
+# =====================================================================
+
+def _ix(name, *columns):
+    """Register an index on the mapped columns' table."""
+    return db.Index(name, *columns)
+
+
+# ---- §6.6.2 / D-04 (Critical): citizens carried a primary key and nothing
+# ---- else, on the largest and most-queried table in the system.
+_ix("ix_citizens_name_ar", Citizen.last_name_ar, Citizen.first_name_ar, Citizen.date_of_birth)
+_ix("ix_citizens_name_en", Citizen.last_name_en, Citizen.first_name_en)
+_ix("ix_citizens_office", Citizen.registration_office_id)
+_ix("ix_citizens_father", Citizen.father_id)
+_ix("ix_citizens_mother", Citizen.mother_id)
+_ix("ix_citizens_dob", Citizen.date_of_birth)
+
+# ---- §6.6.1 — reference, identity and access
+_ix("ix_session_logs_user_login", SessionLog.user_id, SessionLog.login_at.desc())
+_ix("ix_login_attempts_user_time", LoginAttempt.username_attempted, LoginAttempt.attempted_at.desc())
+
+# ---- §6.6.1 — registry domain
+_ix("ix_family_members_citizen", FamilyMember.citizen_id)
+_ix("ix_guardianship_minor", GuardianshipRecord.minor_citizen_id)
+_ix("ix_guardianship_guardian", GuardianshipRecord.guardian_citizen_id)
+_ix("ix_registry_transfers_citizen", RegistryTransfer.citizen_id)
+_ix("ix_amendments_citizen", CivilStatusAmendment.citizen_id)
+
+# ---- §6.6.1 — document domain.
+# (civil_registry_number, document_type_id) is described in the SDD as "the
+# best index in the schema": by leftmost prefix it also serves "all
+# documents for this citizen", so no separate single-column index is added.
+_ix("ix_documents_citizen_type", Document.civil_registry_number, Document.document_type_id)
+_ix("ix_documents_status_latest", Document.status, Document.is_latest)
+_ix("ix_documents_office", Document.issuing_office_id)
+_ix("ix_documents_created", Document.created_at)          # §6.6.3 — dashboard date ranges
+_ix("ix_birth_cert_regno", BirthCertificate.registration_number)
+_ix("ix_marriage_contract", MarriageCertificate.contract_number)
+_ix("ix_marriage_couple", MarriageCertificate.husband_id, MarriageCertificate.wife_id)
+_ix("ix_marriage_wife", MarriageCertificate.wife_id)      # §6.6.3 — wife-first search
+_ix("ix_marriage_status", MarriageCertificate.status)
+_ix("ix_divorce_couple", DivorceCertificate.husband_id, DivorceCertificate.wife_id)
+_ix("ix_divorce_wife", DivorceCertificate.wife_id)        # §6.6.3
+_ix("ix_divorce_decision", DivorceCertificate.court_decision_number)
+_ix("ix_passports_citizen", Passport.citizen_id)
+_ix("ix_validations_doc_date", DocumentValidation.document_id, DocumentValidation.validation_date.desc())
+_ix("ix_handling_doc_time", PhysicalDocumentHandling.document_id, PhysicalDocumentHandling.performed_at.desc())
+_ix("ix_handling_performer", PhysicalDocumentHandling.performed_by)
+_ix("ix_handling_location", PhysicalDocumentHandling.location)
+
+# ---- §6.6.1 — request / workflow domain
+_ix("ix_requests_citizen", ServiceRequest.citizen_id)
+_ix("ix_requests_state", ServiceRequest.workflow_state_id)
+_ix("ix_requests_office_state", ServiceRequest.office_id, ServiceRequest.workflow_state_id)
+_ix("ix_requests_submitted", ServiceRequest.submitted_at)  # §6.6.3 — throughput KPIs
+_ix("ix_requests_due", ServiceRequest.due_date)
+# "My work queue" — §6.6.1 calls this the single most important index in the
+# application, run by every officer on every login.
+_ix("ix_assignments_assignee", RequestAssignment.assigned_to, RequestAssignment.is_active)
+_ix("ix_history_request_time", ServiceRequestStatusHistory.service_request_id,
+    ServiceRequestStatusHistory.changed_at.desc())
+_ix("ix_sla_status_due", SlaRecord.sla_status, SlaRecord.due_date)
+_ix("ix_payments_request", Payment.service_request_id)
+_ix("ix_notifications_unread", InternalNotification.recipient_user_id, InternalNotification.is_read)
+_ix("ix_notifications_recent", InternalNotification.recipient_user_id,
+    InternalNotification.created_at.desc())            # §6.6.3 — ordering by recency
+
+# ---- §6.6.1 / §6.6.3 — audit domain
+_ix("ix_citizen_audit_citizen", CitizenAuditLog.citizen_id, CitizenAuditLog.changed_at.desc())
+_ix("ix_citizen_audit_actor", CitizenAuditLog.changed_by)   # §6.6.3 — "what has this employee changed"
+_ix("ix_access_log_citizen", RecordAccessLog.citizen_id, RecordAccessLog.accessed_at.desc())
+_ix("ix_access_log_actor", RecordAccessLog.accessed_by)     # insider-misuse detection
+_ix("ix_audit_logs_actor_time", AuditLog.actor_user_id, AuditLog.occurred_at.desc())
+_ix("ix_audit_logs_entity", AuditLog.entity_type, AuditLog.entity_id)
+
+# ---- §6.6.3 — unindexed foreign keys on the staff tables
+_ix("ix_users_office", User.office_id)
+_ix("ix_users_department", User.department_id)
+_ix("ix_users_supervisor", User.supervisor_id)
+_ix("ix_role_perms_permission", RolePermission.permission_id)
+_ix("ix_user_roles_role", UserRole.role_id)
+
+# DEVIATIONS from §6.6.1, stated rather than silently dropped:
+#   * documents(status, validation_status) — `validation_status` was removed
+#     from `documents` when D-06 was resolved and `document_validations`
+#     declared the single source of truth. Implemented as
+#     (status, is_latest), which serves the same work-queue filter and also
+#     covers the §6.6.3 request for an is_latest index.
+#   * death_certificates(deceased_id), national_id_cards(citizen_id),
+#     naturalization_records(citizen_id), name_change_records(citizen_id) —
+#     these subtype tables carry no citizen column in the corrected schema;
+#     the subject is reached through documents.civil_registry_number, which
+#     ix_documents_citizen_type already serves. D-07 is the reason the
+#     duplicate reference was removed.
+#   * documents(document_number), family_members(family_record_id, …) and
+#     request_assignments(service_request_id) are already covered by UNIQUE
+#     constraints, whose indexes serve the same lookups.
+#   * FULLTEXT (first_name_ar, middle_name_ar, last_name_ar) with an ngram
+#     parser is MySQL-only and is emitted by the MySQL DDL script, not here.
+
+
+# =====================================================================
+# REFERENTIAL ACTIONS — SDD §6.5.5 / R-12, D-28
+#
+# The ERD declared roughly fifty foreign keys and no ON DELETE or ON UPDATE
+# behaviour anywhere. That matters most because `citizens` uses a natural
+# primary key: correcting a civil registry number would fail against every
+# table referencing it without ON UPDATE CASCADE.
+#
+# Applied by relationship class, exactly as R-12 specifies, rather than
+# hand-edited onto fifty declarations.
+# =====================================================================
+
+_SUBTYPE_TABLES = {
+    "birth_certificates", "marriage_certificates", "divorce_certificates",
+    "death_certificates", "national_id_cards", "passports",
+    "naturalization_records", "name_change_records",
+}
+_AUDIT_TABLES = {"audit_logs", "citizen_audit_log", "record_access_log",
+                 "service_request_status_history", "document_validations",
+                 "physical_document_handling", "session_logs", "login_attempts"}
+
+
+def _apply_referential_actions():
+    applied = {"CASCADE": 0, "RESTRICT": 0, "SET NULL": 0}
+    for table in db.metadata.tables.values():
+        for fk in table.foreign_key_constraints:
+            target = fk.referred_table.name
+
+            # Citizen self-reference: removing a parent must not orphan a
+            # child record.
+            if table.name == "citizens" and target == "citizens":
+                fk.ondelete, fk.onupdate = "SET NULL", "CASCADE"
+            # A subtype row has no meaning without its parent document.
+            elif table.name in _SUBTYPE_TABLES and target == "documents":
+                fk.ondelete, fk.onupdate = "CASCADE", "CASCADE"
+            # Audit must survive: deleting an audited subject is blocked.
+            elif table.name in _AUDIT_TABLES:
+                fk.ondelete, fk.onupdate = "RESTRICT", "CASCADE"
+            # Users are deactivated, never deleted.
+            elif target == "users":
+                fk.ondelete, fk.onupdate = "RESTRICT", "CASCADE"
+            # A citizen with documents must never be deletable.
+            elif target == "citizens":
+                fk.ondelete, fk.onupdate = "RESTRICT", "CASCADE"
+            # Grants are removed with the role or user they belong to.
+            elif table.name in ("role_permissions", "users_roles",
+                                "workflow_transition_permissions",
+                                "document_type_authorities"):
+                fk.ondelete, fk.onupdate = "CASCADE", "CASCADE"
+            else:
+                fk.ondelete, fk.onupdate = "RESTRICT", "CASCADE"
+
+            applied[fk.ondelete] = applied.get(fk.ondelete, 0) + 1
+    return applied
+
+
+REFERENTIAL_ACTIONS_APPLIED = _apply_referential_actions()
+
+
+# =====================================================================
+# CHECK CONSTRAINTS — SDD §6.5.7
+#
+# §6.5.7 lists nine correctness-critical rules with "no database
+# enforcement", and calls that list "the schema's most significant systemic
+# weakness". The rules a single-row CHECK can express are enforced here.
+# The remainder need cross-row or cross-table context; those that are
+# implemented as triggers are in migrations/triggers, and those still left
+# to the service layer are listed at the bottom of this block.
+# =====================================================================
+
+_CHECKS = [
+    (Citizen, "ck_citizens_gender", "gender IN ('MALE','FEMALE')"),
+    (Citizen, "ck_citizens_marital",
+     "marital_status IN ('SINGLE','MARRIED','DIVORCED','WIDOWED')"),
+    (Citizen, "ck_citizens_dob_not_future", "date_of_birth <= CURRENT_DATE"),
+
+    (Document, "ck_documents_version", "version >= 1"),
+    (Document, "ck_documents_expiry", "expiry_date IS NULL OR expiry_date >= issue_date"),
+    # D-23: soft deletion must record who and when.
+    (Document, "ck_documents_soft_delete",
+     "is_deleted = 0 OR (deleted_by IS NOT NULL AND deleted_at IS NOT NULL)"),
+
+    # §6.5.7 rule 3: rejection_reason is populated when a request is rejected.
+    (ServiceRequest, "ck_requests_rejection_reason",
+     "rejected_by IS NULL OR rejection_reason IS NOT NULL"),
+    (ServiceRequest, "ck_requests_priority",
+     "priority IN ('LOW','NORMAL','HIGH','URGENT')"),
+    (ServiceRequest, "ck_requests_direction", "direction IN ('INCOMING','OUTGOING')"),
+    (ServiceRequest, "ck_requests_fee", "fee_amount IS NULL OR fee_amount >= 0"),
+
+    # D-10: an amount without a currency is meaningless in a dual-currency
+    # economy, and the currency must be a three-letter code.
+    (Payment, "ck_payments_amount", "amount >= 0"),
+    (Payment, "ck_payments_currency", "currency IS NULL OR length(currency) = 3"),
+    (MarriageCertificate, "ck_marriage_dowry", "dowry_amount IS NULL OR dowry_amount >= 0"),
+
+    (SlaRecord, "ck_sla_status",
+     "sla_status IN ('ON_TRACK','DUE_SOON','OVERDUE','MET','BREACHED')"),
+    (DeathCertificate, "ck_death_burial_after_death",
+     "burial_date IS NULL OR burial_date >= death_date"),
+    (GuardianshipRecord, "ck_guardianship_dates",
+     "end_date IS NULL OR end_date >= start_date"),
+    (GuardianshipRecord, "ck_guardianship_distinct",
+     "minor_citizen_id <> guardian_citizen_id"),
+    (RegistryTransfer, "ck_transfer_distinct_offices", "from_office_id <> to_office_id"),
+    (User, "ck_users_failed_attempts", "failed_login_attempts >= 0"),
+    (Mukhtar, "ck_mukhtar_term", "term_end IS NULL OR term_end >= term_start"),
+]
+
+for _model, _name, _expr in _CHECKS:
+    _model.__table__.append_constraint(db.CheckConstraint(_expr, name=_name))
+
+# Still enforced only in the service layer, and still listed in §6.5.7 as
+# such: at most one legal status transition sequence (rule 2 — the
+# workflow_transitions table describes the legal moves but nothing forces a
+# request to follow them), subtype matching its parent's document_type_id
+# (rule 4, D-22), acyclic lineage and supervision (rule 6, D-20), and
+# is_deceased agreeing with the existence of a death certificate (rule 8,
+# R-09). Rules 1 and 5 are enforced by the UNIQUE constraints on
+# (service_request_id, is_active) and (document_group_id, is_latest);
+# rules 7 and 9 are enforced by trigger.
+
+
+# =====================================================================
+# MySQL storage parameters — SDD D-14
+#
+# "Arabic requires utf8mb4. A server defaulting to latin1 corrupts every
+# Arabic name silently and irreversibly." Declared on every table so that a
+# create_all() against MySQL, and the generated DDL script, both carry it
+# rather than inheriting whatever the server happens to default to.
+# These keywords are ignored by SQLite, so the models stay dual-engine.
+# =====================================================================
+for _table in db.metadata.tables.values():
+    _table.kwargs.setdefault("mysql_engine", "InnoDB")
+    _table.kwargs.setdefault("mysql_charset", "utf8mb4")
+    _table.kwargs.setdefault("mysql_collate", "utf8mb4_unicode_ci")

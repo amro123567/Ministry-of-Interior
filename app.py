@@ -5,7 +5,8 @@ from flask_login import login_user, logout_user, login_required, current_user
 from flask_admin import Admin
 from flask_admin.theme import Bootstrap4Theme
 
-from extensions import db, login_manager
+import config
+from extensions import db, login_manager, migrate
 import models as m
 from admin_views import register_all_views, DashboardIndexView
 import i18n
@@ -101,9 +102,13 @@ def build_stats():
 
 def create_app():
     app = Flask(__name__)
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
-        "DATABASE_URL", "sqlite:///" + os.path.join(os.path.dirname(__file__), "moi_registry.db")
-    )
+    # MySQL, and only MySQL. The previous version fell back to a local SQLite
+    # file whenever DATABASE_URL was unset, so a misconfigured environment
+    # ran happily against a different database with different data and said
+    # nothing about it. config.database_url() raises with an instruction
+    # instead.
+    app.config["SQLALCHEMY_DATABASE_URI"] = config.database_url()
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = config.engine_options()
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
     if app.config["SECRET_KEY"] == "dev-secret-change-me":
@@ -113,6 +118,10 @@ def create_app():
         print("WARNING: using the default SECRET_KEY. Set the SECRET_KEY env var before deploying.")
 
     db.init_app(app)
+    # Schema changes are versioned from here on. The application used to
+    # build its tables with db.create_all() alone, which has no notion of a
+    # schema version and cannot alter an existing database.
+    migrate.init_app(app, db)
 
     # Language toggle, Arabic/English text, RTL direction, and (if flask-babel
     # is installed) Flask-Admin's own Arabic catalogue. Registered before the
@@ -201,9 +210,6 @@ def create_app():
         flash("Signed out. Sign in with another account. · سجّل الدخول بحساب آخر.", "info")
         return redirect(url_for("login_page"))
 
-    with app.app_context():
-        db.create_all()
-
     return app
 
 
@@ -211,4 +217,5 @@ app = create_app()
 
 if __name__ == "__main__":
     debug_mode = os.environ.get("FLASK_DEBUG", "1") == "1"
+    print(f"Database: {config.describe()}")
     app.run(debug=debug_mode, host="0.0.0.0", port=5000)
