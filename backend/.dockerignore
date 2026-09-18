@@ -1,0 +1,8 @@
+target/
+uploaded-documents/
+.env
+.env.example
+.gitignore
+*.iml
+.idea/
+README.md

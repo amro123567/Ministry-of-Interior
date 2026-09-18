@@ -1,0 +1,11 @@
+# Used by `docker compose up` (Compose reads a file named .env in this same
+# folder automatically). This is separate from backend/.env, which is only
+# used when you run the backend directly with `mvn spring-boot:run` outside
+# of Docker. .env is gitignored and must never be committed.
+
+MYSQL_ROOT_PASSWORD=M4Jxja6n6Fab48ypohth
+MYSQL_DATABASE=cts_spring_db
+MYSQL_USER=cts_spring
+MYSQL_PASSWORD=7MwEY1FDUwuVE6a6h7Nc
+
+JWT_SECRET=DiNzXSzRYufp_xfZA1yJY7pMy9ZL0x6u5YdD21oZeZYFOBoERLSwa4RmtTB-jeVk
