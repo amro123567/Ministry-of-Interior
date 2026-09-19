@@ -3,6 +3,7 @@ package com.moi.cts.service;
 import com.moi.cts.dto.MiscDtos.DashboardSummaryDto;
 import com.moi.cts.entity.CorrespondenceRequest;
 import com.moi.cts.entity.RequestStatus;
+import com.moi.cts.entity.SlaStatus;
 import com.moi.cts.repository.CorrespondenceRequestRepository;
 import org.springframework.stereotype.Service;
 
@@ -30,10 +31,11 @@ public class DashboardService {
             byStatus.put(s.name(), all.stream().filter(r -> r.getStatus() == s).count());
         }
 
-        long overdue = all.stream().filter(CorrespondenceRequest::isOverdue).count();
-        Instant in48h = Instant.now().plus(2, ChronoUnit.DAYS);
-        long dueSoon = all.stream().filter(r -> !r.isOverdue() && r.getClosedAt() == null
-                && r.getDueAt() != null && r.getDueAt().isBefore(in48h)).count();
+        // Delegates to the same computed SlaStatus the API and CSV export
+        // use, instead of a second, separately-maintained overdue/due-soon
+        // calculation -- one definition of "at risk", used everywhere.
+        long overdue = all.stream().filter(r -> r.getSlaStatus() == SlaStatus.OVERDUE).count();
+        long dueSoon = all.stream().filter(r -> r.getSlaStatus() == SlaStatus.DUE_SOON).count();
 
         Instant weekAgo = Instant.now().minus(7, ChronoUnit.DAYS);
         List<CorrespondenceRequest> closedThisWeek = all.stream()

@@ -82,7 +82,16 @@ public class AuthService {
     public void logout(String refreshTokenValue) {
         if (refreshTokenValue == null || refreshTokenValue.isBlank()) return;
         refreshTokenRepository.findByTokenHash(jwtService.hash(refreshTokenValue))
-                .ifPresent(t -> { t.setRevoked(true); refreshTokenRepository.save(t); });
+                .ifPresent(t -> {
+                    t.setRevoked(true);
+                    refreshTokenRepository.save(t);
+                    // Previously the only auth action that wasn't audited --
+                    // login logs itself above, logout didn't. The token
+                    // already carries who it belongs to, so this is a
+                    // three-line addition rather than a reason to route
+                    // logout through the AOP aspect.
+                    auditService.log("AppUser", t.getUser().getId(), "LOGOUT", t.getUser(), null);
+                });
     }
 
     private String issueRefreshToken(AppUser user) {

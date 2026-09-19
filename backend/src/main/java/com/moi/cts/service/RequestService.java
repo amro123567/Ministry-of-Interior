@@ -32,6 +32,7 @@ public class RequestService {
     private final OfficeRepository officeRepository;
     private final AppUserRepository userRepository;
     private final RequestStateHistoryRepository historyRepository;
+    private final RequestAssignmentHistoryRepository assignmentHistoryRepository;
     private final WorkflowTransitionRuleRepository transitionRuleRepository;
     private final NotificationRepository notificationRepository;
     private final AuditService auditService;
@@ -39,6 +40,7 @@ public class RequestService {
     public RequestService(CorrespondenceRequestRepository requestRepository, CitizenRepository citizenRepository,
                            DocumentTypeRepository documentTypeRepository, OfficeRepository officeRepository,
                            AppUserRepository userRepository, RequestStateHistoryRepository historyRepository,
+                           RequestAssignmentHistoryRepository assignmentHistoryRepository,
                            WorkflowTransitionRuleRepository transitionRuleRepository,
                            NotificationRepository notificationRepository, AuditService auditService) {
         this.requestRepository = requestRepository;
@@ -47,12 +49,13 @@ public class RequestService {
         this.officeRepository = officeRepository;
         this.userRepository = userRepository;
         this.historyRepository = historyRepository;
+        this.assignmentHistoryRepository = assignmentHistoryRepository;
         this.transitionRuleRepository = transitionRuleRepository;
         this.notificationRepository = notificationRepository;
         this.auditService = auditService;
     }
 
-    public List<RequestSummaryDto> list(String status, String search) {
+    public List<RequestSummaryDto> list(String status, String search, Boolean assignedToMe, Long actorUserId) {
         Specification<CorrespondenceRequest> spec = Specification.where(null);
         if (status != null && !status.isBlank()) {
             RequestStatus s = parseStatus(status);
@@ -66,7 +69,18 @@ public class RequestService {
                     cb.like(cb.lower(root.join("citizen").get("lastNameEn")), like),
                     cb.like(root.join("citizen").get("registryNumber"), like)));
         }
+        if (Boolean.TRUE.equals(assignedToMe) && actorUserId != null) {
+            spec = spec.and((root, q, cb) -> cb.equal(root.get("assignedTo").get("id"), actorUserId));
+        }
         return requestRepository.findAll(spec).stream().map(this::toSummary).toList();
+    }
+
+    /** SLA-status list views for {@link com.moi.cts.controller.SlaController}. */
+    public List<RequestSummaryDto> listBySlaStatus(SlaStatus target) {
+        return requestRepository.findAll().stream()
+                .filter(r -> r.getSlaStatus() == target)
+                .map(this::toSummary)
+                .toList();
     }
 
     public RequestDetailDto get(Long id) {
@@ -79,6 +93,15 @@ public class RequestService {
                 .map(h -> new HistoryDto(h.getId(),
                         h.getFromStatus() != null ? h.getFromStatus().name() : null,
                         h.getToStatus().name(), h.getChangedBy().getFullName(), h.getNote(), h.getChangedAt()))
+                .toList();
+    }
+
+    /** Reassignment history, mirroring history() for workflow state. */
+    public List<AssignmentHistoryDto> assignmentHistory(Long id) {
+        find(id);
+        return assignmentHistoryRepository.findByRequestIdOrderByAssignedAtDesc(id).stream()
+                .map(h -> new AssignmentHistoryDto(h.getId(), h.getAssignedTo().getFullName(),
+                        h.getAssignedBy().getFullName(), h.getNote(), h.getAssignedAt()))
                 .toList();
     }
 
@@ -119,8 +142,16 @@ public class RequestService {
         CorrespondenceRequest req = find(id);
         AppUser assignee = userRepository.findById(request.userId())
                 .orElseThrow(() -> new NotFoundException("User not found: " + request.userId()));
+        AppUser assignedBy = currentUser(actor);
         req.setAssignedTo(assignee);
         requestRepository.save(req);
+
+        RequestAssignmentHistory h = new RequestAssignmentHistory();
+        h.setRequest(req);
+        h.setAssignedTo(assignee);
+        h.setAssignedBy(assignedBy);
+        h.setNote(request.note());
+        assignmentHistoryRepository.save(h);
 
         Notification n = new Notification();
         n.setRecipient(assignee);
@@ -128,7 +159,7 @@ public class RequestService {
         n.setMessage("You were assigned request " + req.getReferenceNumber());
         notificationRepository.save(n);
 
-        auditService.log("CorrespondenceRequest", req.getId(), "ASSIGN", currentUser(actor),
+        auditService.log("CorrespondenceRequest", req.getId(), "ASSIGN", assignedBy,
                 "assignedTo=" + assignee.getUsername());
         return toDetail(req);
     }
@@ -207,7 +238,7 @@ public class RequestService {
                 r.getCitizen().getFirstNameEn() + " " + safe(r.getCitizen().getLastNameEn()),
                 r.getDocumentType().getNameEn(), r.getStatus().name(), r.getPriority(),
                 r.getAssignedTo() != null ? r.getAssignedTo().getFullName() : null,
-                r.getDueAt(), r.isOverdue(), r.getCreatedAt());
+                r.getDueAt(), r.isOverdue(), r.getSlaStatus().name(), r.getCreatedAt());
     }
 
     RequestDetailDto toDetail(CorrespondenceRequest r) {
@@ -227,7 +258,7 @@ public class RequestService {
                 r.getAssignedTo() != null ? r.getAssignedTo().getId() : null,
                 r.getCreatedBy().getFullName(), r.getStatus().name(), r.getPriority(), r.getNotes(),
                 r.getRejectionReason(), r.getCreatedAt(), r.getSubmittedAt(), r.getDueAt(), r.getClosedAt(),
-                r.isOverdue());
+                r.isOverdue(), r.getSlaStatus().name());
     }
 
     private String safe(String s) { return s == null ? "" : s; }

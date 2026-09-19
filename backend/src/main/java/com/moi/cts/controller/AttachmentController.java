@@ -1,5 +1,6 @@
 package com.moi.cts.controller;
 
+import com.moi.cts.audit.Audited;
 import com.moi.cts.dto.MiscDtos.AttachmentDto;
 import com.moi.cts.entity.Attachment;
 import com.moi.cts.security.AppUserPrincipal;
@@ -33,7 +34,9 @@ public class AttachmentController {
     public List<AttachmentDto> list(@PathVariable Long id) { return attachmentService.forRequest(id); }
 
     @GetMapping("/api/documents/{attachmentId}/download")
-    public ResponseEntity<byte[]> download(@PathVariable Long attachmentId) {
+    @Audited(entityType = "Attachment", action = "DOWNLOAD")
+    public ResponseEntity<byte[]> download(@PathVariable Long attachmentId,
+                                            @AuthenticationPrincipal AppUserPrincipal actor) {
         Attachment attachment = attachmentService.find(attachmentId);
         byte[] bytes = attachmentService.readBytes(attachment);
         return ResponseEntity.ok()

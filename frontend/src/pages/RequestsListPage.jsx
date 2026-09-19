@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import { format } from 'date-fns'
 import client from '../api/client.js'
 import StatusBadge, { SlaBadge } from '../components/StatusBadge.jsx'
 
@@ -9,16 +10,23 @@ export default function RequestsListPage() {
   const [requests, setRequests] = useState([])
   const [status, setStatus] = useState('')
   const [search, setSearch] = useState('')
+  const [assignedToMe, setAssignedToMe] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   const load = useCallback(() => {
     setLoading(true)
-    client.get('/requests', { params: { status: status || undefined, search: search || undefined } })
+    client.get('/requests', {
+      params: {
+        status: status || undefined,
+        search: search || undefined,
+        assignedToMe: assignedToMe || undefined,
+      },
+    })
       .then((r) => setRequests(r.data))
       .catch(() => setError('Could not load correspondence requests.'))
       .finally(() => setLoading(false))
-  }, [status, search])
+  }, [status, search, assignedToMe])
 
   useEffect(() => { load() }, [load])
 
@@ -52,6 +60,13 @@ export default function RequestsListPage() {
           <option value="">All statuses</option>
           {STATUSES.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
         </select>
+        <button
+          type="button"
+          className={assignedToMe ? 'btn btn-primary' : 'btn'}
+          onClick={() => setAssignedToMe((v) => !v)}
+        >
+          Assigned to me
+        </button>
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
@@ -73,9 +88,9 @@ export default function RequestsListPage() {
                 <td><Link to={`/requests/${r.id}`}>{r.referenceNumber}</Link></td>
                 <td>{r.citizenName}</td>
                 <td>{r.documentTypeName}</td>
-                <td><StatusBadge status={r.status} /> <SlaBadge overdue={r.overdue} dueAt={r.dueAt} /></td>
+                <td><StatusBadge status={r.status} /> <SlaBadge slaStatus={r.slaStatus} /></td>
                 <td>{r.assignedToName ?? <span className="muted">Unassigned</span>}</td>
-                <td>{r.dueAt ? new Date(r.dueAt).toLocaleDateString() : '—'}</td>
+                <td>{r.dueAt ? format(new Date(r.dueAt), 'MMM d, yyyy') : '—'}</td>
                 <td><Link to={`/requests/${r.id}`}>Open →</Link></td>
               </tr>
             ))}

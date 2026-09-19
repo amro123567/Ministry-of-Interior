@@ -1,5 +1,6 @@
 package com.moi.cts.controller;
 
+import com.moi.cts.audit.Audited;
 import com.moi.cts.security.AppUserPrincipal;
 import com.moi.cts.service.NotificationService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -24,5 +25,8 @@ public class NotificationController {
     }
 
     @PatchMapping("/{id}/read")
-    public void markRead(@PathVariable Long id) { notificationService.markRead(id); }
+    @Audited(entityType = "Notification", action = "READ")
+    public void markRead(@PathVariable Long id, @AuthenticationPrincipal AppUserPrincipal actor) {
+        notificationService.markRead(id);
+    }
 }

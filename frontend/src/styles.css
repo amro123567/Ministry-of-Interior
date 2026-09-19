@@ -81,13 +81,6 @@ input, select, textarea {
 .kpi-danger .kpi-value { color: var(--danger); }
 .kpi-warn .kpi-value { color: var(--gold); }
 
-.bar-chart { display: flex; flex-direction: column; gap: 10px; }
-.bar-row { display: grid; grid-template-columns: 120px 1fr 30px; align-items: center; gap: 8px; }
-.bar-label { font-size: 0.85rem; }
-.bar-track { background: var(--bg); border-radius: 4px; height: 14px; overflow: hidden; }
-.bar-fill { background: var(--teal); height: 100%; border-radius: 4px; transition: width 0.3s; }
-.bar-count { text-align: right; font-size: 0.85rem; }
-
 .filter-bar { display: flex; gap: 8px; margin-bottom: 16px; }
 .filter-bar input { flex: 1; }
 .filter-bar select { width: 220px; }

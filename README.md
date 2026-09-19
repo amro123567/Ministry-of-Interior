@@ -27,11 +27,23 @@ copy .env.example .env
 docker compose up --build
 ```
 
-Open **http://localhost:3000**. The frontend container serves the built
+Open **https://localhost:3443**. The frontend container serves the built
 React app and proxies `/api/**` to the backend internally, so there's no
 CORS configuration to worry about and no separate frontend/backend startup
 order to get right. First boot takes a bit longer while images build and
 Hibernate creates the schema; after that `docker compose up` is fast.
+
+### HTTPS
+
+The frontend container only serves HTTPS (there is no plain-HTTP port) and
+terminates TLS with a self-signed certificate generated fresh at image
+build time (see `frontend/Dockerfile` and `frontend/nginx.conf`). Your
+browser will show a "not private" / certificate warning the first time —
+that's expected for a self-signed cert; click through it (or add an
+exception) to proceed. This is sufficient for a capstone demo but is not
+how you'd terminate TLS for a real Ministry deployment: there you'd mount
+in a certificate from an internal CA (or a public one, against a real
+domain) instead of generating one at build time.
 
 To reset to a clean slate (wipes the database):
 
@@ -56,7 +68,8 @@ npm run dev
 Then open **http://localhost:5173**. See `backend/README.md` for first-time
 database setup (creating `cts_spring_db` and the `.env` file) before the
 backend will start this way — the Docker path above handles that
-automatically instead.
+automatically instead. This path is plain HTTP only; the self-signed HTTPS
+setup above applies to the Docker Compose path.
 
 ## History
 

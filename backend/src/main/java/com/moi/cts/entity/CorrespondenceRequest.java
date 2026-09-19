@@ -2,6 +2,7 @@ package com.moi.cts.entity;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @Entity
 @Table(name = "correspondence_requests")
@@ -89,5 +90,24 @@ public class CorrespondenceRequest {
         return dueAt != null && closedAt == null
                 && status != RequestStatus.ARCHIVED && status != RequestStatus.REJECTED
                 && Instant.now().isAfter(dueAt);
+    }
+
+    /**
+     * SLA status derived live from dueAt/closedAt/status, not stored or
+     * synced by a scheduled job -- a computed property can't drift out of
+     * sync with the data it's computed from, which a separate SLA-status
+     * table updated on a timer could. "Due soon" was previously only
+     * computed client-side (48h window in the frontend's SlaBadge); it's
+     * now authoritative here so every consumer (API, CSV export, future
+     * clients) agrees on it.
+     */
+    public SlaStatus getSlaStatus() {
+        if (dueAt == null) return SlaStatus.ON_TRACK;
+        if (isOverdue()) return SlaStatus.OVERDUE;
+        boolean open = closedAt == null && status != RequestStatus.ARCHIVED && status != RequestStatus.REJECTED;
+        if (open && Instant.now().isAfter(dueAt.minus(48, ChronoUnit.HOURS))) {
+            return SlaStatus.DUE_SOON;
+        }
+        return SlaStatus.ON_TRACK;
     }
 }

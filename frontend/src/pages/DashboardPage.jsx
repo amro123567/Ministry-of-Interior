@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import client from '../api/client.js'
+import { STATUS_COLORS } from '../components/StatusBadge.jsx'
 
 const STATUS_LABELS = {
   DRAFT: 'Draft',
@@ -22,7 +24,11 @@ export default function DashboardPage() {
   if (error) return <div className="alert alert-error">{error}</div>
   if (!summary) return <p className="muted">Loading…</p>
 
-  const maxCount = Math.max(1, ...Object.values(summary.byStatus))
+  const chartData = Object.entries(summary.byStatus).map(([status, count]) => ({
+    status,
+    label: STATUS_LABELS[status] ?? status,
+    count,
+  }))
 
   return (
     <div>
@@ -52,16 +58,20 @@ export default function DashboardPage() {
 
       <div className="card">
         <h2>Requests by status</h2>
-        <div className="bar-chart">
-          {Object.entries(summary.byStatus).map(([status, count]) => (
-            <div className="bar-row" key={status}>
-              <span className="bar-label">{STATUS_LABELS[status] ?? status}</span>
-              <div className="bar-track">
-                <div className="bar-fill" style={{ width: `${(count / maxCount) * 100}%` }} />
-              </div>
-              <span className="bar-count">{count}</span>
-            </div>
-          ))}
+        <div style={{ width: '100%', height: 280 }}>
+          <ResponsiveContainer>
+            <BarChart data={chartData} layout="vertical" margin={{ left: 24, right: 16 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+              <XAxis type="number" allowDecimals={false} />
+              <YAxis type="category" dataKey="label" width={110} />
+              <Tooltip formatter={(value) => [value, 'Requests']} />
+              <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                {chartData.map((entry) => (
+                  <Cell key={entry.status} fill={STATUS_COLORS[entry.status] ?? '#6b7280'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 

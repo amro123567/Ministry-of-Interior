@@ -22,8 +22,10 @@ public class RequestController {
 
     @GetMapping
     public List<RequestSummaryDto> list(@RequestParam(required = false) String status,
-                                         @RequestParam(required = false) String search) {
-        return requestService.list(status, search);
+                                         @RequestParam(required = false) String search,
+                                         @RequestParam(required = false) Boolean assignedToMe,
+                                         @AuthenticationPrincipal AppUserPrincipal actor) {
+        return requestService.list(status, search, assignedToMe, actor != null ? actor.getId() : null);
     }
 
     @GetMapping("/{id}")
@@ -31,6 +33,9 @@ public class RequestController {
 
     @GetMapping("/{id}/history")
     public List<HistoryDto> history(@PathVariable Long id) { return requestService.history(id); }
+
+    @GetMapping("/{id}/assignments")
+    public List<AssignmentHistoryDto> assignments(@PathVariable Long id) { return requestService.assignmentHistory(id); }
 
     @PostMapping
     public ResponseEntity<RequestDetailDto> create(@Valid @RequestBody CreateRequestRequest request,

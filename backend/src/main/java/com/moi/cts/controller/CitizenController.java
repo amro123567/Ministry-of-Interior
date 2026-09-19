@@ -1,9 +1,12 @@
 package com.moi.cts.controller;
 
+import com.moi.cts.audit.Audited;
 import com.moi.cts.dto.CitizenDtos.*;
+import com.moi.cts.security.AppUserPrincipal;
 import com.moi.cts.service.CitizenService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,7 +30,9 @@ public class CitizenController {
     public CitizenDto get(@PathVariable Long id) { return citizenService.get(id); }
 
     @PostMapping
-    public ResponseEntity<CitizenDto> create(@Valid @RequestBody CreateCitizenRequest request) {
+    @Audited(entityType = "Citizen", action = "CREATE")
+    public ResponseEntity<CitizenDto> create(@Valid @RequestBody CreateCitizenRequest request,
+                                              @AuthenticationPrincipal AppUserPrincipal actor) {
         return ResponseEntity.ok(citizenService.create(request));
     }
 }

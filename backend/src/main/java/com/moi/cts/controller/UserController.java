@@ -1,9 +1,12 @@
 package com.moi.cts.controller;
 
+import com.moi.cts.audit.Audited;
 import com.moi.cts.dto.UserDtos.*;
+import com.moi.cts.security.AppUserPrincipal;
 import com.moi.cts.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,7 +25,9 @@ public class UserController {
     public List<UserDto> all() { return userService.all(); }
 
     @PostMapping
-    public ResponseEntity<UserDto> create(@Valid @RequestBody CreateUserRequest request) {
+    @Audited(entityType = "AppUser", action = "CREATE")
+    public ResponseEntity<UserDto> create(@Valid @RequestBody CreateUserRequest request,
+                                           @AuthenticationPrincipal AppUserPrincipal actor) {
         return ResponseEntity.ok(userService.create(request));
     }
 }

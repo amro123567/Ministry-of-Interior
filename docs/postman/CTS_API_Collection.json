@@ -1,0 +1,349 @@
+{
+  "info": {
+    "name": "CTS API — Correspondence Tracking System",
+    "description": "Spring Boot REST API for the CTS capstone (Ministry of Interior, Directorate of Civil Status). Built directly from the controller source in backend/src/main/java/com/moi/cts/controller — every request here maps to a real endpoint. Run 'Auth > Login' first: its test script stores accessToken/refreshToken as collection variables, and every other request uses {{accessToken}} automatically via the collection-level Bearer auth.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080/api" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "requestId", "value": "1" },
+    { "key": "citizenId", "value": "1" },
+    { "key": "documentTypeId", "value": "1" },
+    { "key": "officeId", "value": "1" },
+    { "key": "userId", "value": "1" },
+    { "key": "attachmentId", "value": "1" },
+    { "key": "notificationId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"Admin1234!\"\n}"
+            },
+            "description": "Demo accounts (seeded by DataSeeder): admin/Admin1234!, manager/Manager1234!, officer/Officer1234!, viewer/Viewer1234!."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', body.accessToken);",
+                  "pm.collectionVariables.set('refreshToken', body.refreshToken);",
+                  "pm.test('login returned tokens', () => {",
+                  "  pm.expect(body.accessToken).to.be.a('string');",
+                  "  pm.expect(body.refreshToken).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/refresh",
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" },
+            "description": "Rotates the refresh token: the old one is revoked and a new one issued. Response shape matches Login."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', body.accessToken);",
+                  "pm.collectionVariables.set('refreshToken', body.refreshToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/logout",
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" },
+            "description": "Revokes the refresh token. 204 No Content on success. Now also writes an audit-log entry (see PROJECT_STATE.md 'AOP audit logging')."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Correspondence Requests",
+      "item": [
+        {
+          "name": "List requests",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/requests?status=&search=&assignedToMe=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["requests"],
+              "query": [
+                { "key": "status", "value": "", "description": "DRAFT | SUBMITTED | UNDER_REVIEW | APPROVED | REJECTED | ARCHIVED (optional)" },
+                { "key": "search", "value": "", "description": "matches reference number, citizen name or registry number (optional)" },
+                { "key": "assignedToMe", "value": "false", "description": "true = only requests assigned to the caller (optional)" }
+              ]
+            },
+            "description": "Returns RequestSummaryDto[]: id, referenceNumber, citizenName, documentTypeName, status, priority, assignedToName, dueAt, overdue, slaStatus, createdAt."
+          }
+        },
+        {
+          "name": "Get request detail",
+          "request": { "method": "GET", "url": "{{baseUrl}}/requests/{{requestId}}" }
+        },
+        {
+          "name": "Get workflow history",
+          "request": { "method": "GET", "url": "{{baseUrl}}/requests/{{requestId}}/history" }
+        },
+        {
+          "name": "Get assignment history",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/requests/{{requestId}}/assignments",
+            "description": "New: reassignment log for this request (assignedToName, assignedByName, note, assignedAt)."
+          }
+        },
+        {
+          "name": "Create request",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/requests",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"citizenId\": {{citizenId}},\n  \"documentTypeId\": {{documentTypeId}},\n  \"officeId\": {{officeId}},\n  \"priority\": \"NORMAL\",\n  \"notes\": \"Created from Postman\"\n}"
+            },
+            "description": "Requires OFFICER (or ADMIN). Created as DRAFT with a generated referenceNumber; dueAt is set from the document type's SLA days."
+          }
+        },
+        {
+          "name": "Assign / reassign request",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/requests/{{requestId}}/assign",
+            "body": { "mode": "raw", "raw": "{\n  \"userId\": {{userId}},\n  \"note\": \"Reassigned from Postman\"\n}" },
+            "description": "Independent of workflow status. Records an entry in assignment history and sends the assignee a notification. 'note' is optional."
+          }
+        },
+        {
+          "name": "Transition status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/requests/{{requestId}}/transition",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"toStatus\": \"SUBMITTED\",\n  \"note\": \"Submitting for review\",\n  \"rejectionReason\": null\n}"
+            },
+            "description": "Legal transitions (see WorkflowTransitionRule, seeded by DataSeeder): DRAFT->SUBMITTED (OFFICER), SUBMITTED->UNDER_REVIEW (MANAGER), UNDER_REVIEW->APPROVED (MANAGER), UNDER_REVIEW->REJECTED (MANAGER, rejectionReason required), APPROVED->ARCHIVED (OFFICER), REJECTED->ARCHIVED (OFFICER). ADMIN can perform any transition. Anything else returns 400."
+          }
+        },
+        {
+          "name": "Export requests as CSV",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/requests/export",
+            "description": "Returns text/csv, Content-Disposition: attachment; filename=correspondence_requests.csv."
+          }
+        }
+      ]
+    },
+    {
+      "name": "SLA",
+      "item": [
+        {
+          "name": "Overdue requests",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/sla/overdue",
+            "description": "New: RequestSummaryDto[] filtered to slaStatus == OVERDUE (past due, not yet closed/archived/rejected)."
+          }
+        },
+        {
+          "name": "Due-soon requests",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/sla/due-soon",
+            "description": "New: RequestSummaryDto[] filtered to slaStatus == DUE_SOON (due within 48h, still open)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Documents",
+      "item": [
+        {
+          "name": "Upload document",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/requests/{{requestId}}/documents",
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "file", "type": "file", "src": [] }]
+            },
+            "description": "multipart/form-data, field name 'file'. Computes SHA-256 server-side and returns AttachmentDto."
+          }
+        },
+        {
+          "name": "List documents for a request",
+          "request": { "method": "GET", "url": "{{baseUrl}}/requests/{{requestId}}/documents" }
+        },
+        {
+          "name": "Download document",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/documents/{{attachmentId}}/download",
+            "description": "Returns the raw file bytes with the original content type. Downloads are now audit-logged (see PROJECT_STATE.md 'AOP audit logging')."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Citizens",
+      "item": [
+        {
+          "name": "Search citizens",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/citizens?q=",
+              "host": ["{{baseUrl}}"],
+              "path": ["citizens"],
+              "query": [{ "key": "q", "value": "", "description": "matches name (EN/AR) or registry number; omit for all citizens" }]
+            }
+          }
+        },
+        {
+          "name": "Get citizen",
+          "request": { "method": "GET", "url": "{{baseUrl}}/citizens/{{citizenId}}" }
+        },
+        {
+          "name": "Register citizen",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/citizens",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"registryNumber\": \"REG-999999\",\n  \"firstNameEn\": \"Test\",\n  \"lastNameEn\": \"Person\",\n  \"firstNameAr\": null,\n  \"lastNameAr\": null,\n  \"dateOfBirth\": \"1995-01-01\",\n  \"gender\": \"M\",\n  \"officeId\": {{officeId}}\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Summary",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/dashboard/summary",
+            "description": "total, byStatus (per RequestStatus), overdueCount, dueSoonCount, closedThisWeek, avgResolutionHours -- all derived from the same slaStatus computation the /requests and /sla endpoints use."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "My notifications",
+          "request": { "method": "GET", "url": "{{baseUrl}}/notifications" }
+        },
+        {
+          "name": "Mark notification read",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/notifications/{{notificationId}}/read",
+            "description": "Now audit-logged (see PROJECT_STATE.md 'AOP audit logging')."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reference Data",
+      "item": [
+        { "name": "Offices", "request": { "method": "GET", "url": "{{baseUrl}}/offices" } },
+        { "name": "Document types", "request": { "method": "GET", "url": "{{baseUrl}}/document-types" } },
+        { "name": "Roles", "request": { "method": "GET", "url": "{{baseUrl}}/roles" } }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "List users",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users",
+            "description": "Requires ADMIN or MANAGER (see SecurityConfig)."
+          }
+        },
+        {
+          "name": "Create user",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/users",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"newofficer\",\n  \"password\": \"ChangeMe1234!\",\n  \"fullName\": \"New Officer\",\n  \"email\": \"newofficer@moi.gov.lb\",\n  \"roleName\": \"OFFICER\",\n  \"officeId\": {{officeId}}\n}"
+            },
+            "description": "Requires ADMIN (see SecurityConfig). Now audit-logged (see PROJECT_STATE.md 'AOP audit logging')."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audit",
+      "item": [
+        {
+          "name": "Recent audit entries",
+          "request": { "method": "GET", "url": "{{baseUrl}}/audit" }
+        },
+        {
+          "name": "Audit entries for an entity",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/audit?entityType=CorrespondenceRequest&entityId={{requestId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["audit"],
+              "query": [
+                { "key": "entityType", "value": "CorrespondenceRequest" },
+                { "key": "entityId", "value": "{{requestId}}" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -7,6 +7,10 @@ const COLORS = {
   ARCHIVED: '#78716c',
 }
 
+// Exported so other views (e.g. the dashboard chart) use the exact same
+// per-status colors as the badges, instead of maintaining a second copy.
+export { COLORS as STATUS_COLORS }
+
 export default function StatusBadge({ status }) {
   const color = COLORS[status] || '#6b7280'
   return (
@@ -16,10 +20,12 @@ export default function StatusBadge({ status }) {
   )
 }
 
-export function SlaBadge({ overdue, dueAt }) {
-  if (!dueAt) return null
-  if (overdue) return <span className="badge badge-overdue">OVERDUE</span>
-  const hoursLeft = (new Date(dueAt).getTime() - Date.now()) / 3_600_000
-  if (hoursLeft <= 48) return <span className="badge badge-due-soon">DUE SOON</span>
+// slaStatus is now computed authoritatively on the backend
+// (CorrespondenceRequest.getSlaStatus()) instead of being derived here from
+// a raw dueAt timestamp -- every consumer of the API agrees on what "due
+// soon" means instead of each client recomputing its own 48h window.
+export function SlaBadge({ slaStatus }) {
+  if (slaStatus === 'OVERDUE') return <span className="badge badge-overdue">OVERDUE</span>
+  if (slaStatus === 'DUE_SOON') return <span className="badge badge-due-soon">DUE SOON</span>
   return null
 }

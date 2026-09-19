@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
+import { format } from 'date-fns'
 import client from '../api/client.js'
 import StatusBadge, { SlaBadge } from '../components/StatusBadge.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -21,6 +22,7 @@ export default function RequestDetailPage() {
   const { hasRole } = useAuth()
   const [request, setRequest] = useState(null)
   const [history, setHistory] = useState([])
+  const [assignments, setAssignments] = useState([])
   const [attachments, setAttachments] = useState([])
   const [users, setUsers] = useState([])
   const [error, setError] = useState(null)
@@ -28,10 +30,12 @@ export default function RequestDetailPage() {
   const [rejectionReason, setRejectionReason] = useState('')
   const [pendingReject, setPendingReject] = useState(false)
   const [assigneeId, setAssigneeId] = useState('')
+  const [assignNote, setAssignNote] = useState('')
 
   const load = useCallback(() => {
     client.get(`/requests/${id}`).then((r) => setRequest(r.data))
     client.get(`/requests/${id}/history`).then((r) => setHistory(r.data))
+    client.get(`/requests/${id}/assignments`).then((r) => setAssignments(r.data))
     client.get(`/requests/${id}/documents`).then((r) => setAttachments(r.data))
   }, [id])
 
@@ -53,7 +57,8 @@ export default function RequestDetailPage() {
     if (!assigneeId) return
     setBusy(true); setError(null)
     try {
-      await client.patch(`/requests/${id}/assign`, { userId: Number(assigneeId) })
+      await client.patch(`/requests/${id}/assign`, { userId: Number(assigneeId), note: assignNote || null })
+      setAssignNote('')
       load()
     } catch (err) {
       setError(err.response?.data?.message ?? 'Could not assign this request.')
@@ -90,7 +95,7 @@ export default function RequestDetailPage() {
     <div>
       <div className="page-header">
         <h1>{request.referenceNumber}</h1>
-        <div><StatusBadge status={request.status} /> <SlaBadge overdue={request.overdue} dueAt={request.dueAt} /></div>
+        <div><StatusBadge status={request.status} /> <SlaBadge slaStatus={request.slaStatus} /></div>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
 
@@ -104,7 +109,7 @@ export default function RequestDetailPage() {
             <dt>Priority</dt><dd>{request.priority}</dd>
             <dt>Assigned to</dt><dd>{request.assignedToName ?? '—'}</dd>
             <dt>Created by</dt><dd>{request.createdByName}</dd>
-            <dt>Due</dt><dd>{request.dueAt ? new Date(request.dueAt).toLocaleString() : '—'}</dd>
+            <dt>Due</dt><dd>{request.dueAt ? format(new Date(request.dueAt), 'MMM d, yyyy p') : '—'}</dd>
             {request.rejectionReason && <><dt>Rejection reason</dt><dd>{request.rejectionReason}</dd></>}
             {request.notes && <><dt>Notes</dt><dd>{request.notes}</dd></>}
           </dl>
@@ -139,6 +144,9 @@ export default function RequestDetailPage() {
                   {users.map((u) => <option key={u.id} value={u.id}>{u.fullName} ({u.roles.join(',')})</option>)}
                 </select>
               </label>
+              <label>Note (optional)
+                <input value={assignNote} onChange={(e) => setAssignNote(e.target.value)} />
+              </label>
               <button className="btn" disabled={!assigneeId || busy} onClick={doAssign}>Assign</button>
             </div>
           )}
@@ -163,12 +171,27 @@ export default function RequestDetailPage() {
         </div>
 
         <div className="card">
+          <h2>Assignment history</h2>
+          {assignments.length === 0 ? <p className="muted">Never assigned.</p> : (
+            <ul className="timeline">
+              {assignments.map((a) => (
+                <li key={a.id}>
+                  <strong>Assigned to {a.assignedToName}</strong>
+                  <div className="muted small">by {a.assignedByName} · {format(new Date(a.assignedAt), 'MMM d, yyyy p')}</div>
+                  {a.note && <div className="small">{a.note}</div>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="card">
           <h2>Audit trail</h2>
           <ul className="timeline">
             {history.map((h) => (
               <li key={h.id}>
                 <strong>{h.fromStatus ? `${h.fromStatus} → ${h.toStatus}` : `Created (${h.toStatus})`}</strong>
-                <div className="muted small">{h.changedByName} · {new Date(h.changedAt).toLocaleString()}</div>
+                <div className="muted small">{h.changedByName} · {format(new Date(h.changedAt), 'MMM d, yyyy p')}</div>
                 {h.note && <div className="small">{h.note}</div>}
               </li>
             ))}
