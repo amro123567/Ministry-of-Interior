@@ -19,6 +19,7 @@ import FamilyRecordCreatePage from './pages/FamilyRecordCreatePage.jsx'
 import FamilyRecordDetailPage from './pages/FamilyRecordDetailPage.jsx'
 import DocumentCreatePage from './pages/DocumentCreatePage.jsx'
 import DocumentDetailPage from './pages/DocumentDetailPage.jsx'
+import WorkflowEnginePage from './pages/WorkflowEnginePage.jsx'
 
 export default function App() {
   const location = useLocation()
@@ -95,6 +96,17 @@ export default function App() {
             element={<ProtectedRoute permissions={['CITIZEN_MANAGE']}><DocumentCreatePage /></ProtectedRoute>}
           />
           <Route path="/documents/:apiSegment/:id" element={<ProtectedRoute><DocumentDetailPage /></ProtectedRoute>} />
+          {/* The workflow engine's catalog (states/transitions) is
+              USER_MANAGE-gated on the backend, but operating an instance
+              (create / execute a transition) is deliberately NOT -- see
+              WorkflowEnginePage's own comment -- so this route has no
+              permissions prop at all, matching the citizen registry above:
+              every authenticated user can reach the page, and the
+              page itself hides the catalog-editing affordances inline via
+              hasPermission('USER_MANAGE') rather than the route hiding the
+              whole page from an Officer who can legitimately still start
+              and operate an instance. */}
+          <Route path="/workflow" element={<ProtectedRoute><WorkflowEnginePage /></ProtectedRoute>} />
           <Route
             path="/reports"
             element={<ProtectedRoute permissions={['REPORTS_VIEW']}><ReportsPage /></ProtectedRoute>}

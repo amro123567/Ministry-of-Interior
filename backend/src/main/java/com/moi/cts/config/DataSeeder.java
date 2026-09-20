@@ -182,6 +182,21 @@ public class DataSeeder implements CommandLineRunner {
         // actually holds both permissions -- OFFICER holds only the first.
         Permission citizenRegistryDecide = permission("CITIZEN_REGISTRY_DECIDE",
                 "Approve or reject a registry transfer or civil-status amendment");
+        // Recording a fee payment (or waiver) against a request (SecurityConfig
+        // gates POST /api/payments on this) -- the front-line "money changed
+        // hands at the counter" action, granted alongside CITIZEN_MANAGE to
+        // whoever does front-desk data entry.
+        Permission paymentRecord = permission("PAYMENT_RECORD",
+                "Record a fee payment or waiver against a request");
+        // Reversing a payment someone else already recorded (SecurityConfig
+        // gates PATCH /api/payments/*/reverse on this) -- deliberately
+        // separate from PAYMENT_RECORD, the same "doing vs. correcting" split
+        // as CITIZEN_MANAGE/CITIZEN_REGISTRY_DECIDE and
+        // REQUEST_TRANSITION_SUBMIT/DECIDE above: collecting a fee is
+        // front-line data entry, undoing that collection is a distinct
+        // correction authority that OFFICER does not hold.
+        Permission paymentReverse = permission("PAYMENT_REVERSE",
+                "Reverse a previously recorded payment");
 
         // ---- roles, defined entirely by which permissions they're granted --
         // ADMIN gets every permission that exists -- that (not a hardcoded
@@ -190,21 +205,23 @@ public class DataSeeder implements CommandLineRunner {
         Role admin = roleRepository.save(new Role(RoleName.ADMIN, "Full system access"));
         admin.setPermissions(new HashSet<>(Set.of(userView, userManage, auditView, reportsView,
                 transitionSubmit, transitionReview, transitionDecide, transitionArchive, citizenManage,
-                citizenRegistryDecide)));
+                citizenRegistryDecide, paymentRecord, paymentReverse)));
         roleRepository.save(admin);
 
         Role manager = roleRepository.save(new Role(RoleName.MANAGER, "Reviews and approves/rejects requests"));
         manager.setPermissions(new HashSet<>(Set.of(userView, reportsView, transitionReview, transitionDecide,
-                citizenManage, citizenRegistryDecide)));
+                citizenManage, citizenRegistryDecide, paymentRecord, paymentReverse)));
         roleRepository.save(manager);
 
         // OFFICER is the front-line civil-status data-entry role -- this is
         // also who RequestWorkflowIntegrationTest's own createCitizen() test
         // helper already logs in as for every fixture citizen it creates, so
         // CITIZEN_MANAGE has to be here for that whole suite to keep passing,
-        // not just for realism.
+        // not just for realism. Holds PAYMENT_RECORD (collects fees at the
+        // counter) but not PAYMENT_REVERSE (see that permission's own note).
         Role officer = roleRepository.save(new Role(RoleName.OFFICER, "Creates, submits and archives requests"));
-        officer.setPermissions(new HashSet<>(Set.of(transitionSubmit, transitionArchive, citizenManage)));
+        officer.setPermissions(new HashSet<>(Set.of(transitionSubmit, transitionArchive, citizenManage,
+                paymentRecord)));
         roleRepository.save(officer);
 
         Role viewer = roleRepository.save(new Role(RoleName.VIEWER, "Read-only access"));

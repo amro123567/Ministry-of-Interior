@@ -23,6 +23,12 @@ public class ReferenceController {
     @GetMapping("/api/roles")
     public Object roles() { return referenceDataService.roles(); }
 
+    // Flat {id, code, description} list -- RoleDto above only nests
+    // permission *codes* per role, which isn't enough for a picker that
+    // needs ids (e.g. workflow-transition creation's requiredPermissionIds).
+    @GetMapping("/api/permissions")
+    public Object permissions() { return referenceDataService.permissions(); }
+
     // ---- reference & organizational hierarchy --------------------------
     @GetMapping("/api/governorates")
     public Object governorates() { return referenceDataService.governorates(); }

@@ -10,6 +10,12 @@ public class ReferenceDtos {
     public record OfficeDto(Long id, String code, String nameEn, String nameAr, Long districtId) {}
     public record DocumentTypeDto(Long id, String code, String nameEn, String nameAr, int slaDays) {}
     public record RoleDto(Long id, String name, String description, List<String> permissions) {}
+    // RoleDto above only ever exposes permission *codes* nested per role --
+    // there was no endpoint returning the flat {id, code} pairs a picker
+    // needs (e.g. workflow-transition creation's requiredPermissionIds,
+    // which takes ids, not codes). Added alongside the workflow-engine UI
+    // for exactly that; open read like every other reference endpoint.
+    public record PermissionDto(Long id, String code, String description) {}
 
     // ---- reference & organizational hierarchy (governorates -> districts,
     // departments, courts, religious authorities, mukhtars) ----------------

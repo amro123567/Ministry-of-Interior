@@ -37,6 +37,13 @@ export default function StatusBadge({ status }) {
 // slaStatus is computed authoritatively on the backend
 // (CorrespondenceRequest.getSlaStatus()) -- every consumer of the API
 // agrees on what "due soon" means instead of each client recomputing it.
+// Deliberately silent (renders nothing) for ON_TRACK -- this badge sits in
+// page headers next to StatusBadge and is meant to surface only what's
+// actually noteworthy about an *open* request's risk. It never sees
+// MET/BREACHED (those only exist on the persisted SlaRecord, not this live
+// field) -- see SlaRecordBadge below for the full 5-value badge used on
+// the request detail page's SLA/payments panel (frontend integration pass
+// Step 7).
 export function SlaBadge({ slaStatus }) {
   const { t } = useLanguage()
   if (slaStatus === 'OVERDUE') {
@@ -54,4 +61,31 @@ export function SlaBadge({ slaStatus }) {
     )
   }
   return null
+}
+
+// The persisted SlaRecord's own slaStatus (RequestFinanceService) can be
+// any of all 5 SlaStatus values -- ON_TRACK/DUE_SOON/OVERDUE describe an
+// *open* request's current risk (same three SlaBadge above already
+// renders), MET/BREACHED describe a *closed* request's final outcome.
+// Unlike SlaBadge, this always renders something -- it's the sole status
+// indicator inside the SLA/payments panel, not a secondary badge next to
+// StatusBadge, so silently showing nothing for the "good" outcomes
+// (ON_TRACK/MET) would leave that panel looking broken.
+const SLA_RECORD_STYLES = {
+  ON_TRACK: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  DUE_SOON: 'bg-amber-50 text-amber-700 border-amber-200',
+  OVERDUE: 'bg-red-50 text-red-600 border-red-200',
+  MET: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+  BREACHED: 'bg-red-100 text-red-700 border-red-300',
+}
+
+export function SlaRecordBadge({ slaStatus }) {
+  const { t } = useLanguage()
+  if (!slaStatus) return <span className="text-slate-300">—</span>
+  const style = SLA_RECORD_STYLES[slaStatus] || SLA_RECORD_STYLES.ON_TRACK
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${style}`}>
+      {t(`sla.${slaStatus}`, slaStatus.replace('_', ' '))}
+    </span>
+  )
 }

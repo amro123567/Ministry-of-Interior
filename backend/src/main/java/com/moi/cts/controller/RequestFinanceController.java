@@ -17,9 +17,20 @@ import java.util.List;
  * deliberately does not add (request assignments). Kept as a separate
  * controller from the existing {@code SlaController} (live SLA lists)
  * rather than folded into it, so that controller's own documented
- * "live-computed, not persisted" design stays visibly unchanged. No
- * dedicated permission gate yet, same as every other reference/registry
- * endpoint added this migration.
+ * "live-computed, not persisted" design stays visibly unchanged.
+ *
+ * <p>Permission model, added alongside this controller's first frontend
+ * consumer (the request detail page's SLA/payments panel, frontend
+ * integration pass Step 7): the SLA reads and refresh stay ungated, like
+ * every other read in this migration -- refreshing only recomputes an
+ * already-visible derived value, so gating it would add nothing. Recording
+ * a payment ({@code PAYMENT_RECORD}) and reversing one
+ * ({@code PAYMENT_REVERSE}) are gated separately in {@code SecurityConfig},
+ * the same "front-line action vs. correction authority" split already used
+ * for {@code CITIZEN_MANAGE}/{@code CITIZEN_REGISTRY_DECIDE} and
+ * {@code REQUEST_TRANSITION_SUBMIT}/{@code DECIDE} -- see those two
+ * permissions' own Javadoc in {@code DataSeeder} for why OFFICER is granted
+ * only the first.
  */
 @RestController
 public class RequestFinanceController {

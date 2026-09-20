@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutGrid, Mail, CirclePlus, IdCard, Users, ScrollText, BarChart3, Search, ChevronDown, LogOut, Menu, X } from 'lucide-react'
+import { LayoutGrid, Mail, CirclePlus, IdCard, Workflow, Users, ScrollText, BarChart3, Search, ChevronDown, LogOut, Menu, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import LangToggle from './LangToggle.jsx'
@@ -75,6 +75,12 @@ export default function Navbar() {
     { to: '/requests', end: false, label: t('nav.correspondence'), icon: Mail },
     { to: '/requests/new', end: false, label: t('nav.newRequest'), icon: CirclePlus },
     { to: '/citizens', end: false, label: t('nav.citizens'), icon: IdCard },
+    // Ungated like the three links above -- the backend leaves both
+    // /api/workflow/instances and its transition endpoint open to any
+    // authenticated user (only the catalog-editing POSTs require
+    // USER_MANAGE, checked inline on the page itself), so this link isn't
+    // hidden from anyone who can actually use what's behind it.
+    { to: '/workflow', end: false, label: t('nav.workflow'), icon: Workflow },
     ...(hasPermission('REPORTS_VIEW') ? [{ to: '/reports', end: false, label: t('nav.reports'), icon: BarChart3 }] : []),
     ...(hasPermission('USER_MANAGE') ? [{ to: '/admin/users', end: false, label: t('nav.users'), icon: Users }] : []),
     ...(hasPermission('AUDIT_VIEW') ? [{ to: '/admin/audit', end: false, label: t('nav.auditLog'), icon: ScrollText }] : []),

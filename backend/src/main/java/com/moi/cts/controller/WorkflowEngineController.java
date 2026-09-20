@@ -13,9 +13,16 @@ import java.util.List;
 /**
  * The admin-configurable workflow engine (ERD domain 3) -- see
  * {@code WorkflowEngineService}'s Javadoc for what this does and does not
- * replace. No dedicated permission gate yet, same as every other
- * reference/registry endpoint added this migration (falls under
- * {@code anyRequest().authenticated()}).
+ * replace. Editing the catalog ({@code POST /states}, {@code POST
+ * /transitions}) requires {@code USER_MANAGE} (see SecurityConfig) --
+ * the same system-configuration tier as user/role management. Operating
+ * an instance ({@code POST /instances}, {@code POST /instances/{id}/
+ * transition}) is deliberately left ungated at this layer: each
+ * transition's own {@code requiredPermissions} is the real authorization
+ * check, enforced inside {@code WorkflowEngineService.executeTransition()}
+ * itself, mirroring how {@code RequestService.transition()} already gates
+ * correspondence-request transitions. Every read stays open to any
+ * authenticated user, same as the rest of this migration.
  */
 @RestController
 @RequestMapping("/api/workflow")

@@ -9,6 +9,7 @@ import com.moi.cts.repository.DocumentTypeRepository;
 import com.moi.cts.repository.GovernorateRepository;
 import com.moi.cts.repository.MukhtarRepository;
 import com.moi.cts.repository.OfficeRepository;
+import com.moi.cts.repository.PermissionRepository;
 import com.moi.cts.repository.ReligiousAuthorityRepository;
 import com.moi.cts.repository.RoleRepository;
 import org.springframework.stereotype.Service;
@@ -27,12 +28,13 @@ public class ReferenceDataService {
     private final CourtRepository courtRepository;
     private final ReligiousAuthorityRepository religiousAuthorityRepository;
     private final MukhtarRepository mukhtarRepository;
+    private final PermissionRepository permissionRepository;
 
     public ReferenceDataService(OfficeRepository officeRepository, DocumentTypeRepository documentTypeRepository,
                                  RoleRepository roleRepository, GovernorateRepository governorateRepository,
                                  DistrictRepository districtRepository, DepartmentRepository departmentRepository,
                                  CourtRepository courtRepository, ReligiousAuthorityRepository religiousAuthorityRepository,
-                                 MukhtarRepository mukhtarRepository) {
+                                 MukhtarRepository mukhtarRepository, PermissionRepository permissionRepository) {
         this.officeRepository = officeRepository;
         this.documentTypeRepository = documentTypeRepository;
         this.roleRepository = roleRepository;
@@ -42,6 +44,7 @@ public class ReferenceDataService {
         this.courtRepository = courtRepository;
         this.religiousAuthorityRepository = religiousAuthorityRepository;
         this.mukhtarRepository = mukhtarRepository;
+        this.permissionRepository = permissionRepository;
     }
 
     public List<OfficeDto> offices() {
@@ -103,6 +106,13 @@ public class ReferenceDataService {
                 .map(m -> new MukhtarDto(m.getId(), m.getDistrict().getId(), m.getFirstNameEn(), m.getLastNameEn(),
                         m.getFirstNameAr(), m.getLastNameAr(), m.getVillageOrNeighborhood(), m.getPhone(),
                         m.getEmail(), m.getTermStart(), m.getTermEnd(), m.isActive()))
+                .toList();
+    }
+
+    public List<PermissionDto> permissions() {
+        return permissionRepository.findAll().stream()
+                .map(p -> new PermissionDto(p.getId(), p.getCode(), p.getDescription()))
+                .sorted((a, b) -> a.code().compareTo(b.code()))
                 .toList();
     }
 }

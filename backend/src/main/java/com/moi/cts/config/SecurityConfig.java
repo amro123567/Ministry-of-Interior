@@ -126,6 +126,37 @@ public class SecurityConfig {
                 // any authenticated user, matching every other read in this
                 // migration.
                 .requestMatchers(HttpMethod.POST, "/api/documents/**").hasAuthority("CITIZEN_MANAGE")
+                // The workflow engine's *catalog* (states/transitions) is
+                // system configuration, not day-to-day data entry -- the
+                // same tier as managing users/roles above, so it reuses
+                // USER_MANAGE rather than inventing a parallel admin
+                // permission. Its *runtime* (creating an instance, executing
+                // a transition) is deliberately left ungated here: each
+                // WorkflowTransition already carries its own
+                // requiredPermissions, checked inside
+                // WorkflowEngineService.executeTransition() itself -- the
+                // exact same "permission lives on the business rule, not a
+                // blanket HTTP matcher" design RequestService.transition()
+                // already uses for /api/requests/**/transition (also absent
+                // from this matcher list). Gating the whole endpoint here
+                // too would make that per-transition permission model
+                // pointless, since only USER_MANAGE holders could ever
+                // reach it.
+                .requestMatchers(HttpMethod.POST, "/api/workflow/states").hasAuthority("USER_MANAGE")
+                .requestMatchers(HttpMethod.POST, "/api/workflow/transitions").hasAuthority("USER_MANAGE")
+                // Full service-request model (SLA records & payments,
+                // RequestFinanceController): reading a request's SLA snapshot
+                // or payment history stays open to any authenticated user,
+                // same as every other read in this migration, and so does
+                // refreshing the SLA snapshot (it only recomputes a cached
+                // derived value from data the caller could already see, so
+                // gating it would add nothing). Recording a payment is a
+                // genuine front-line write, gated on PAYMENT_RECORD; reversing
+                // one is a distinct correction authority, gated on
+                // PAYMENT_REVERSE -- see those two permissions' own Javadoc
+                // in DataSeeder for why OFFICER holds only the first.
+                .requestMatchers(HttpMethod.POST, "/api/payments").hasAuthority("PAYMENT_RECORD")
+                .requestMatchers(HttpMethod.PATCH, "/api/payments/*/reverse").hasAuthority("PAYMENT_REVERSE")
                 .anyRequest().authenticated())
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

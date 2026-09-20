@@ -30,6 +30,8 @@ export default function Breadcrumb() {
     trail.push({ label: t('nav.auditLog') })
   } else if (path.startsWith('/reports')) {
     trail.push({ label: t('nav.reports') })
+  } else if (path.startsWith('/workflow')) {
+    trail.push({ label: t('nav.workflow') })
   } else {
     return null // dashboard itself -- no trail needed beyond the page title
   }

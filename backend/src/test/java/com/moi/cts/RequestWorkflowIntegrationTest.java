@@ -1058,6 +1058,44 @@ class RequestWorkflowIntegrationTest {
                 .andExpect(jsonPath("$[0].actionCode").value("SUBMIT"));
     }
 
+    @Test
+    void editingTheWorkflowCatalogRequiresUserManageButOperatingAnInstanceDoesNot() throws Exception {
+        String officerToken = tokenFor("officer", "Officer1234!");
+        String adminToken = tokenFor("admin", "Admin1234!");
+
+        // Officer holds CITIZEN_MANAGE but not USER_MANAGE -- editing the
+        // catalog is system configuration, not data entry, so it's rejected.
+        mockMvc.perform(post("/api/workflow/states")
+                        .header("Authorization", "Bearer " + officerToken)
+                        .contentType("application/json")
+                        .content("{\"code\":\"OFFICER_ATTEMPT\",\"nameEn\":\"Officer Attempt\","
+                                + "\"isInitial\":false,\"isFinal\":false}"))
+                .andExpect(status().isForbidden());
+
+        long underReviewId = workflowStateIdByCode(adminToken, "UNDER_REVIEW");
+        long approvedId = workflowStateIdByCode(adminToken, "APPROVED");
+        mockMvc.perform(post("/api/workflow/transitions")
+                        .header("Authorization", "Bearer " + officerToken)
+                        .contentType("application/json")
+                        .content("{\"fromStateId\":" + underReviewId + ",\"toStateId\":" + approvedId
+                                + ",\"actionCode\":\"OFFICER_ATTEMPT\"}"))
+                .andExpect(status().isForbidden());
+
+        // Reads stay open to any authenticated user.
+        mockMvc.perform(get("/api/workflow/states").header("Authorization", "Bearer " + officerToken))
+                .andExpect(status().isOk());
+
+        // Operating an instance (create + transition) is NOT gated by
+        // USER_MANAGE -- the officer can do both, same as the tests above,
+        // because the real authorization lives on each transition's own
+        // requiredPermissions instead.
+        mockMvc.perform(post("/api/workflow/instances")
+                        .header("Authorization", "Bearer " + officerToken)
+                        .contentType("application/json")
+                        .content("{\"entityType\":\"TEST_SUBJECT\",\"entityId\":9004}"))
+                .andExpect(status().isOk());
+    }
+
     // ---- full service-request model: SLA records & payments ---------------
 
     @Test
@@ -1152,6 +1190,11 @@ class RequestWorkflowIntegrationTest {
     @Test
     void reversingAPaymentMarksItReversedAndRejectsBeingReversedTwice() throws Exception {
         String officerToken = tokenFor("officer", "Officer1234!");
+        // Reversal requires PAYMENT_REVERSE, which OFFICER does not hold (see
+        // recordingAPaymentRequiresPaymentRecordAndReversingRequiresPaymentReverse
+        // below) -- MANAGER holds it, same as every other "decide/correct"
+        // action in this suite.
+        String managerToken = tokenFor("manager", "Manager1234!");
         long citizenId = createCitizen(officerToken, "REG-900106", "Pay", "Reverse");
         long requestId = createRequest(officerToken, citizenId, firstDocumentTypeId(officerToken), firstOfficeId(officerToken));
 
@@ -1164,7 +1207,7 @@ class RequestWorkflowIntegrationTest {
         long paymentId = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asLong();
 
         mockMvc.perform(patch("/api/payments/" + paymentId + "/reverse")
-                        .header("Authorization", "Bearer " + officerToken)
+                        .header("Authorization", "Bearer " + managerToken)
                         .contentType("application/json")
                         .content("{\"reversalReason\":\"Refunded to citizen in error\"}"))
                 .andExpect(status().isOk())
@@ -1173,10 +1216,50 @@ class RequestWorkflowIntegrationTest {
                 .andExpect(jsonPath("$.reversalReason").value("Refunded to citizen in error"));
 
         mockMvc.perform(patch("/api/payments/" + paymentId + "/reverse")
-                        .header("Authorization", "Bearer " + officerToken)
+                        .header("Authorization", "Bearer " + managerToken)
                         .contentType("application/json")
                         .content("{\"reversalReason\":\"Trying again\"}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void recordingAPaymentRequiresPaymentRecordAndReversingRequiresPaymentReverse() throws Exception {
+        String officerToken = tokenFor("officer", "Officer1234!");
+        String managerToken = tokenFor("manager", "Manager1234!");
+        String viewerToken = tokenFor("viewer", "Viewer1234!");
+        long citizenId = createCitizen(officerToken, "REG-900108", "Pay", "Perm");
+        long requestId = createRequest(officerToken, citizenId, firstDocumentTypeId(officerToken), firstOfficeId(officerToken));
+
+        // VIEWER holds neither PAYMENT_RECORD nor PAYMENT_REVERSE.
+        mockMvc.perform(post("/api/payments")
+                        .header("Authorization", "Bearer " + viewerToken)
+                        .contentType("application/json")
+                        .content("{\"requestId\":" + requestId + ",\"amount\":25.00,\"currency\":\"USD\",\"method\":\"CASH\"}"))
+                .andExpect(status().isForbidden());
+
+        // OFFICER holds PAYMENT_RECORD (front-line fee collection)...
+        MvcResult created = mockMvc.perform(post("/api/payments")
+                        .header("Authorization", "Bearer " + officerToken)
+                        .contentType("application/json")
+                        .content("{\"requestId\":" + requestId + ",\"amount\":25.00,\"currency\":\"USD\",\"method\":\"CASH\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        long paymentId = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asLong();
+
+        // ...but not PAYMENT_REVERSE (a distinct correction authority).
+        mockMvc.perform(patch("/api/payments/" + paymentId + "/reverse")
+                        .header("Authorization", "Bearer " + officerToken)
+                        .contentType("application/json")
+                        .content("{\"reversalReason\":\"Should be refused\"}"))
+                .andExpect(status().isForbidden());
+
+        // MANAGER holds PAYMENT_REVERSE and can complete the reversal.
+        mockMvc.perform(patch("/api/payments/" + paymentId + "/reverse")
+                        .header("Authorization", "Bearer " + managerToken)
+                        .contentType("application/json")
+                        .content("{\"reversalReason\":\"Refunded to citizen in error\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("REVERSED"));
     }
 
     @Test
