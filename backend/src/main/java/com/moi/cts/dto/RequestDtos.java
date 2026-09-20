@@ -15,7 +15,7 @@ public class RequestDtos {
                                     String assignedToName, Long assignedToId, String createdByName,
                                     String status, String priority, String notes, String rejectionReason,
                                     Instant createdAt, Instant submittedAt, Instant dueAt, Instant closedAt,
-                                    boolean overdue, String slaStatus) {}
+                                    boolean overdue, String slaStatus, Instant breachedAt) {}
 
     public record CreateRequestRequest(@NotNull Long citizenId, @NotNull Long documentTypeId,
                                         @NotNull Long officeId, String priority, String notes) {}

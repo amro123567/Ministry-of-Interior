@@ -1,5 +1,6 @@
 package com.moi.cts.security;
 
+import com.moi.cts.repository.DenylistedTokenRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,10 +20,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final AppUserDetailsService userDetailsService;
+    private final DenylistedTokenRepository denylistedTokenRepository;
 
-    public JwtAuthFilter(JwtService jwtService, AppUserDetailsService userDetailsService) {
+    public JwtAuthFilter(JwtService jwtService, AppUserDetailsService userDetailsService,
+                          DenylistedTokenRepository denylistedTokenRepository) {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
+        this.denylistedTokenRepository = denylistedTokenRepository;
     }
 
     @Override
@@ -36,6 +40,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
         String token = header.substring(7);
         try {
+            String jti = jwtService.extractJti(token);
+            if (jti != null && denylistedTokenRepository.existsByJti(jti)) {
+                // Revoked at logout (or otherwise) -- treat exactly like an
+                // invalid/expired token below, not a special error, so a
+                // revoked token can't be distinguished from an expired one
+                // by an attacker probing responses.
+                chain.doFilter(request, response);
+                return;
+            }
             String username = jwtService.extractUsername(token);
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails user = userDetailsService.loadUserByUsername(username);

@@ -55,6 +55,18 @@ public class CorrespondenceRequest {
     private Instant dueAt;
     private Instant closedAt;
 
+    /**
+     * The moment this request was first observed to be OVERDUE, set once by
+     * SlaNotificationScheduler's daily sweep and never cleared afterwards
+     * (even if the request later closes). This is the one piece of SLA
+     * information the live-computed getSlaStatus() below genuinely can't
+     * answer -- "is it overdue right now" doesn't tell you when it first
+     * became overdue, which reporting/aging queries need. Everything else
+     * about SLA status stays computed, not persisted, for the reason in the
+     * getSlaStatus() Javadoc.
+     */
+    private Instant breachedAt;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getReferenceNumber() { return referenceNumber; }
@@ -85,6 +97,8 @@ public class CorrespondenceRequest {
     public void setDueAt(Instant dueAt) { this.dueAt = dueAt; }
     public Instant getClosedAt() { return closedAt; }
     public void setClosedAt(Instant closedAt) { this.closedAt = closedAt; }
+    public Instant getBreachedAt() { return breachedAt; }
+    public void setBreachedAt(Instant breachedAt) { this.breachedAt = breachedAt; }
 
     public boolean isOverdue() {
         return dueAt != null && closedAt == null

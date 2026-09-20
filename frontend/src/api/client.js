@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const client = axios.create({ baseURL: '/api' })
+const client = axios.create({ baseURL: '/api', timeout: 15000 })
 
 function getTokens() {
   return {
@@ -32,7 +32,7 @@ client.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config
-    if (error.response?.status === 401 && !original._retry && !original.url.includes('/auth/')) {
+    if (error.response?.status === 401 && original && !original._retry && !original.url.includes('/auth/')) {
       original._retry = true
       const { refreshToken } = getTokens()
       if (!refreshToken) {

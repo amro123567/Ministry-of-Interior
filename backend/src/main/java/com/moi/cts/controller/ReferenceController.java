@@ -22,4 +22,23 @@ public class ReferenceController {
 
     @GetMapping("/api/roles")
     public Object roles() { return referenceDataService.roles(); }
+
+    // ---- reference & organizational hierarchy --------------------------
+    @GetMapping("/api/governorates")
+    public Object governorates() { return referenceDataService.governorates(); }
+
+    @GetMapping("/api/districts")
+    public Object districts() { return referenceDataService.districts(); }
+
+    @GetMapping("/api/departments")
+    public Object departments() { return referenceDataService.departments(); }
+
+    @GetMapping("/api/courts")
+    public Object courts() { return referenceDataService.courts(); }
+
+    @GetMapping("/api/religious-authorities")
+    public Object religiousAuthorities() { return referenceDataService.religiousAuthorities(); }
+
+    @GetMapping("/api/mukhtars")
+    public Object mukhtars() { return referenceDataService.mukhtars(); }
 }

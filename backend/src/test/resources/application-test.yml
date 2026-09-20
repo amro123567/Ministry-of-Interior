@@ -16,5 +16,8 @@ cts:
     secret: test-only-secret-not-for-production-use-32bytes+
     access-token-minutes: 30
     refresh-token-days: 7
+  security:
+    max-login-attempts: 5
+    lockout-minutes: 15
   storage:
     documents-dir: ./test-uploaded-documents

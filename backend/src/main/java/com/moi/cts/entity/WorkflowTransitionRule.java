@@ -25,17 +25,25 @@ public class WorkflowTransitionRule {
     @Column(nullable = false, length = 20)
     private RequestStatus toStatus;
 
-    /** The minimum role allowed to perform this transition. */
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private RoleName requiredRole;
+    /**
+     * The permission a user must hold (through any of their roles) to
+     * perform this transition -- replaces the old hardcoded
+     * {@code RoleName requiredRole} field. Whoever holds this permission
+     * can perform the transition; there is no separate "ADMIN can do
+     * anything" special case in code any more; ADMIN can perform every
+     * transition simply because the seeded ADMIN role is granted every
+     * permission (see DataSeeder).
+     */
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "required_permission_id")
+    private Permission requiredPermission;
 
     public WorkflowTransitionRule() {}
 
-    public WorkflowTransitionRule(RequestStatus fromStatus, RequestStatus toStatus, RoleName requiredRole) {
+    public WorkflowTransitionRule(RequestStatus fromStatus, RequestStatus toStatus, Permission requiredPermission) {
         this.fromStatus = fromStatus;
         this.toStatus = toStatus;
-        this.requiredRole = requiredRole;
+        this.requiredPermission = requiredPermission;
     }
 
     public Long getId() { return id; }
@@ -44,6 +52,6 @@ public class WorkflowTransitionRule {
     public void setFromStatus(RequestStatus fromStatus) { this.fromStatus = fromStatus; }
     public RequestStatus getToStatus() { return toStatus; }
     public void setToStatus(RequestStatus toStatus) { this.toStatus = toStatus; }
-    public RoleName getRequiredRole() { return requiredRole; }
-    public void setRequiredRole(RoleName requiredRole) { this.requiredRole = requiredRole; }
+    public Permission getRequiredPermission() { return requiredPermission; }
+    public void setRequiredPermission(Permission requiredPermission) { this.requiredPermission = requiredPermission; }
 }

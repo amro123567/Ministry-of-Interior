@@ -75,6 +75,15 @@ public class JwtService {
         return extractClaim(token, Claims::getSubject);
     }
 
+    /** The unique "jti" claim every access token carries (see generateAccessToken). */
+    public String extractJti(String token) {
+        return extractClaim(token, Claims::getId);
+    }
+
+    public Instant extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration).toInstant();
+    }
+
     @SuppressWarnings("unchecked")
     public List<String> extractRoles(String token) {
         return extractClaim(token, c -> (List<String>) c.get("roles"));

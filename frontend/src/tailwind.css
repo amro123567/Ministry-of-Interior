@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+/* Tailwind v4 is CSS-first: no tailwind.config.js needed for this project.
+   The Vite plugin (vite.config.js) auto-detects which files to scan for
+   class names, and this @theme block is the only customization we need. */
+@theme {
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+  }
+  /* Arabic falls back to Cairo (already loaded in index.html), same as
+     the legacy styles.css rule this project used before Tailwind. */
+  html[dir='rtl'] body {
+    font-family: 'Cairo', var(--font-sans);
+  }
+}

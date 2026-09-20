@@ -10,5 +10,5 @@ public class AuthDtos {
     public record RefreshRequest(@NotBlank String refreshToken) {}
 
     public record TokenResponse(String accessToken, String refreshToken, String username,
-                                 String fullName, List<String> roles) {}
+                                 String fullName, List<String> roles, List<String> permissions) {}
 }

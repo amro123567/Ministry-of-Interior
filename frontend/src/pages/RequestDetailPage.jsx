@@ -4,22 +4,29 @@ import { format } from 'date-fns'
 import client from '../api/client.js'
 import StatusBadge, { SlaBadge } from '../components/StatusBadge.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useLanguage } from '../context/LanguageContext.jsx'
 
+// Permission codes match the backend's WorkflowTransitionRule.requiredPermission
+// exactly (seeded in DataSeeder) -- this map used to carry a role name and
+// special-case 'ADMIN' in every hasRole() check below; now it carries the
+// same permission the backend checks, so ADMIN needs no special case here
+// either (ADMIN is simply granted every permission).
 const TRANSITIONS = {
-  DRAFT: [{ to: 'SUBMITTED', label: 'Submit', role: 'OFFICER' }],
-  SUBMITTED: [{ to: 'UNDER_REVIEW', label: 'Start review', role: 'MANAGER' }],
+  DRAFT: [{ to: 'SUBMITTED', label: 'Submit', permission: 'REQUEST_TRANSITION_SUBMIT' }],
+  SUBMITTED: [{ to: 'UNDER_REVIEW', label: 'Start review', permission: 'REQUEST_TRANSITION_REVIEW' }],
   UNDER_REVIEW: [
-    { to: 'APPROVED', label: 'Approve', role: 'MANAGER' },
-    { to: 'REJECTED', label: 'Reject', role: 'MANAGER', needsReason: true },
+    { to: 'APPROVED', label: 'Approve', permission: 'REQUEST_TRANSITION_DECIDE' },
+    { to: 'REJECTED', label: 'Reject', permission: 'REQUEST_TRANSITION_DECIDE', needsReason: true },
   ],
-  APPROVED: [{ to: 'ARCHIVED', label: 'Archive', role: 'OFFICER' }],
-  REJECTED: [{ to: 'ARCHIVED', label: 'Archive', role: 'OFFICER' }],
+  APPROVED: [{ to: 'ARCHIVED', label: 'Archive', permission: 'REQUEST_TRANSITION_ARCHIVE' }],
+  REJECTED: [{ to: 'ARCHIVED', label: 'Archive', permission: 'REQUEST_TRANSITION_ARCHIVE' }],
   ARCHIVED: [],
 }
 
 export default function RequestDetailPage() {
   const { id } = useParams()
-  const { hasRole } = useAuth()
+  const { hasPermission } = useAuth()
+  const { t } = useLanguage()
   const [request, setRequest] = useState(null)
   const [history, setHistory] = useState([])
   const [assignments, setAssignments] = useState([])
@@ -40,7 +47,7 @@ export default function RequestDetailPage() {
   }, [id])
 
   useEffect(() => { load() }, [load])
-  useEffect(() => { if (hasRole('ADMIN', 'MANAGER')) client.get('/users').then((r) => setUsers(r.data)) }, [hasRole])
+  useEffect(() => { if (hasPermission('USER_VIEW')) client.get('/users').then((r) => setUsers(r.data)) }, [hasPermission])
 
   async function doTransition(to, reason) {
     setBusy(true); setError(null)
@@ -49,7 +56,7 @@ export default function RequestDetailPage() {
       setPendingReject(false); setRejectionReason('')
       load()
     } catch (err) {
-      setError(err.response?.data?.message ?? 'That transition was refused.')
+      setError(err.response?.data?.message ?? t('requestDetail.transitionRefused'))
     } finally { setBusy(false) }
   }
 
@@ -61,7 +68,7 @@ export default function RequestDetailPage() {
       setAssignNote('')
       load()
     } catch (err) {
-      setError(err.response?.data?.message ?? 'Could not assign this request.')
+      setError(err.response?.data?.message ?? t('requestDetail.assignFailed'))
     } finally { setBusy(false) }
   }
 
@@ -75,7 +82,7 @@ export default function RequestDetailPage() {
       await client.post(`/requests/${id}/documents`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
       load()
     } catch (err) {
-      setError(err.response?.data?.message ?? 'Upload failed.')
+      setError(err.response?.data?.message ?? t('requestDetail.uploadFailed'))
     } finally { setBusy(false); e.target.value = '' }
   }
 
@@ -87,9 +94,9 @@ export default function RequestDetailPage() {
     URL.revokeObjectURL(url)
   }
 
-  if (!request) return <p className="muted">Loading…</p>
+  if (!request) return <p className="muted">{t('common.loading')}</p>
 
-  const available = (TRANSITIONS[request.status] ?? []).filter((t) => hasRole('ADMIN', t.role))
+  const available = (TRANSITIONS[request.status] ?? []).filter((tr) => hasPermission(tr.permission))
 
   return (
     <div>
@@ -101,64 +108,64 @@ export default function RequestDetailPage() {
 
       <div className="detail-grid">
         <div className="card">
-          <h2>Details</h2>
+          <h2>{t('requestDetail.details')}</h2>
           <dl className="def-list">
-            <dt>Citizen</dt><dd>{request.citizen.firstNameEn} {request.citizen.lastNameEn} ({request.citizen.registryNumber})</dd>
-            <dt>Document type</dt><dd>{request.documentType.nameEn}</dd>
-            <dt>Office</dt><dd>{request.office.nameEn}</dd>
-            <dt>Priority</dt><dd>{request.priority}</dd>
-            <dt>Assigned to</dt><dd>{request.assignedToName ?? '—'}</dd>
-            <dt>Created by</dt><dd>{request.createdByName}</dd>
-            <dt>Due</dt><dd>{request.dueAt ? format(new Date(request.dueAt), 'MMM d, yyyy p') : '—'}</dd>
-            {request.rejectionReason && <><dt>Rejection reason</dt><dd>{request.rejectionReason}</dd></>}
-            {request.notes && <><dt>Notes</dt><dd>{request.notes}</dd></>}
+            <dt>{t('requestDetail.citizen')}</dt><dd>{request.citizen.firstNameEn} {request.citizen.lastNameEn} ({request.citizen.registryNumber})</dd>
+            <dt>{t('requestDetail.documentType')}</dt><dd>{request.documentType.nameEn}</dd>
+            <dt>{t('requestDetail.office')}</dt><dd>{request.office.nameEn}</dd>
+            <dt>{t('requestDetail.priority')}</dt><dd>{request.priority}</dd>
+            <dt>{t('requestDetail.assignedTo')}</dt><dd>{request.assignedToName ?? '—'}</dd>
+            <dt>{t('requestDetail.createdBy')}</dt><dd>{request.createdByName}</dd>
+            <dt>{t('requestDetail.due')}</dt><dd>{request.dueAt ? format(new Date(request.dueAt), 'MMM d, yyyy p') : '—'}</dd>
+            {request.rejectionReason && <><dt>{t('requestDetail.rejectionReason')}</dt><dd>{request.rejectionReason}</dd></>}
+            {request.notes && <><dt>{t('requestDetail.notes')}</dt><dd>{request.notes}</dd></>}
           </dl>
 
           {available.length > 0 && (
             <div className="action-row">
-              {available.map((t) =>
-                t.needsReason ? (
-                  <button key={t.to} className="btn btn-danger" disabled={busy}
-                          onClick={() => setPendingReject(true)}>{t.label}</button>
+              {available.map((tr) =>
+                tr.needsReason ? (
+                  <button key={tr.to} className="btn btn-danger" disabled={busy}
+                          onClick={() => setPendingReject(true)}>{t(`workflow.${tr.label}`, tr.label)}</button>
                 ) : (
-                  <button key={t.to} className="btn btn-primary" disabled={busy}
-                          onClick={() => doTransition(t.to)}>{t.label}</button>
+                  <button key={tr.to} className="btn btn-primary" disabled={busy}
+                          onClick={() => doTransition(tr.to)}>{t(`workflow.${tr.label}`, tr.label)}</button>
                 ))}
             </div>
           )}
           {pendingReject && (
             <div className="subcard">
-              <label>Rejection reason
+              <label>{t('requestDetail.rejectionReason')}
                 <input value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} />
               </label>
               <button className="btn btn-danger" disabled={!rejectionReason || busy}
-                      onClick={() => doTransition('REJECTED', rejectionReason)}>Confirm rejection</button>
+                      onClick={() => doTransition('REJECTED', rejectionReason)}>{t('requestDetail.confirmRejection')}</button>
             </div>
           )}
 
-          {hasRole('ADMIN', 'MANAGER') && (
+          {hasPermission('USER_VIEW') && (
             <div className="subcard">
-              <label>Reassign to
+              <label>{t('requestDetail.reassignTo')}
                 <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
-                  <option value="">Select a user…</option>
+                  <option value="">{t('requestDetail.selectUser')}</option>
                   {users.map((u) => <option key={u.id} value={u.id}>{u.fullName} ({u.roles.join(',')})</option>)}
                 </select>
               </label>
-              <label>Note (optional)
+              <label>{t('requestDetail.noteOptional')}
                 <input value={assignNote} onChange={(e) => setAssignNote(e.target.value)} />
               </label>
-              <button className="btn" disabled={!assigneeId || busy} onClick={doAssign}>Assign</button>
+              <button className="btn" disabled={!assigneeId || busy} onClick={doAssign}>{t('requestDetail.assign')}</button>
             </div>
           )}
         </div>
 
         <div className="card">
-          <h2>Documents</h2>
+          <h2>{t('requestDetail.documents')}</h2>
           <label className="btn btn-secondary file-btn">
-            Upload document
+            {t('requestDetail.uploadDocument')}
             <input type="file" onChange={handleUpload} style={{ display: 'none' }} />
           </label>
-          {attachments.length === 0 ? <p className="muted">No documents attached.</p> : (
+          {attachments.length === 0 ? <p className="muted">{t('requestDetail.noDocuments')}</p> : (
             <ul className="doc-list">
               {attachments.map((a) => (
                 <li key={a.id}>
@@ -171,13 +178,13 @@ export default function RequestDetailPage() {
         </div>
 
         <div className="card">
-          <h2>Assignment history</h2>
-          {assignments.length === 0 ? <p className="muted">Never assigned.</p> : (
+          <h2>{t('requestDetail.assignmentHistory')}</h2>
+          {assignments.length === 0 ? <p className="muted">{t('requestDetail.neverAssigned')}</p> : (
             <ul className="timeline">
               {assignments.map((a) => (
                 <li key={a.id}>
-                  <strong>Assigned to {a.assignedToName}</strong>
-                  <div className="muted small">by {a.assignedByName} · {format(new Date(a.assignedAt), 'MMM d, yyyy p')}</div>
+                  <strong>{t('requestDetail.assignedToLabel')} {a.assignedToName}</strong>
+                  <div className="muted small">{a.assignedByName} · {format(new Date(a.assignedAt), 'MMM d, yyyy p')}</div>
                   {a.note && <div className="small">{a.note}</div>}
                 </li>
               ))}
@@ -186,11 +193,11 @@ export default function RequestDetailPage() {
         </div>
 
         <div className="card">
-          <h2>Audit trail</h2>
+          <h2>{t('requestDetail.auditTrail')}</h2>
           <ul className="timeline">
             {history.map((h) => (
               <li key={h.id}>
-                <strong>{h.fromStatus ? `${h.fromStatus} → ${h.toStatus}` : `Created (${h.toStatus})`}</strong>
+                <strong>{h.fromStatus ? `${t(`status.${h.fromStatus}`, h.fromStatus)} → ${t(`status.${h.toStatus}`, h.toStatus)}` : `${t('requestDetail.created')} (${t(`status.${h.toStatus}`, h.toStatus)})`}</strong>
                 <div className="muted small">{h.changedByName} · {format(new Date(h.changedAt), 'MMM d, yyyy p')}</div>
                 {h.note && <div className="small">{h.note}</div>}
               </li>

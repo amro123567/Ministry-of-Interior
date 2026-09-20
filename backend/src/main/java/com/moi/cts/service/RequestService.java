@@ -36,18 +36,21 @@ public class RequestService {
     private final WorkflowTransitionRuleRepository transitionRuleRepository;
     private final NotificationRepository notificationRepository;
     private final AuditService auditService;
+    private final CitizenService citizenService;
 
     public RequestService(CorrespondenceRequestRepository requestRepository, CitizenRepository citizenRepository,
                            DocumentTypeRepository documentTypeRepository, OfficeRepository officeRepository,
                            AppUserRepository userRepository, RequestStateHistoryRepository historyRepository,
                            RequestAssignmentHistoryRepository assignmentHistoryRepository,
                            WorkflowTransitionRuleRepository transitionRuleRepository,
-                           NotificationRepository notificationRepository, AuditService auditService) {
+                           NotificationRepository notificationRepository, AuditService auditService,
+                           CitizenService citizenService) {
         this.requestRepository = requestRepository;
         this.citizenRepository = citizenRepository;
         this.documentTypeRepository = documentTypeRepository;
         this.officeRepository = officeRepository;
         this.userRepository = userRepository;
+        this.citizenService = citizenService;
         this.historyRepository = historyRepository;
         this.assignmentHistoryRepository = assignmentHistoryRepository;
         this.transitionRuleRepository = transitionRuleRepository;
@@ -174,11 +177,16 @@ public class RequestService {
                 .orElseThrow(() -> new IllegalTransitionException(
                         "Cannot move a request from " + from + " to " + to + "."));
 
-        boolean actorHasRole = actor.getUser().getRoles().stream()
-                .anyMatch(r -> r.getName() == rule.getRequiredRole() || r.getName() == RoleName.ADMIN);
-        if (!actorHasRole) {
+        // Permission-based: does any role this user holds grant the
+        // permission this transition requires? There's no separate ADMIN
+        // override here any more -- ADMIN can do every transition simply
+        // because DataSeeder grants the ADMIN role every permission.
+        String requiredPermissionCode = rule.getRequiredPermission().getCode();
+        boolean actorHasPermission = actor.getUser().getRoles().stream()
+                .anyMatch(r -> r.grants(requiredPermissionCode));
+        if (!actorHasPermission) {
             throw new IllegalTransitionException(
-                    "This transition requires the " + rule.getRequiredRole() + " role.");
+                    "This transition requires the '" + requiredPermissionCode + "' permission.");
         }
 
         if (to == RequestStatus.REJECTED
@@ -242,23 +250,20 @@ public class RequestService {
     }
 
     RequestDetailDto toDetail(CorrespondenceRequest r) {
-        var citizenDto = new com.moi.cts.dto.CitizenDtos.CitizenDto(
-                r.getCitizen().getId(), r.getCitizen().getRegistryNumber(), r.getCitizen().getFirstNameEn(),
-                r.getCitizen().getLastNameEn(), r.getCitizen().getFirstNameAr(), r.getCitizen().getLastNameAr(),
-                r.getCitizen().getDateOfBirth(), r.getCitizen().getGender(),
-                r.getCitizen().getRegisteredOffice() != null ? r.getCitizen().getRegisteredOffice().getNameEn() : null);
+        var citizenDto = citizenService.toDto(r.getCitizen());
         var docTypeDto = new com.moi.cts.dto.ReferenceDtos.DocumentTypeDto(
                 r.getDocumentType().getId(), r.getDocumentType().getCode(), r.getDocumentType().getNameEn(),
                 r.getDocumentType().getNameAr(), r.getDocumentType().getSlaDays());
         var officeDto = new com.moi.cts.dto.ReferenceDtos.OfficeDto(
-                r.getOffice().getId(), r.getOffice().getCode(), r.getOffice().getNameEn(), r.getOffice().getNameAr());
+                r.getOffice().getId(), r.getOffice().getCode(), r.getOffice().getNameEn(), r.getOffice().getNameAr(),
+                r.getOffice().getDistrict() != null ? r.getOffice().getDistrict().getId() : null);
 
         return new RequestDetailDto(r.getId(), r.getReferenceNumber(), citizenDto, docTypeDto, officeDto,
                 r.getAssignedTo() != null ? r.getAssignedTo().getFullName() : null,
                 r.getAssignedTo() != null ? r.getAssignedTo().getId() : null,
                 r.getCreatedBy().getFullName(), r.getStatus().name(), r.getPriority(), r.getNotes(),
                 r.getRejectionReason(), r.getCreatedAt(), r.getSubmittedAt(), r.getDueAt(), r.getClosedAt(),
-                r.isOverdue(), r.getSlaStatus().name());
+                r.isOverdue(), r.getSlaStatus().name(), r.getBreachedAt());
     }
 
     private String safe(String s) { return s == null ? "" : s; }

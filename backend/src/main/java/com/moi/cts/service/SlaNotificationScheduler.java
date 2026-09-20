@@ -14,34 +14,55 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
- * Daily sweep that nudges assignees about at-risk requests -- the
- * scheduled job the original 20-day plan's SLA design called for. It
- * notifies rather than writing to a separate SLA-status table: SLA status
- * here is a live-computed property (CorrespondenceRequest.getSlaStatus())
- * that never needs a background job to stay correct. Only the "tell
- * someone about it" part actually benefits from running on a schedule
- * instead of on every page load, so that's the only part this job does.
+ * Daily sweep that (1) records when a request first breaches its SLA and
+ * (2) nudges assignees about at-risk requests -- the scheduled job the
+ * original 20-day plan's SLA design called for. It notifies (and now,
+ * records a breach timestamp) rather than writing a full SLA-status table:
+ * SLA status itself is a live-computed property
+ * (CorrespondenceRequest.getSlaStatus()) that never needs a background job
+ * to stay correct. The two things that genuinely benefit from running on a
+ * schedule instead of on every page load are "tell someone about it" and
+ * "remember the moment this first became true" -- so that's all this job
+ * does. Caveat, stated plainly: because this runs once a day, breachedAt
+ * can lag the real breach moment by up to ~24 hours -- a request that goes
+ * overdue at 9am is recorded at the next 8am run, not the moment it happens.
+ *
+ * <p>As of the full-requirements migration punch list's Item 5, this same
+ * daily run also refreshes every request's persisted {@code SlaRecord}
+ * snapshot (see {@code RequestFinanceService}/{@code SlaRecord} for why
+ * that table exists alongside this still-unchanged live-computation
+ * design) -- one extra call, no change to the notification logic above.
  */
 @Component
 public class SlaNotificationScheduler {
 
     private final CorrespondenceRequestRepository requestRepository;
     private final NotificationRepository notificationRepository;
+    private final RequestFinanceService requestFinanceService;
 
     public SlaNotificationScheduler(CorrespondenceRequestRepository requestRepository,
-                                     NotificationRepository notificationRepository) {
+                                     NotificationRepository notificationRepository,
+                                     RequestFinanceService requestFinanceService) {
         this.requestRepository = requestRepository;
         this.notificationRepository = notificationRepository;
+        this.requestFinanceService = requestFinanceService;
     }
 
     @Scheduled(cron = "0 0 8 * * *")
     @Transactional
     public void notifyAssigneesOfAtRiskRequests() {
+        requestFinanceService.refreshAll();
         Instant notifiedRecentlyCutoff = Instant.now().minus(20, ChronoUnit.HOURS);
 
         for (CorrespondenceRequest r : requestRepository.findAll()) {
-            if (r.getAssignedTo() == null) continue;
             SlaStatus slaStatus = r.getSlaStatus();
+
+            if (slaStatus == SlaStatus.OVERDUE && r.getBreachedAt() == null) {
+                r.setBreachedAt(Instant.now());
+                requestRepository.save(r);
+            }
+
+            if (r.getAssignedTo() == null) continue;
             if (slaStatus == SlaStatus.ON_TRACK) continue;
 
             boolean alreadyNotifiedToday = notificationRepository

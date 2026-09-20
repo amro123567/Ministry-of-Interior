@@ -74,6 +74,22 @@ public class AuditLoggingAspect {
     private Long idFromResult(Object result) {
         Object body = result instanceof ResponseEntity<?> re ? re.getBody() : result;
         if (body == null) return null;
+        Long id = idFrom(body);
+        if (id != null) return id;
+        // The document supertype/subtype DTOs (BirthCertificateDto and its
+        // 6 siblings) don't expose "id" directly -- they nest a generic
+        // DocumentDto behind a "document" accessor instead, since the real
+        // primary key lives on the Document row (Class Table Inheritance).
+        // Unwrap that one extra level before giving up.
+        try {
+            Object nested = body.getClass().getMethod("document").invoke(body);
+            return nested == null ? null : idFrom(nested);
+        } catch (ReflectiveOperationException e) {
+            return null;
+        }
+    }
+
+    private Long idFrom(Object body) {
         try {
             Object id = body.getClass().getMethod("id").invoke(body);
             return id instanceof Long l ? l : null;

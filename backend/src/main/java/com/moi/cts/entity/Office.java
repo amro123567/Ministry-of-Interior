@@ -19,6 +19,15 @@ public class Office {
     @Column(length = 150)
     private String nameAr;
 
+    // Nullable: existing offices predate the reference/org hierarchy
+    // (governorates -> districts -> offices) added alongside this field,
+    // and nothing about office creation requires a district today. New
+    // offices should set one; old seeded offices are backfilled in
+    // DataSeeder rather than forced via a NOT NULL migration.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "district_id")
+    private District district;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getCode() { return code; }
@@ -27,4 +36,6 @@ public class Office {
     public void setNameEn(String nameEn) { this.nameEn = nameEn; }
     public String getNameAr() { return nameAr; }
     public void setNameAr(String nameAr) { this.nameAr = nameAr; }
+    public District getDistrict() { return district; }
+    public void setDistrict(District district) { this.district = district; }
 }

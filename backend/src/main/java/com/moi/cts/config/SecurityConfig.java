@@ -76,10 +76,56 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
-                // Managers can look up staff to reassign a request to; only
-                // admins can create accounts or manage roles.
-                .requestMatchers(HttpMethod.GET, "/api/users/**").hasAnyRole("ADMIN", "MANAGER")
-                .requestMatchers("/api/users/**", "/api/roles/**").hasRole("ADMIN")
+                // Permission-based, not role-name-based: whichever roles
+                // happen to be granted USER_VIEW/USER_MANAGE (seeded as
+                // ADMIN+MANAGER / ADMIN respectively in DataSeeder) get
+                // access -- nothing here hardcodes "ADMIN" or "MANAGER".
+                .requestMatchers(HttpMethod.GET, "/api/users/**").hasAuthority("USER_VIEW")
+                .requestMatchers("/api/users/**").hasAuthority("USER_MANAGE")
+                .requestMatchers("/api/roles/**").hasAuthority("USER_MANAGE")
+                // Previously unrestricted at this layer (only hidden from
+                // the nav by the frontend) -- now genuinely enforced here
+                // too, closing that gap.
+                .requestMatchers("/api/audit/**").hasAuthority("AUDIT_VIEW")
+                .requestMatchers("/api/reports/**").hasAuthority("REPORTS_VIEW")
+                // Reading the citizen registry stays open to any authenticated
+                // user (falls through to anyRequest().authenticated() below,
+                // same as /offices and /document-types) -- but registering a
+                // new citizen or correcting a lineage link is a real
+                // civil-registry write, so it needs its own permission rather
+                // than inheriting the read gate. Granted to ADMIN/MANAGER/
+                // OFFICER, not VIEWER, in DataSeeder.
+                .requestMatchers(HttpMethod.POST, "/api/citizens/**").hasAuthority("CITIZEN_MANAGE")
+                .requestMatchers(HttpMethod.PATCH, "/api/citizens/**").hasAuthority("CITIZEN_MANAGE")
+                // Family records/membership and guardianship creation are the
+                // same kind of civil-registry write as the two rules above,
+                // so they share CITIZEN_MANAGE rather than getting their own
+                // narrow permission each. Requesting a registry transfer or
+                // civil-status amendment is also data entry, so it's
+                // CITIZEN_MANAGE too -- but *deciding* one is a distinct
+                // authority (approve/reject someone else's request), mirrored
+                // on the REQUEST_TRANSITION_SUBMIT/REQUEST_TRANSITION_DECIDE
+                // split already used for correspondence requests below, and
+                // enforced on top of (not instead of) the service layer's own
+                // SI-12 check that the approver can't be the requester.
+                .requestMatchers(HttpMethod.POST, "/api/family-records/**").hasAuthority("CITIZEN_MANAGE")
+                .requestMatchers(HttpMethod.PATCH, "/api/family-records/**").hasAuthority("CITIZEN_MANAGE")
+                .requestMatchers(HttpMethod.POST, "/api/guardianships").hasAuthority("CITIZEN_MANAGE")
+                .requestMatchers(HttpMethod.POST, "/api/registry-transfers").hasAuthority("CITIZEN_MANAGE")
+                .requestMatchers(HttpMethod.PATCH, "/api/registry-transfers/**").hasAuthority("CITIZEN_REGISTRY_DECIDE")
+                .requestMatchers(HttpMethod.POST, "/api/civil-status-amendments").hasAuthority("CITIZEN_MANAGE")
+                .requestMatchers(HttpMethod.PATCH, "/api/civil-status-amendments/**").hasAuthority("CITIZEN_REGISTRY_DECIDE")
+                // Issuing any of the 7 document subtypes (birth/marriage/
+                // divorce/death certificates, national ID cards,
+                // naturalization and name-change records) is the same kind
+                // of civil-registry write as everything else gated on
+                // CITIZEN_MANAGE above -- there's no separate "decide" step
+                // here (a document is issued outright, not requested then
+                // approved), so this domain doesn't need its own
+                // CITIZEN_REGISTRY_DECIDE-style split. Reads stay open to
+                // any authenticated user, matching every other read in this
+                // migration.
+                .requestMatchers(HttpMethod.POST, "/api/documents/**").hasAuthority("CITIZEN_MANAGE")
                 .anyRequest().authenticated())
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
