@@ -8,6 +8,7 @@ import GuardianshipSection from '../components/GuardianshipSection.jsx'
 import RegistryTransferSection from '../components/RegistryTransferSection.jsx'
 import CivilStatusAmendmentSection from '../components/CivilStatusAmendmentSection.jsx'
 import DocumentsSection from '../components/DocumentsSection.jsx'
+import CitizenAuditSection from '../components/CitizenAuditSection.jsx'
 import { SkeletonLine } from '../components/Skeleton.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
@@ -48,6 +49,11 @@ function Section({ title, children }) {
 // section components below (each is citizen-scoped on the backend too --
 // there's no global list/search for any of those four, only
 // GET /api/family-records/{id} by id and these citizen-scoped reads).
+// CitizenAuditSection at the bottom is the odd one out: it's gated on
+// AUDIT_VIEW rather than CITIZEN_MANAGE/read-access like everything above
+// (frontend integration pass Step 8), so it renders nothing at all for
+// the majority of users who can see this whole page but hold no audit
+// permission.
 export default function CitizenDetailPage() {
   const { t } = useLanguage()
   const { hasPermission } = useAuth()
@@ -250,6 +256,7 @@ export default function CitizenDetailPage() {
       <GuardianshipSection citizenId={c.id} />
       <RegistryTransferSection citizenId={c.id} currentOfficeName={c.officeName} onDecided={loadCitizen} />
       <CivilStatusAmendmentSection citizenId={c.id} citizen={c} onDecided={loadCitizen} />
+      <CitizenAuditSection citizenId={c.id} />
     </div>
   )
 }

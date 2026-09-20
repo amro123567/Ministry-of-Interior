@@ -24,6 +24,9 @@ export default function Breadcrumb() {
     trail.push({ label: `#${params.id}` })
   } else if (path.startsWith('/citizens')) {
     trail.push({ label: t('nav.citizens') })
+  } else if (path.startsWith('/admin/users/') && params.id) {
+    trail.push({ label: t('nav.users'), to: '/admin/users' })
+    trail.push({ label: t('userActivity.breadcrumb') })
   } else if (path.startsWith('/admin/users')) {
     trail.push({ label: t('nav.users') })
   } else if (path.startsWith('/admin/audit')) {

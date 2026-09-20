@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import client from '../api/client.js'
 import { SkeletonTableRows } from '../components/Skeleton.jsx'
+import LoginAttemptBadge from '../components/LoginAttemptBadge.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 
 const inputCls = 'rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
@@ -30,8 +31,78 @@ function ActionBadge({ action }) {
   )
 }
 
+// The session/login half of Item 7's session-hardening work (SessionSecurityController)
+// -- GET /api/audit/login-attempts with no username filter returns the 50
+// most recent attempts system-wide, mirroring the entity log tab's own
+// "50 most recent" scope. Kept as its own tab on this page rather than a
+// new top-level nav link, matching every choice in frontend integration
+// pass Step 8 (see PROJECT_STATE.md's Navbar zero-slack note) -- this
+// page is already AUDIT_VIEW-gated at the route level (App.jsx), so no
+// extra permission check is needed inside it.
+function LoginAttemptsTab() {
+  const { t } = useLanguage()
+  const [attempts, setAttempts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    client.get('/audit/login-attempts')
+      .then((r) => setAttempts(r.data))
+      .catch(() => setError(t('auditLog.loginCouldNotLoad')))
+      .finally(() => setLoading(false))
+  }, [t])
+
+  if (error) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600" role="alert">{error}</div>
+    )
+  }
+
+  if (!loading && attempts.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-slate-300 bg-white py-12 text-center text-slate-400">
+        <p>{t('auditLog.loginNoMatch')}</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-slate-50">
+              <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.loginColTime')}</th>
+              <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.loginColUsername')}</th>
+              <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.loginColOutcome')}</th>
+              <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.loginColIp')}</th>
+              <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.loginColUserAgent')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <SkeletonTableRows rows={8} cols={5} />
+            ) : attempts.map((a) => (
+              <tr key={a.id} className="hover:bg-slate-50 border-b border-slate-100 last:border-0">
+                <td className="px-4 py-3.5 text-slate-500 whitespace-nowrap">
+                  {format(new Date(a.attemptedAt), 'MMM d, yyyy HH:mm:ss')}
+                </td>
+                <td className="px-4 py-3.5 text-slate-700 whitespace-nowrap">{a.usernameAttempted}</td>
+                <td className="px-4 py-3.5"><LoginAttemptBadge wasSuccessful={a.wasSuccessful} failureReason={a.failureReason} /></td>
+                <td className="px-4 py-3.5 text-slate-500 whitespace-nowrap">{a.ipAddress || '—'}</td>
+                <td className="px-4 py-3.5 text-slate-500 max-w-[280px] truncate" title={a.userAgent ?? ''}>{a.userAgent || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 export default function AuditLogPage() {
   const { t } = useLanguage()
+  const [tab, setTab] = useState('entity')
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -87,81 +158,108 @@ export default function AuditLogPage() {
         <p className="text-sm text-slate-500 mt-1">{t('auditLog.subtitle')}</p>
       </div>
 
-      <div className="flex flex-wrap gap-2.5 mb-5">
-        <input
-          placeholder={t('auditLog.searchPlaceholder')}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className={`${inputCls} flex-1 min-w-[220px]`}
-        />
-        <select value={action} onChange={(e) => setAction(e.target.value)} className={`${inputCls} w-[180px]`}>
-          <option value="">{t('auditLog.allActions')}</option>
-          {actionOptions.map((a) => <option key={a} value={a}>{a}</option>)}
-        </select>
-        <select value={entityType} onChange={(e) => setEntityType(e.target.value)} className={`${inputCls} w-[180px]`}>
-          <option value="">{t('auditLog.allEntities')}</option>
-          {entityTypeOptions.map((et) => <option key={et} value={et}>{et}</option>)}
-        </select>
-        <input
-          type="date"
-          aria-label={t('auditLog.dateFrom')}
-          value={dateFrom}
-          onChange={(e) => setDateFrom(e.target.value)}
-          className={`${inputCls} w-[160px]`}
-        />
-        <input
-          type="date"
-          aria-label={t('auditLog.dateTo')}
-          value={dateTo}
-          onChange={(e) => setDateTo(e.target.value)}
-          className={`${inputCls} w-[160px]`}
-        />
+      {/* Two tabs on one AUDIT_VIEW-gated route/nav link rather than a
+          second top-level Navbar entry -- see the LoginAttemptsTab
+          comment above for why. */}
+      <div className="flex gap-1 mb-5 border-b border-slate-200">
+        {[
+          { key: 'entity', label: t('auditLog.tabEntity') },
+          { key: 'logins', label: t('auditLog.tabLogins') },
+        ].map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setTab(key)}
+            className={`px-3.5 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+              tab === key ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-4" role="alert">
-          {error}
-        </div>
+      {tab === 'entity' && (
+        <>
+          <div className="flex flex-wrap gap-2.5 mb-5">
+            <input
+              placeholder={t('auditLog.searchPlaceholder')}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className={`${inputCls} flex-1 min-w-[220px]`}
+            />
+            <select value={action} onChange={(e) => setAction(e.target.value)} className={`${inputCls} w-[180px]`}>
+              <option value="">{t('auditLog.allActions')}</option>
+              {actionOptions.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+            <select value={entityType} onChange={(e) => setEntityType(e.target.value)} className={`${inputCls} w-[180px]`}>
+              <option value="">{t('auditLog.allEntities')}</option>
+              {entityTypeOptions.map((et) => <option key={et} value={et}>{et}</option>)}
+            </select>
+            <input
+              type="date"
+              aria-label={t('auditLog.dateFrom')}
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className={`${inputCls} w-[160px]`}
+            />
+            <input
+              type="date"
+              aria-label={t('auditLog.dateTo')}
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className={`${inputCls} w-[160px]`}
+            />
+          </div>
+
+          {error && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-4" role="alert">
+              {error}
+            </div>
+          )}
+
+          {showEmpty ? (
+            <div className="rounded-xl border border-dashed border-slate-300 bg-white py-12 text-center text-slate-400">
+              <p>{t('auditLog.noMatch')}</p>
+            </div>
+          ) : !error && (
+            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50">
+                      <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.colTimestamp')}</th>
+                      <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.colAction')}</th>
+                      <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.colEntity')}</th>
+                      <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.colActor')}</th>
+                      <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.colDetails')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <SkeletonTableRows rows={8} cols={5} />
+                    ) : filtered.map((e) => (
+                      <tr key={e.id} className="hover:bg-slate-50 border-b border-slate-100 last:border-0">
+                        <td className="px-4 py-3.5 text-slate-500 whitespace-nowrap">
+                          {format(new Date(e.occurredAt), 'MMM d, yyyy HH:mm:ss')}
+                        </td>
+                        <td className="px-4 py-3.5"><ActionBadge action={e.action} /></td>
+                        <td className="px-4 py-3.5 text-slate-700 whitespace-nowrap">{e.entityType} #{e.entityId}</td>
+                        <td className="px-4 py-3.5 text-slate-700">{e.actorName}</td>
+                        <td className="px-4 py-3.5 text-slate-500 max-w-[420px] truncate" title={e.details ?? ''}>
+                          {e.details || <span className="text-slate-300">{t('auditLog.noDetails')}</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
-      {showEmpty ? (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white py-12 text-center text-slate-400">
-          <p>{t('auditLog.noMatch')}</p>
-        </div>
-      ) : !error && (
-        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-slate-50">
-                  <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.colTimestamp')}</th>
-                  <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.colAction')}</th>
-                  <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.colEntity')}</th>
-                  <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.colActor')}</th>
-                  <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.colDetails')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <SkeletonTableRows rows={8} cols={5} />
-                ) : filtered.map((e) => (
-                  <tr key={e.id} className="hover:bg-slate-50 border-b border-slate-100 last:border-0">
-                    <td className="px-4 py-3.5 text-slate-500 whitespace-nowrap">
-                      {format(new Date(e.occurredAt), 'MMM d, yyyy HH:mm:ss')}
-                    </td>
-                    <td className="px-4 py-3.5"><ActionBadge action={e.action} /></td>
-                    <td className="px-4 py-3.5 text-slate-700 whitespace-nowrap">{e.entityType} #{e.entityId}</td>
-                    <td className="px-4 py-3.5 text-slate-700">{e.actorName}</td>
-                    <td className="px-4 py-3.5 text-slate-500 max-w-[420px] truncate" title={e.details ?? ''}>
-                      {e.details || <span className="text-slate-300">{t('auditLog.noDetails')}</span>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {tab === 'logins' && <LoginAttemptsTab />}
     </div>
   )
 }
