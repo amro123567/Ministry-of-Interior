@@ -55,11 +55,11 @@ public class SessionSecurityService {
     }
 
     public List<LoginAttemptDto> recentAttempts() {
-        return loginAttemptRepository.findTop50ByOrderByAttemptedAtDesc().stream().map(this::toDto).toList();
+        return loginAttemptRepository.findTop50ByOrderByAttemptedAtDescIdDesc().stream().map(this::toDto).toList();
     }
 
     public List<LoginAttemptDto> attemptsForUsername(String username) {
-        return loginAttemptRepository.findByUsernameAttemptedOrderByAttemptedAtDesc(username).stream()
+        return loginAttemptRepository.findByUsernameAttemptedOrderByAttemptedAtDescIdDesc(username).stream()
                 .map(this::toDto).toList();
     }
 
