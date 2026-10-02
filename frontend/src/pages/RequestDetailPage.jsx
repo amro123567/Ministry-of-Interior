@@ -307,7 +307,9 @@ export default function RequestDetailPage() {
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
           <Field label={t('requestFinance.slaStatus')}><SlaRecordBadge slaStatus={slaRecord?.slaStatus} /></Field>
-          <Field label={t('requestFinance.dueDate')}>{slaRecord?.dueDate ? format(new Date(slaRecord.dueDate), 'MMM d, yyyy') : '—'}</Field>
+          <Field label={t('requestFinance.dueDate')}>{request.dueAt
+            ? format(new Date(request.dueAt), 'MMM d, yyyy')
+            : (slaRecord?.dueDate ? format(new Date(slaRecord.dueDate), 'MMM d, yyyy') : '—')}</Field>
           <Field label={t('requestFinance.daysRemaining')}>{slaRecord?.daysRemaining ?? '—'}</Field>
           <Field label={t('requestFinance.overdueByDays')}>{slaRecord?.overdueByDays ?? '—'}</Field>
         </div>
