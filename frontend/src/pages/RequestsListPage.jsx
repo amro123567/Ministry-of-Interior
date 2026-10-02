@@ -6,12 +6,14 @@ import client from '../api/client.js'
 import StatusBadge, { SlaBadge } from '../components/StatusBadge.jsx'
 import { SkeletonTableRows } from '../components/Skeleton.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 
 const STATUSES = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'ARCHIVED']
 const inputCls = 'rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
 
 export default function RequestsListPage() {
   const { t } = useLanguage()
+  const { hasPermission } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const [requests, setRequests] = useState([])
   const [status, setStatus] = useState('')
@@ -75,12 +77,14 @@ export default function RequestsListPage() {
           >
             {t('requests.exportCsv')}
           </button>
-          <Link
-            to="/requests/new"
-            className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
-          >
-            {t('requests.newRequest')}
-          </Link>
+          {hasPermission('REQUEST_TRANSITION_SUBMIT', 'REQUEST_TRANSITION_REVIEW', 'REQUEST_TRANSITION_DECIDE', 'REQUEST_TRANSITION_ARCHIVE') && (
+            <Link
+              to="/requests/new"
+              className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
+            >
+              {t('requests.newRequest')}
+            </Link>
+          )}
         </div>
       </div>
 

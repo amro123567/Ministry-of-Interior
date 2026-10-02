@@ -73,7 +73,7 @@ export default function Navbar() {
   const links = [
     { to: '/', end: true, label: t('nav.dashboard'), icon: LayoutGrid },
     { to: '/requests', end: false, label: t('nav.correspondence'), icon: Mail },
-    { to: '/requests/new', end: false, label: t('nav.newRequest'), icon: CirclePlus },
+    ...(hasPermission('REQUEST_TRANSITION_SUBMIT', 'REQUEST_TRANSITION_REVIEW', 'REQUEST_TRANSITION_DECIDE', 'REQUEST_TRANSITION_ARCHIVE') ? [{ to: '/requests/new', end: false, label: t('nav.newRequest'), icon: CirclePlus }] : []),
     { to: '/citizens', end: false, label: t('nav.citizens'), icon: IdCard },
     // Ungated like the three links above -- the backend leaves both
     // /api/workflow/instances and its transition endpoint open to any
