@@ -6,19 +6,59 @@
   },
   "auth": {
     "type": "bearer",
-    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:8080/api" },
-    { "key": "accessToken", "value": "" },
-    { "key": "refreshToken", "value": "" },
-    { "key": "requestId", "value": "1" },
-    { "key": "citizenId", "value": "1" },
-    { "key": "documentTypeId", "value": "1" },
-    { "key": "officeId", "value": "1" },
-    { "key": "userId", "value": "1" },
-    { "key": "attachmentId", "value": "1" },
-    { "key": "notificationId", "value": "1" }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "requestId",
+      "value": "1"
+    },
+    {
+      "key": "citizenId",
+      "value": "1"
+    },
+    {
+      "key": "documentTypeId",
+      "value": "1"
+    },
+    {
+      "key": "officeId",
+      "value": "1"
+    },
+    {
+      "key": "userId",
+      "value": "1"
+    },
+    {
+      "key": "attachmentId",
+      "value": "1"
+    },
+    {
+      "key": "notificationId",
+      "value": "1"
+    },
+    {
+      "key": "departmentId",
+      "value": "1"
+    }
   ],
   "item": [
     {
@@ -27,9 +67,16 @@
         {
           "name": "Login",
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": "{{baseUrl}}/auth/login",
             "body": {
               "mode": "raw",
@@ -58,11 +105,21 @@
         {
           "name": "Refresh",
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": "{{baseUrl}}/auth/refresh",
-            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
             "description": "Rotates the refresh token: the old one is revoked and a new one issued. Response shape matches Login."
           },
           "event": [
@@ -82,11 +139,21 @@
         {
           "name": "Logout",
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": "{{baseUrl}}/auth/logout",
-            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
             "description": "Revokes the refresh token. 204 No Content on success. Now also writes an audit-log entry (see PROJECT_STATE.md 'AOP audit logging')."
           }
         }
@@ -101,24 +168,47 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/requests?status=&search=&assignedToMe=false",
-              "host": ["{{baseUrl}}"],
-              "path": ["requests"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests"
+              ],
               "query": [
-                { "key": "status", "value": "", "description": "DRAFT | SUBMITTED | UNDER_REVIEW | APPROVED | REJECTED | ARCHIVED (optional)" },
-                { "key": "search", "value": "", "description": "matches reference number, citizen name or registry number (optional)" },
-                { "key": "assignedToMe", "value": "false", "description": "true = only requests assigned to the caller (optional)" }
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "DRAFT | SUBMITTED | UNDER_REVIEW | APPROVED | REJECTED | ARCHIVED (optional)"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "matches reference number, citizen name or registry number (optional)"
+                },
+                {
+                  "key": "assignedToMe",
+                  "value": "false",
+                  "description": "true = only requests assigned to the caller (optional)"
+                }
               ]
             },
-            "description": "Returns RequestSummaryDto[]: id, referenceNumber, citizenName, documentTypeName, status, priority, assignedToName, dueAt, overdue, slaStatus, createdAt."
+            "description": "Returns RequestSummaryDto[]: id, referenceNumber, citizenName, documentTypeName, status, priority, assignedToName, dueAt, overdue, slaStatus, createdAt, direction, subject. search matches reference number, subject, citizen name or registry number."
           }
         },
         {
           "name": "Get request detail",
-          "request": { "method": "GET", "url": "{{baseUrl}}/requests/{{requestId}}" }
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/requests/{{requestId}}",
+            "description": "Includes direction, subject, departmentId and departmentName."
+          }
         },
         {
           "name": "Get workflow history",
-          "request": { "method": "GET", "url": "{{baseUrl}}/requests/{{requestId}}/history" }
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/requests/{{requestId}}/history"
+          }
         },
         {
           "name": "Get assignment history",
@@ -132,36 +222,116 @@
           "name": "Create request",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": "{{baseUrl}}/requests",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"citizenId\": {{citizenId}},\n  \"documentTypeId\": {{documentTypeId}},\n  \"officeId\": {{officeId}},\n  \"priority\": \"NORMAL\",\n  \"notes\": \"Created from Postman\"\n}"
+              "raw": "{\n  \"citizenId\": {{citizenId}},\n  \"documentTypeId\": {{documentTypeId}},\n  \"officeId\": {{officeId}},\n  \"direction\": \"INCOMING\",\n  \"subject\": \"Request for a civil status extract\",\n  \"departmentId\": {{departmentId}},\n  \"priority\": \"NORMAL\",\n  \"notes\": \"Created from Postman\"\n}"
             },
-            "description": "Requires OFFICER (or ADMIN). Created as DRAFT with a generated referenceNumber; dueAt is set from the document type's SLA days."
-          }
+            "description": "Requires one of the request-workflow permissions (REQUEST_TRANSITION_SUBMIT/REVIEW/DECIDE/ARCHIVE), i.e. OFFICER, MANAGER or ADMIN; a VIEWER gets 403. direction is INCOMING (default) or OUTGOING; any other value returns 400. subject (max 255) and departmentId are optional. Created as DRAFT with a generated referenceNumber; dueAt is set from the document type's SLA days."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('created as DRAFT', () => { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "if (b.id) pm.collectionVariables.set('requestId', b.id);",
+                  "pm.test('direction returned', () => pm.expect(b.direction).to.be.oneOf(['INCOMING','OUTGOING']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create outgoing request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/requests",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"citizenId\": {{citizenId}},\n  \"documentTypeId\": {{documentTypeId}},\n  \"officeId\": {{officeId}},\n  \"direction\": \"OUTGOING\",\n  \"subject\": \"Reply to the Governorate on a family record amendment\",\n  \"departmentId\": {{departmentId}},\n  \"priority\": \"NORMAL\",\n  \"notes\": \"Created from Postman\"\n}"
+            },
+            "description": "Requires one of the request-workflow permissions (REQUEST_TRANSITION_SUBMIT/REVIEW/DECIDE/ARCHIVE), i.e. OFFICER, MANAGER or ADMIN; a VIEWER gets 403. direction is INCOMING (default) or OUTGOING; any other value returns 400. subject (max 255) and departmentId are optional. Created as DRAFT with a generated referenceNumber; dueAt is set from the document type's SLA days."
+          },
+          "event": []
+        },
+        {
+          "name": "Create request as VIEWER (expect 403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/requests",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"citizenId\": {{citizenId}},\n  \"documentTypeId\": {{documentTypeId}},\n  \"officeId\": {{officeId}},\n  \"direction\": \"INCOMING\",\n  \"subject\": \"Request for a civil status extract\",\n  \"departmentId\": {{departmentId}},\n  \"priority\": \"NORMAL\",\n  \"notes\": \"Created from Postman\"\n}"
+            },
+            "description": "Log in as viewer/Viewer1234! first, then run this. Expected: 403."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('viewer cannot create', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Assign / reassign request",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": "{{baseUrl}}/requests/{{requestId}}/assign",
-            "body": { "mode": "raw", "raw": "{\n  \"userId\": {{userId}},\n  \"note\": \"Reassigned from Postman\"\n}" },
-            "description": "Independent of workflow status. Records an entry in assignment history and sends the assignee a notification. 'note' is optional."
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": {{userId}},\n  \"note\": \"Reassigned from Postman\"\n}"
+            },
+            "description": "Independent of workflow status. Records an entry in assignment history and sends the assignee a notification. 'note' is optional. Requires a request-workflow permission (viewer gets 403)."
           }
         },
         {
           "name": "Transition status",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": "{{baseUrl}}/requests/{{requestId}}/transition",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"toStatus\": \"SUBMITTED\",\n  \"note\": \"Submitting for review\",\n  \"rejectionReason\": null\n}"
             },
-            "description": "Legal transitions (see WorkflowTransitionRule, seeded by DataSeeder): DRAFT->SUBMITTED (OFFICER), SUBMITTED->UNDER_REVIEW (MANAGER), UNDER_REVIEW->APPROVED (MANAGER), UNDER_REVIEW->REJECTED (MANAGER, rejectionReason required), APPROVED->ARCHIVED (OFFICER), REJECTED->ARCHIVED (OFFICER). ADMIN can perform any transition. Anything else returns 400."
+            "description": "Legal transitions (see WorkflowTransitionRule, seeded by DataSeeder): DRAFT->SUBMITTED (REQUEST_TRANSITION_SUBMIT), SUBMITTED->UNDER_REVIEW (REVIEW/DECIDE permission), UNDER_REVIEW->APPROVED (REVIEW/DECIDE permission), UNDER_REVIEW->REJECTED (MANAGER, rejectionReason required), APPROVED->ARCHIVED (REQUEST_TRANSITION_SUBMIT), REJECTED->ARCHIVED (REQUEST_TRANSITION_SUBMIT). ADMIN can perform any transition. Anything else returns 400."
           }
         },
         {
@@ -205,14 +375,23 @@
             "url": "{{baseUrl}}/requests/{{requestId}}/documents",
             "body": {
               "mode": "formdata",
-              "formdata": [{ "key": "file", "type": "file", "src": [] }]
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
             },
-            "description": "multipart/form-data, field name 'file'. Computes SHA-256 server-side and returns AttachmentDto."
+            "description": "multipart/form-data, field name 'file'. Computes SHA-256 server-side and returns AttachmentDto. Requires a request-workflow permission (viewer gets 403). The upload is recorded in the audit log as DOCUMENT_UPLOAD."
           }
         },
         {
           "name": "List documents for a request",
-          "request": { "method": "GET", "url": "{{baseUrl}}/requests/{{requestId}}/documents" }
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/requests/{{requestId}}/documents"
+          }
         },
         {
           "name": "Download document",
@@ -233,21 +412,39 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/citizens?q=",
-              "host": ["{{baseUrl}}"],
-              "path": ["citizens"],
-              "query": [{ "key": "q", "value": "", "description": "matches name (EN/AR) or registry number; omit for all citizens" }]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "citizens"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "",
+                  "description": "matches name (EN/AR) or registry number; omit for all citizens"
+                }
+              ]
             }
           }
         },
         {
           "name": "Get citizen",
-          "request": { "method": "GET", "url": "{{baseUrl}}/citizens/{{citizenId}}" }
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/citizens/{{citizenId}}"
+          }
         },
         {
           "name": "Register citizen",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": "{{baseUrl}}/citizens",
             "body": {
               "mode": "raw",
@@ -275,7 +472,10 @@
       "item": [
         {
           "name": "My notifications",
-          "request": { "method": "GET", "url": "{{baseUrl}}/notifications" }
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/notifications"
+          }
         },
         {
           "name": "Mark notification read",
@@ -290,9 +490,83 @@
     {
       "name": "Reference Data",
       "item": [
-        { "name": "Offices", "request": { "method": "GET", "url": "{{baseUrl}}/offices" } },
-        { "name": "Document types", "request": { "method": "GET", "url": "{{baseUrl}}/document-types" } },
-        { "name": "Roles", "request": { "method": "GET", "url": "{{baseUrl}}/roles" } }
+        {
+          "name": "Offices",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/offices"
+          }
+        },
+        {
+          "name": "Document types",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/document-types"
+          }
+        },
+        {
+          "name": "Roles",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/roles"
+          }
+        },
+        {
+          "name": "Departments",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/departments",
+            "description": "Departments a request can be routed to (departmentId)."
+          }
+        },
+        {
+          "name": "Permissions",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/permissions",
+            "description": "The 12 permission codes."
+          }
+        },
+        {
+          "name": "Governorates",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/governorates",
+            "description": ""
+          }
+        },
+        {
+          "name": "Districts",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/districts",
+            "description": ""
+          }
+        },
+        {
+          "name": "Courts",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/courts",
+            "description": ""
+          }
+        },
+        {
+          "name": "Religious authorities",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/religious-authorities",
+            "description": ""
+          }
+        },
+        {
+          "name": "Mukhtars",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/mukhtars",
+            "description": ""
+          }
+        }
       ]
     },
     {
@@ -310,7 +584,12 @@
           "name": "Create user",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": "{{baseUrl}}/users",
             "body": {
               "mode": "raw",
@@ -326,7 +605,10 @@
       "item": [
         {
           "name": "Recent audit entries",
-          "request": { "method": "GET", "url": "{{baseUrl}}/audit" }
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/audit"
+          }
         },
         {
           "name": "Audit entries for an entity",
@@ -334,11 +616,21 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/audit?entityType=CorrespondenceRequest&entityId={{requestId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["audit"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit"
+              ],
               "query": [
-                { "key": "entityType", "value": "CorrespondenceRequest" },
-                { "key": "entityId", "value": "{{requestId}}" }
+                {
+                  "key": "entityType",
+                  "value": "CorrespondenceRequest"
+                },
+                {
+                  "key": "entityId",
+                  "value": "{{requestId}}"
+                }
               ]
             }
           }
