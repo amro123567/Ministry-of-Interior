@@ -15,10 +15,11 @@ export default function RequestCreatePage() {
   const [citizens, setCitizens] = useState([])
   const [documentTypes, setDocumentTypes] = useState([])
   const [offices, setOffices] = useState([])
+  const [departments, setDepartments] = useState([])
   const [districts, setDistricts] = useState([])
   const [governorates, setGovernorates] = useState([])
   const [citizenQuery, setCitizenQuery] = useState('')
-  const [form, setForm] = useState({ citizenId: '', documentTypeId: '', officeId: '', priority: 'NORMAL', notes: '' })
+  const [form, setForm] = useState({ citizenId: '', documentTypeId: '', officeId: '', priority: 'NORMAL', notes: '', direction: 'INCOMING', subject: '', departmentId: '' })
   const [showNewCitizen, setShowNewCitizen] = useState(false)
   const [newCitizen, setNewCitizen] = useState({ registryNumber: '', firstNameEn: '', lastNameEn: '', gender: 'M' })
   const [error, setError] = useState(null)
@@ -30,6 +31,7 @@ export default function RequestCreatePage() {
       setOffices(r.data)
       setForm((f) => ({ ...f, officeId: r.data[0]?.id ?? '' }))
     })
+    client.get('/departments').then((r) => setDepartments(r.data.filter((d) => d.active !== false))).catch(() => setDepartments([]))
     client.get('/governorates').then((r) => setGovernorates(r.data.filter((g) => g.active !== false)))
     client.get('/districts').then((r) => setDistricts(r.data.filter((d) => d.active !== false)))
   }, [])
@@ -64,6 +66,9 @@ export default function RequestCreatePage() {
         officeId: Number(form.officeId),
         priority: form.priority,
         notes: form.notes || null,
+        direction: form.direction,
+        subject: form.subject.trim() || null,
+        departmentId: form.departmentId ? Number(form.departmentId) : null,
       })
       navigate(`/requests/${res.data.id}`)
     } catch (err) {
@@ -216,6 +221,40 @@ export default function RequestCreatePage() {
               <option value="HIGH">{t('requestCreate.priorityHigh')}</option>
               <option value="URGENT">{t('requestCreate.priorityUrgent')}</option>
             </select>
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="direction">{t('requestCreate.direction')}</label>
+            <select
+              id="direction"
+              className={inputCls}
+              value={form.direction}
+              onChange={(e) => setForm({ ...form, direction: e.target.value })}
+            >
+              <option value="INCOMING">{t('requestCreate.directionIncoming')}</option>
+              <option value="OUTGOING">{t('requestCreate.directionOutgoing')}</option>
+            </select>
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="department">{t('requestCreate.department')}</label>
+            <select
+              id="department"
+              className={inputCls}
+              value={form.departmentId}
+              onChange={(e) => setForm({ ...form, departmentId: e.target.value })}
+            >
+              <option value="">{t('requestCreate.noDepartment')}</option>
+              {departments.map((d) => <option key={d.id} value={d.id}>{d.nameEn}</option>)}
+            </select>
+          </div>
+          <div className="sm:col-span-2">
+            <label className={labelCls} htmlFor="subject">{t('requestCreate.subject')}</label>
+            <input
+              id="subject"
+              maxLength={255}
+              className={inputCls}
+              value={form.subject}
+              onChange={(e) => setForm({ ...form, subject: e.target.value })}
+            />
           </div>
           <div className="sm:col-span-2">
             <label className={labelCls} htmlFor="notes">{t('requestCreate.notes')}</label>

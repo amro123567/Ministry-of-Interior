@@ -130,6 +130,7 @@ export default function RequestsListPage() {
                 <thead>
                   <tr className="bg-slate-50">
                     <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('requests.colReference')}</th>
+                    <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('requests.colDirection')}</th>
                     <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('requests.colCitizen')}</th>
                     <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('requests.colDocType')}</th>
                     <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('requests.colStatus')}</th>
@@ -140,11 +141,19 @@ export default function RequestsListPage() {
                 </thead>
                 <tbody>
                   {loading ? (
-                    <SkeletonTableRows rows={6} cols={7} />
+                    <SkeletonTableRows rows={6} cols={8} />
                   ) : requests.map((r) => (
                     <tr key={r.id} className="hover:bg-slate-50 border-b border-slate-100 last:border-0">
                       <td className="px-4 py-3.5 font-semibold text-indigo-600">
                         <Link to={`/requests/${r.id}`}>{r.referenceNumber}</Link>
+                        {r.subject && <div className="text-xs font-normal text-slate-500 mt-0.5 max-w-[16rem] truncate" title={r.subject}>{r.subject}</div>}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                          r.direction === 'OUTGOING' ? 'bg-amber-50 text-amber-700' : 'bg-sky-50 text-sky-700'
+                        }`}>
+                          {r.direction === 'OUTGOING' ? t('requests.directionOutgoing') : t('requests.directionIncoming')}
+                        </span>
                       </td>
                       <td className="px-4 py-3.5 text-slate-700">{r.citizenName}</td>
                       <td className="px-4 py-3.5 text-slate-700">{r.documentTypeName}</td>

@@ -417,10 +417,14 @@ public class DataSeeder implements CommandLineRunner {
         Citizen c3 = citizenRepository.save(citizen("REG-101042", "Fadi", "Haidar", "فادي", "حيدر",
                 LocalDate.of(2001, 7, 20), "M", beirut));
 
-        seedRequest("CTS-DEMO-1", c1, birth, beirut, officerUser, officerUser, RequestStatus.APPROVED, -6, -1);
-        seedRequest("CTS-DEMO-2", c2, passport, beirut, officerUser, managerUser, RequestStatus.UNDER_REVIEW, -2, 5);
-        seedRequest("CTS-DEMO-3", c3, birth, beirut, officerUser, null, RequestStatus.SUBMITTED, -8, -3);
-        seedRequest("CTS-DEMO-4", c1, passport, beirut, officerUser, null, RequestStatus.DRAFT, 0, 7);
+        seedRequest("CTS-DEMO-1", c1, birth, beirut, officerUser, officerUser, RequestStatus.APPROVED, -6, -1,
+                CorrespondenceDirection.OUTGOING, "Birth certificate issued to citizen");
+        seedRequest("CTS-DEMO-2", c2, passport, beirut, officerUser, managerUser, RequestStatus.UNDER_REVIEW, -2, 5,
+                CorrespondenceDirection.INCOMING, "Passport renewal request received from citizen");
+        seedRequest("CTS-DEMO-3", c3, birth, beirut, officerUser, null, RequestStatus.SUBMITTED, -8, -3,
+                CorrespondenceDirection.INCOMING, "Birth certificate request forwarded by the registry office");
+        seedRequest("CTS-DEMO-4", c1, passport, beirut, officerUser, null, RequestStatus.DRAFT, 0, 7,
+                CorrespondenceDirection.OUTGOING, "Draft notice: passport ready for collection");
 
         // ---- full service-request model: payments ---------------------------
         // (SlaRecord rows are deliberately NOT seeded here -- they're always
@@ -985,7 +989,8 @@ public class DataSeeder implements CommandLineRunner {
 
     private void seedRequest(String ref, Citizen citizen, DocumentType docType, Office office,
                               AppUser createdBy, AppUser assignedTo, RequestStatus status,
-                              int createdDaysAgo, int dueInDays) {
+                              int createdDaysAgo, int dueInDays,
+                              CorrespondenceDirection direction, String subject) {
         CorrespondenceRequest r = new CorrespondenceRequest();
         r.setReferenceNumber(ref);
         r.setCitizen(citizen);
@@ -995,6 +1000,8 @@ public class DataSeeder implements CommandLineRunner {
         r.setAssignedTo(assignedTo);
         r.setStatus(status);
         r.setPriority("NORMAL");
+        r.setDirection(direction);
+        r.setSubject(subject);
         Instant createdAt = Instant.now().plus(createdDaysAgo, ChronoUnit.DAYS);
         r.setCreatedAt(createdAt);
         r.setDueAt(Instant.now().plus(dueInDays, ChronoUnit.DAYS));

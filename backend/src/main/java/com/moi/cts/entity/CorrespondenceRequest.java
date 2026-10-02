@@ -42,6 +42,19 @@ public class CorrespondenceRequest {
     @Column(length = 20)
     private String priority = "NORMAL";
 
+    /** Incoming vs outgoing (see {@link CorrespondenceDirection}). The column default keeps existing rows valid under ddl-auto=update. */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10, columnDefinition = "varchar(10) default 'INCOMING'")
+    private CorrespondenceDirection direction = CorrespondenceDirection.INCOMING;
+
+    @Column(length = 255)
+    private String subject;
+
+    /** Department this correspondence is routed to; optional (null = not routed to a specific department). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id")
+    private Department department;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 
@@ -85,6 +98,12 @@ public class CorrespondenceRequest {
     public void setStatus(RequestStatus status) { this.status = status; }
     public String getPriority() { return priority; }
     public void setPriority(String priority) { this.priority = priority; }
+    public CorrespondenceDirection getDirection() { return direction; }
+    public void setDirection(CorrespondenceDirection direction) { this.direction = direction; }
+    public String getSubject() { return subject; }
+    public void setSubject(String subject) { this.subject = subject; }
+    public Department getDepartment() { return department; }
+    public void setDepartment(Department department) { this.department = department; }
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
     public String getRejectionReason() { return rejectionReason; }

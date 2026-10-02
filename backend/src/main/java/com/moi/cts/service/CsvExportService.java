@@ -24,7 +24,7 @@ public class CsvExportService {
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         try (PrintWriter writer = new PrintWriter(buffer, true, StandardCharsets.UTF_8)) {
             writer.println("Reference,Citizen,RegistryNumber,DocumentType,Office,Status,Priority,"
-                    + "AssignedTo,CreatedAt,DueAt,ClosedAt,Overdue");
+                    + "AssignedTo,CreatedAt,DueAt,ClosedAt,Overdue,Direction,Subject,Department");
             for (CorrespondenceRequest r : requestRepository.findAll()) {
                 writer.println(String.join(",",
                         csv(r.getReferenceNumber()),
@@ -38,7 +38,10 @@ public class CsvExportService {
                         csv(r.getCreatedAt() != null ? FMT.format(r.getCreatedAt()) : ""),
                         csv(r.getDueAt() != null ? FMT.format(r.getDueAt()) : ""),
                         csv(r.getClosedAt() != null ? FMT.format(r.getClosedAt()) : ""),
-                        csv(String.valueOf(r.isOverdue()))));
+                        csv(String.valueOf(r.isOverdue())),
+                        csv(r.getDirection() != null ? r.getDirection().name() : ""),
+                        csv(r.getSubject()),
+                        csv(r.getDepartment() != null ? r.getDepartment().getNameEn() : "")));
             }
         }
         return buffer.toByteArray();

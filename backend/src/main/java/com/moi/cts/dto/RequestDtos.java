@@ -8,17 +8,22 @@ public class RequestDtos {
     public record RequestSummaryDto(Long id, String referenceNumber, String citizenName,
                                      String documentTypeName, String status, String priority,
                                      String assignedToName, Instant dueAt, boolean overdue,
-                                     String slaStatus, Instant createdAt) {}
+                                     String slaStatus, Instant createdAt,
+                                     String direction, String subject) {}
 
     public record RequestDetailDto(Long id, String referenceNumber, CitizenDtos.CitizenDto citizen,
                                     ReferenceDtos.DocumentTypeDto documentType, ReferenceDtos.OfficeDto office,
                                     String assignedToName, Long assignedToId, String createdByName,
                                     String status, String priority, String notes, String rejectionReason,
                                     Instant createdAt, Instant submittedAt, Instant dueAt, Instant closedAt,
-                                    boolean overdue, String slaStatus, Instant breachedAt) {}
+                                    boolean overdue, String slaStatus, Instant breachedAt,
+                                    String direction, String subject, Long departmentId, String departmentName) {}
 
     public record CreateRequestRequest(@NotNull Long citizenId, @NotNull Long documentTypeId,
-                                        @NotNull Long officeId, String priority, String notes) {}
+                                        @NotNull Long officeId, String priority, String notes,
+                                        String direction,
+                                        @jakarta.validation.constraints.Size(max = 255) String subject,
+                                        Long departmentId) {}
 
     public record TransitionRequest(@NotNull String toStatus, String note, String rejectionReason) {}
 

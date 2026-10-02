@@ -30,6 +30,7 @@ public class RequestService {
     private final CitizenRepository citizenRepository;
     private final DocumentTypeRepository documentTypeRepository;
     private final OfficeRepository officeRepository;
+    private final DepartmentRepository departmentRepository;
     private final AppUserRepository userRepository;
     private final RequestStateHistoryRepository historyRepository;
     private final RequestAssignmentHistoryRepository assignmentHistoryRepository;
@@ -40,7 +41,7 @@ public class RequestService {
 
     public RequestService(CorrespondenceRequestRepository requestRepository, CitizenRepository citizenRepository,
                            DocumentTypeRepository documentTypeRepository, OfficeRepository officeRepository,
-                           AppUserRepository userRepository, RequestStateHistoryRepository historyRepository,
+                           DepartmentRepository departmentRepository, AppUserRepository userRepository, RequestStateHistoryRepository historyRepository,
                            RequestAssignmentHistoryRepository assignmentHistoryRepository,
                            WorkflowTransitionRuleRepository transitionRuleRepository,
                            NotificationRepository notificationRepository, AuditService auditService,
@@ -49,6 +50,7 @@ public class RequestService {
         this.citizenRepository = citizenRepository;
         this.documentTypeRepository = documentTypeRepository;
         this.officeRepository = officeRepository;
+        this.departmentRepository = departmentRepository;
         this.userRepository = userRepository;
         this.citizenService = citizenService;
         this.historyRepository = historyRepository;
@@ -68,6 +70,7 @@ public class RequestService {
             String like = "%" + search.trim().toLowerCase(Locale.ROOT) + "%";
             spec = spec.and((root, q, cb) -> cb.or(
                     cb.like(cb.lower(root.get("referenceNumber")), like),
+                    cb.like(cb.lower(cb.coalesce(root.<String>get("subject"), "")), like),
                     cb.like(cb.lower(root.join("citizen").get("firstNameEn")), like),
                     cb.like(cb.lower(root.join("citizen").get("lastNameEn")), like),
                     cb.like(root.join("citizen").get("registryNumber"), like)));
@@ -116,6 +119,17 @@ public class RequestService {
                 .orElseThrow(() -> new NotFoundException("Document type not found: " + request.documentTypeId()));
         Office office = officeRepository.findById(request.officeId())
                 .orElseThrow(() -> new NotFoundException("Office not found: " + request.officeId()));
+        Department department = request.departmentId() == null ? null
+                : departmentRepository.findById(request.departmentId())
+                        .orElseThrow(() -> new NotFoundException("Department not found: " + request.departmentId()));
+        CorrespondenceDirection direction = CorrespondenceDirection.INCOMING;
+        if (request.direction() != null && !request.direction().isBlank()) {
+            try {
+                direction = CorrespondenceDirection.valueOf(request.direction().trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Unknown direction: " + request.direction());
+            }
+        }
         AppUser createdBy = currentUser(actor);
 
         CorrespondenceRequest req = new CorrespondenceRequest();
@@ -127,12 +141,15 @@ public class RequestService {
         req.setStatus(RequestStatus.DRAFT);
         req.setPriority(request.priority() != null ? request.priority() : "NORMAL");
         req.setNotes(request.notes());
+        req.setDirection(direction);
+        req.setSubject(request.subject() == null || request.subject().isBlank() ? null : request.subject().trim());
+        req.setDepartment(department);
         req.setDueAt(Instant.now().plus(docType.getSlaDays(), ChronoUnit.DAYS));
         req = requestRepository.save(req);
 
         recordHistory(req, null, RequestStatus.DRAFT, createdBy, "Created");
         auditService.log("CorrespondenceRequest", req.getId(), "CREATE", createdBy,
-                "reference=" + req.getReferenceNumber());
+                "reference=" + req.getReferenceNumber() + " direction=" + direction);
         return toDetail(req);
     }
 
@@ -246,7 +263,8 @@ public class RequestService {
                 r.getCitizen().getFirstNameEn() + " " + safe(r.getCitizen().getLastNameEn()),
                 r.getDocumentType().getNameEn(), r.getStatus().name(), r.getPriority(),
                 r.getAssignedTo() != null ? r.getAssignedTo().getFullName() : null,
-                r.getDueAt(), r.isOverdue(), r.getSlaStatus().name(), r.getCreatedAt());
+                r.getDueAt(), r.isOverdue(), r.getSlaStatus().name(), r.getCreatedAt(),
+                r.getDirection().name(), r.getSubject());
     }
 
     RequestDetailDto toDetail(CorrespondenceRequest r) {
@@ -263,7 +281,10 @@ public class RequestService {
                 r.getAssignedTo() != null ? r.getAssignedTo().getId() : null,
                 r.getCreatedBy().getFullName(), r.getStatus().name(), r.getPriority(), r.getNotes(),
                 r.getRejectionReason(), r.getCreatedAt(), r.getSubmittedAt(), r.getDueAt(), r.getClosedAt(),
-                r.isOverdue(), r.getSlaStatus().name(), r.getBreachedAt());
+                r.isOverdue(), r.getSlaStatus().name(), r.getBreachedAt(),
+                r.getDirection().name(), r.getSubject(),
+                r.getDepartment() != null ? r.getDepartment().getId() : null,
+                r.getDepartment() != null ? r.getDepartment().getNameEn() : null);
     }
 
     private String safe(String s) { return s == null ? "" : s; }

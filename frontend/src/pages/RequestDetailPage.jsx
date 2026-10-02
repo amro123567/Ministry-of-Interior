@@ -228,6 +228,11 @@ export default function RequestDetailPage() {
           <Field label={t('requestDetail.citizen')}>{request.citizen.firstNameEn} {request.citizen.lastNameEn} ({request.citizen.registryNumber})</Field>
           <Field label={t('requestDetail.documentType')}>{request.documentType.nameEn}</Field>
           <Field label={t('requestDetail.office')}>{request.office.nameEn}</Field>
+          <Field label={t('requestDetail.direction')}>
+            {request.direction === 'OUTGOING' ? t('requestDetail.directionOutgoing') : t('requestDetail.directionIncoming')}
+          </Field>
+          {request.subject && <Field label={t('requestDetail.subject')}>{request.subject}</Field>}
+          {request.departmentName && <Field label={t('requestDetail.department')}>{request.departmentName}</Field>}
           <Field label={t('requestDetail.priority')}>{request.priority}</Field>
           <Field label={t('requestDetail.assignedTo')}>{request.assignedToName ?? '—'}</Field>
           <Field label={t('requestDetail.createdBy')}>{request.createdByName}</Field>

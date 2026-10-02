@@ -1530,6 +1530,56 @@ class RequestWorkflowIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    // ---- direction / subject / department ------------------------------------
+
+    @Test
+    void aRequestCanBeRegisteredAsOutgoingWithASubjectAndADepartment() throws Exception {
+        String officerToken = tokenFor("officer", "Officer1234!");
+        long citizenId = createCitizen(officerToken, "REG-900778", "Out", "Going");
+        long docTypeId = firstDocumentTypeId(officerToken);
+        long officeId = firstOfficeId(officerToken);
+
+        MvcResult depts = mockMvc.perform(get("/api/departments").header("Authorization", "Bearer " + officerToken))
+                .andExpect(status().isOk())
+                .andReturn();
+        long departmentId = objectMapper.readTree(depts.getResponse().getContentAsString()).get(0).get("id").asLong();
+
+        mockMvc.perform(post("/api/requests")
+                        .header("Authorization", "Bearer " + officerToken)
+                        .contentType("application/json")
+                        .content("{\"citizenId\":" + citizenId + ",\"documentTypeId\":" + docTypeId
+                                + ",\"officeId\":" + officeId + ",\"direction\":\"OUTGOING\""
+                                + ",\"subject\":\"Notice to citizen\",\"departmentId\":" + departmentId + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.direction").value("OUTGOING"))
+                .andExpect(jsonPath("$.subject").value("Notice to citizen"))
+                .andExpect(jsonPath("$.departmentId").value(departmentId));
+    }
+
+    @Test
+    void aRequestWithoutADirectionDefaultsToIncomingAndAnUnknownDirectionIsRejected() throws Exception {
+        String officerToken = tokenFor("officer", "Officer1234!");
+        long citizenId = createCitizen(officerToken, "REG-900779", "In", "Coming");
+        long docTypeId = firstDocumentTypeId(officerToken);
+        long officeId = firstOfficeId(officerToken);
+
+        mockMvc.perform(post("/api/requests")
+                        .header("Authorization", "Bearer " + officerToken)
+                        .contentType("application/json")
+                        .content("{\"citizenId\":" + citizenId + ",\"documentTypeId\":" + docTypeId
+                                + ",\"officeId\":" + officeId + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.direction").value("INCOMING"))
+                .andExpect(jsonPath("$.subject").doesNotExist());
+
+        mockMvc.perform(post("/api/requests")
+                        .header("Authorization", "Bearer " + officerToken)
+                        .contentType("application/json")
+                        .content("{\"citizenId\":" + citizenId + ",\"documentTypeId\":" + docTypeId
+                                + ",\"officeId\":" + officeId + ",\"direction\":\"SIDEWAYS\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
     @Test
     void loggingOutClosesTheOpenSessionLogEntry() throws Exception {
         String adminToken = tokenFor("admin", "Admin1234!");
