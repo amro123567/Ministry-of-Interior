@@ -1502,6 +1502,35 @@ class RequestWorkflowIntegrationTest {
     }
 
     @Test
+    void aViewerCannotCreateAssignOrUploadToARequest() throws Exception {
+        String officerToken = tokenFor("officer", "Officer1234!");
+        String viewerToken = tokenFor("viewer", "Viewer1234!");
+        long citizenId = createCitizen(officerToken, "REG-900777", "Viewer", "Probe");
+        long docTypeId = firstDocumentTypeId(officerToken);
+        long officeId = firstOfficeId(officerToken);
+        long requestId = createRequest(officerToken, citizenId, docTypeId, officeId);
+
+        mockMvc.perform(post("/api/requests")
+                        .header("Authorization", "Bearer " + viewerToken)
+                        .contentType("application/json")
+                        .content("{\"citizenId\":" + citizenId + ",\"documentTypeId\":" + docTypeId
+                                + ",\"officeId\":" + officeId + "}"))
+                .andExpect(status().isForbidden());
+
+        MockMultipartFile file = new MockMultipartFile("file", "x.txt", "text/plain", "hi".getBytes());
+        mockMvc.perform(multipart("/api/requests/" + requestId + "/documents")
+                        .file(file)
+                        .header("Authorization", "Bearer " + viewerToken))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(patch("/api/requests/" + requestId + "/assign")
+                        .header("Authorization", "Bearer " + viewerToken)
+                        .contentType("application/json")
+                        .content("{}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void loggingOutClosesTheOpenSessionLogEntry() throws Exception {
         String adminToken = tokenFor("admin", "Admin1234!");
         long officerId = userIdByUsername(adminToken, "officer");

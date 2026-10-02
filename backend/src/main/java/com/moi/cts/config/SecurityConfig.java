@@ -157,6 +157,15 @@ public class SecurityConfig {
                 // in DataSeeder for why OFFICER holds only the first.
                 .requestMatchers(HttpMethod.POST, "/api/payments").hasAuthority("PAYMENT_RECORD")
                 .requestMatchers(HttpMethod.PATCH, "/api/payments/*/reverse").hasAuthority("PAYMENT_REVERSE")
+                // Correspondence-request writes. Transitions are gated inside
+                // RequestService.transition(), but create, assign and attachment
+                // upload had no rule and fell through to authenticated(), so a
+                // VIEWER could write. Gate them on the request-workflow
+                // permissions (held by OFFICER/MANAGER/ADMIN, never VIEWER).
+                .requestMatchers(HttpMethod.POST, "/api/requests", "/api/requests/*/documents")
+                    .hasAnyAuthority("REQUEST_TRANSITION_SUBMIT", "REQUEST_TRANSITION_REVIEW", "REQUEST_TRANSITION_DECIDE", "REQUEST_TRANSITION_ARCHIVE")
+                .requestMatchers(HttpMethod.PATCH, "/api/requests/*/assign")
+                    .hasAnyAuthority("REQUEST_TRANSITION_SUBMIT", "REQUEST_TRANSITION_REVIEW", "REQUEST_TRANSITION_DECIDE", "REQUEST_TRANSITION_ARCHIVE")
                 .anyRequest().authenticated())
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
