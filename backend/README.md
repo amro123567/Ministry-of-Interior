@@ -47,9 +47,9 @@ With Docker, none of this is needed; see the root `README.md`.
 mvn test
 ```
 
-84 tests, all on in-memory H2:
+95 tests, all on in-memory H2:
 
-- 65 end-to-end workflow tests over the real REST API: login, refresh,
+- 70 end-to-end workflow tests over the real REST API: login, refresh,
   logout, lockout, the full request lifecycle, illegal-transition and
   wrong-permission rejection, role-based 403 checks (including a viewer being
   unable to create, upload or assign), direction/subject/department,
@@ -57,6 +57,9 @@ mvn test
   reports, CSV export and audit trails.
 - 5 JWT unit tests.
 - 14 seed-data invariant checks.
+- 6 focused tests: audit-table immutability, seeded assignment history, and the
+  workflow catalog driving request transitions (changed inside a rolled-back
+  transaction).
 
 ## Demo accounts (seeded on first boot)
 
@@ -75,12 +78,14 @@ A modular monolith organised by package under `com.moi.cts`: `config`,
 `controller`, `service`, `repository`, `entity`, `dto`, `security`.
 
 **Domain.** About 45 tables: the correspondence workflow (requests, state
-history, transition rules, assignments, SLA records, attachments,
+history, assignments, SLA records, attachments,
 notifications) plus the civil-registry model (governorates, citizens,
 lineage, family records, guardianship, transfers, amendments, certificate
 subtypes, payments).
 
-**Correspondence request.** Reference `CTS-<epoch-ms>` (unique), direction
+**Correspondence request.** Reference `CTS-YYYY-NNNNNN` (unique, a counter per
+year taken under a row lock; references created before this format were
+renumbered once at startup), direction
 (`INCOMING` / `OUTGOING`, default `INCOMING`), subject, citizen, document
 type, office, optional department, priority, status, due date, assignee.
 
@@ -90,9 +95,12 @@ type, office, optional department, priority, status, due date, assignee.
   Request creation, document upload and assignment require one of the
   request-workflow permissions, so a viewer is read-only.
 - Each status transition needs its own permission
-  (`REQUEST_TRANSITION_SUBMIT`, `_REVIEW`, `_DECIDE`, `_ARCHIVE`); the
-  legal-transition matrix is seeded data (`WorkflowTransitionRule`) checked in
-  `RequestService.transition()`.
+  (`REQUEST_TRANSITION_SUBMIT`, `_REVIEW`, `_DECIDE`, `_ARCHIVE`). Which moves
+  are legal, and the permission each needs, is read from the workflow engine
+  catalog (`WorkflowState` / `WorkflowTransition`) in
+  `RequestService.transition()`; `GET /api/requests/{id}/transitions` returns
+  the moves the caller may make now. Assigning an approved, rejected or
+  archived request is refused.
 - Access tokens last 30 minutes; refresh tokens last 7 days, rotate on use
   and can be revoked. Logout adds the token to a denylist.
 - Five failed logins lock an account for 15 minutes; every attempt is logged.
@@ -108,6 +116,10 @@ raise notifications.
 `AuditService` (request transitions, document uploads), an `@Audited` aspect
 on controller methods (downloads, citizen creation and so on), and dedicated
 logs for citizen field changes, record access, login attempts and sessions.
+`GET /api/requests/{id}/audit` returns a request's logged actions to any
+signed-in user. The six audit and history tables are append-only: Hibernate
+`@Immutable` entities, repositories with no delete methods, and MySQL
+`BEFORE UPDATE` / `BEFORE DELETE` triggers created at startup.
 
 **Documents.** Files are stored on disk (`DOCUMENTS_DIR`), metadata and a
 SHA-256 hash in the database, 15 MB limit.
@@ -115,7 +127,8 @@ SHA-256 hash in the database, 15 MB limit.
 ## Known limitations
 
 - Single service and single MySQL instance (no replica, no scheduled backups).
-- The audit log is append-only by convention, not enforced in the database.
-- Search filters by free text, status and assignee; filtering by office,
-  priority, SLA state and date range is not implemented yet.
-- The reference number is time-based rather than a readable sequence.
+- The workflow catalog drives the six built-in request statuses; a state added
+  only in the catalog cannot be reached by a request.
+- The CSV export does not yet apply the list filters.
+- Audit triggers are created on MySQL/MariaDB only; H2 (tests) relies on the
+  code-level protection.

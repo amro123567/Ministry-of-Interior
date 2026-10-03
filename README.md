@@ -20,20 +20,26 @@ available in English and Arabic (RTL).
 
 ## What the system does
 
-- **Correspondence registration** — unique reference number, direction
+- **Correspondence registration** — readable sequential reference
+  (`CTS-2026-000123`, restarting each year), direction
   (incoming / outgoing), subject, citizen, document type, office,
   department, priority, notes.
 - **Workflow** — DRAFT → SUBMITTED → UNDER_REVIEW → APPROVED / REJECTED →
-  ARCHIVED. Legal transitions are data-driven and each one requires its own
-  permission; rejection requires a reason. Every transition is recorded.
+  ARCHIVED. Legal transitions and their required permissions are read from the
+  admin-configurable workflow catalog (the UI shows only the actions the
+  signed-in user may take); rejection requires a reason. Every transition is
+  recorded. Closed requests (approved, rejected, archived) cannot be assigned.
 - **Assignment** — assign a request to a staff member, with assignment history.
 - **Due dates and SLA** — due date per request, live status (on track / due
   soon / overdue), persisted MET / BREACHED records, and a scheduled daily job.
 - **Documents** — upload and download, 15 MB limit, SHA-256 hash per file.
-- **Audit** — global audit log, per-request status history, citizen field
-  changes, record access, login attempts and sessions.
+- **Audit** — global audit log, per-request status history and activity log,
+  citizen field changes, record access, login attempts and sessions. These
+  tables are append-only: immutable entities, repositories without delete
+  methods, and MySQL triggers that reject UPDATE and DELETE.
 - **Search and reporting** — free-text search (reference, subject, citizen),
-  status filter, "assigned to me", CSV export, dashboard KPIs, reports
+  filters for status, office, priority, direction, SLA state and created date
+  range, "assigned to me", CSV export, dashboard KPIs, reports
   (throughput, aging, by type, by office, breach rate).
 - **Security** — JWT access tokens (30 min) with rotating refresh tokens
   (7 days) and a revocation denylist, account lockout after 5 failed
@@ -103,16 +109,24 @@ cd backend
 mvn test
 ```
 
-84 tests on an in-memory H2 database (no MySQL needed): 65 end-to-end
-workflow tests over the real REST API, 5 JWT unit tests and 14 seed-data
-invariant checks.
+95 tests on an in-memory H2 database (no MySQL needed): 70 end-to-end
+workflow tests over the real REST API, 5 JWT unit tests, 14 seed-data
+invariant checks, and 6 focused tests (audit immutability, seeded assignment
+history, workflow catalog driving requests).
 
 ## Documented deviations from the proposal
 
 - **Modular monolith, not microservices.** One deployable Spring Boot
   service with clear package boundaries.
 - **No MySQL primary-replica and no scheduled backups** in the Compose setup.
-- **Audit log immutability is by convention** (no database-level protection).
+- **The workflow catalog drives the six request statuses only.** Admins can
+  change which moves are legal and who may make them, but a request still
+  stores one of the six built-in statuses; a brand-new state added in the
+  catalog cannot be reached by a request.
+- **Audit triggers need MySQL.** The database-level append-only protection is
+  created at startup on MySQL/MariaDB (the Compose file starts MySQL with
+  `--log-bin-trust-function-creators=1` for this); the in-memory test database
+  relies on the code-level protection only.
 
 ## History
 
