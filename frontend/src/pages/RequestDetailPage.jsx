@@ -52,6 +52,7 @@ export default function RequestDetailPage() {
   const { t } = useLanguage()
   const [request, setRequest] = useState(null)
   const [history, setHistory] = useState([])
+  const [auditEntries, setAuditEntries] = useState([])
   const [assignments, setAssignments] = useState([])
   const [attachments, setAttachments] = useState([])
   const [users, setUsers] = useState([])
@@ -78,6 +79,7 @@ export default function RequestDetailPage() {
   const load = useCallback(() => {
     client.get(`/requests/${id}`).then((r) => setRequest(r.data))
     client.get(`/requests/${id}/history`).then((r) => setHistory(r.data))
+    client.get(`/requests/${id}/audit`).then((r) => setAuditEntries(r.data)).catch(() => setAuditEntries([]))
     client.get(`/requests/${id}/assignments`).then((r) => setAssignments(r.data))
     client.get(`/requests/${id}/documents`).then((r) => setAttachments(r.data))
     // GET /api/sla-records/{id} lazily recomputes the snapshot from the
@@ -474,6 +476,20 @@ export default function RequestDetailPage() {
             </li>
           ))}
         </ul>
+        <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mt-6 mb-2">{t('requestDetail.activityLog')}</h3>
+        {auditEntries.length === 0 ? (
+          <p className="text-sm text-slate-400">{t('requestDetail.noActivity')}</p>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {auditEntries.map((a) => (
+              <li key={a.id} className="py-3">
+                <div className="text-sm font-semibold text-slate-900">{a.action}</div>
+                <div className="text-xs text-slate-400 mt-0.5">{a.actorName} · {format(new Date(a.occurredAt), 'MMM d, yyyy p')}</div>
+                {a.details && <div className="text-sm text-slate-600 mt-1">{a.details}</div>}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   )

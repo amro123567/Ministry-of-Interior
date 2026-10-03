@@ -1,7 +1,9 @@
 package com.moi.cts.controller;
 
+import com.moi.cts.dto.MiscDtos.AuditEntryDto;
 import com.moi.cts.dto.RequestDtos.*;
 import com.moi.cts.security.AppUserPrincipal;
+import com.moi.cts.service.AuditService;
 import com.moi.cts.service.RequestService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -17,9 +19,11 @@ import java.util.List;
 public class RequestController {
 
     private final RequestService requestService;
+    private final AuditService auditService;
 
-    public RequestController(RequestService requestService) {
+    public RequestController(RequestService requestService, AuditService auditService) {
         this.requestService = requestService;
+        this.auditService = auditService;
     }
 
     @GetMapping
@@ -41,6 +45,13 @@ public class RequestController {
 
     @GetMapping("/{id}")
     public RequestDetailDto get(@PathVariable Long id) { return requestService.get(id); }
+
+    /** Logged actions on this request (assignments, uploads, transitions); readable by anyone who can read the request. */
+    @GetMapping("/{id}/audit")
+    public List<AuditEntryDto> audit(@PathVariable Long id) {
+        requestService.get(id); // 404 if the request does not exist
+        return auditService.forEntity("CorrespondenceRequest", id);
+    }
 
     @GetMapping("/{id}/history")
     public List<HistoryDto> history(@PathVariable Long id) { return requestService.history(id); }

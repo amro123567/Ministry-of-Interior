@@ -1562,6 +1562,31 @@ class RequestWorkflowIntegrationTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void theRequestActivityLogShowsAssignmentsAndIsReadableByAViewer() throws Exception {
+        String officerToken = tokenFor("officer", "Officer1234!");
+        String managerToken = tokenFor("manager", "Manager1234!");
+        String viewerToken = tokenFor("viewer", "Viewer1234!");
+        String adminToken = tokenFor("admin", "Admin1234!");
+        long assigneeId = userIdByUsername(adminToken, "officer");
+        long citizenId = createCitizen(officerToken, "REG-900780", "Activity", "Log");
+        long requestId = createRequest(officerToken, citizenId, firstDocumentTypeId(officerToken), firstOfficeId(officerToken));
+
+        mockMvc.perform(patch("/api/requests/" + requestId + "/assign")
+                        .header("Authorization", "Bearer " + managerToken)
+                        .contentType("application/json")
+                        .content("{\"userId\":" + assigneeId + "}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/requests/" + requestId + "/audit").header("Authorization", "Bearer " + viewerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.action == 'ASSIGN')]").isNotEmpty())
+                .andExpect(jsonPath("$[?(@.action == 'CREATE')]").isNotEmpty());
+
+        mockMvc.perform(get("/api/requests/999999/audit").header("Authorization", "Bearer " + viewerToken))
+                .andExpect(status().isNotFound());
+    }
+
     // ---- direction / subject / department ------------------------------------
 
     @Test
