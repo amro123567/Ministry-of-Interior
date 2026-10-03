@@ -48,16 +48,18 @@ public class ReferenceNumberService {
     @Transactional
     public String next(Instant createdAt) {
         int year = createdAt.atZone(ZoneOffset.UTC).getYear();
-        ReferenceSequence seq = sequenceRepository.lockByYear(year).orElse(null);
-        if (seq == null) {
+        // Create the year's row first if it is missing, using a plain (non-locking) check.
+        // Locking a row that does not exist yet makes MySQL take a gap lock, which would
+        // block the separate transaction that inserts it.
+        if (!sequenceRepository.existsById(year)) {
             try {
                 initializer.createIfMissing(year, highestExisting(year));
             } catch (DataIntegrityViolationException alreadyCreatedByAnotherRequest) {
                 // fine: the row exists now, we lock it below
             }
-            seq = sequenceRepository.lockByYear(year)
-                    .orElseThrow(() -> new IllegalStateException("Could not create reference counter for " + year));
         }
+        ReferenceSequence seq = sequenceRepository.lockByYear(year)
+                .orElseThrow(() -> new IllegalStateException("Could not create reference counter for " + year));
         long value = seq.getLastNumber() + 1;
         seq.setLastNumber(value);
         sequenceRepository.save(seq);
