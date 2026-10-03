@@ -1,6 +1,7 @@
 package com.moi.cts.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.Immutable;
 import java.time.Instant;
 
 /**
@@ -10,6 +11,7 @@ import java.time.Instant;
  * everyday reads, and every change to it is also recorded here so the
  * history is queryable without walking the audit log.
  */
+@Immutable
 @Entity
 @Table(name = "request_assignment_history")
 public class RequestAssignmentHistory {

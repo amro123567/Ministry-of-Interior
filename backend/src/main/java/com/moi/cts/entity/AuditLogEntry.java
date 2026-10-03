@@ -1,8 +1,10 @@
 package com.moi.cts.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.Immutable;
 import java.time.Instant;
 
+@Immutable
 @Entity
 @Table(name = "audit_log")
 public class AuditLogEntry {

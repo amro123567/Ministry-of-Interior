@@ -1,6 +1,7 @@
 package com.moi.cts.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.Immutable;
 
 import java.time.Instant;
 
@@ -21,6 +22,7 @@ import java.time.Instant;
  * a security review would want visible, and there's no user row to link
  * it to.
  */
+@Immutable
 @Entity
 @Table(name = "login_attempts")
 public class LoginAttempt {

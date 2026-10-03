@@ -1,6 +1,7 @@
 package com.moi.cts.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.Immutable;
 
 import java.time.Instant;
 
@@ -33,6 +34,7 @@ import java.time.Instant;
  * between "log nothing" and "silently block reads" for a capability
  * whose enforcement half is genuinely future work.
  */
+@Immutable
 @Entity
 @Table(name = "record_access_log")
 public class RecordAccessLog {

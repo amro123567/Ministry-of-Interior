@@ -1,6 +1,7 @@
 package com.moi.cts.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.Immutable;
 
 import java.time.Instant;
 
@@ -32,6 +33,7 @@ import java.time.Instant;
  * same reason those did: one join column type across the whole domain,
  * not a special case for this one table.
  */
+@Immutable
 @Entity
 @Table(name = "citizen_audit_log")
 public class CitizenAuditLog {
