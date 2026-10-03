@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import client from '../api/client.js'
+import { apiErrorMessage } from '../api/errors.js'
 import DistrictScopedSelect from '../components/DistrictScopedSelect.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
@@ -72,7 +73,7 @@ export default function RequestCreatePage() {
       })
       navigate(`/requests/${res.data.id}`)
     } catch (err) {
-      setError(err.response?.data?.message ?? t('requestCreate.errorGeneric'))
+      setError(apiErrorMessage(err, t('requestCreate.errorGeneric'), t))
     } finally {
       setBusy(false)
     }

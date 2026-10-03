@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { format } from 'date-fns'
 import client from '../api/client.js'
+import { apiErrorMessage } from '../api/errors.js'
 import StatusBadge, { SlaBadge, SlaRecordBadge } from '../components/StatusBadge.jsx'
 import PaymentStatusBadge from '../components/PaymentStatusBadge.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -98,7 +99,7 @@ export default function RequestDetailPage() {
       setPendingReject(false); setRejectionReason('')
       load()
     } catch (err) {
-      setError(err.response?.data?.message ?? t('requestDetail.transitionRefused'))
+      setError(apiErrorMessage(err, t('requestDetail.transitionRefused'), t))
     } finally { setBusy(false) }
   }
 
@@ -110,7 +111,7 @@ export default function RequestDetailPage() {
       setAssignNote('')
       load()
     } catch (err) {
-      setError(err.response?.data?.message ?? t('requestDetail.assignFailed'))
+      setError(apiErrorMessage(err, t('requestDetail.assignFailed'), t))
     } finally { setBusy(false) }
   }
 
@@ -124,7 +125,7 @@ export default function RequestDetailPage() {
       await client.post(`/requests/${id}/documents`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
       load()
     } catch (err) {
-      setError(err.response?.data?.message ?? t('requestDetail.uploadFailed'))
+      setError(apiErrorMessage(err, t('requestDetail.uploadFailed'), t))
     } finally { setBusy(false); e.target.value = '' }
   }
 
@@ -142,7 +143,7 @@ export default function RequestDetailPage() {
       const r = await client.post(`/sla-records/${id}/refresh`)
       setSlaRecord(r.data)
     } catch (err) {
-      setFinanceError(err.response?.data?.message ?? t('requestFinance.errorGeneric'))
+      setFinanceError(apiErrorMessage(err, t('requestFinance.errorGeneric'), t))
     } finally {
       setSlaBusy(false)
     }
@@ -178,7 +179,7 @@ export default function RequestDetailPage() {
       setAddingPayment(false)
       load()
     } catch (err) {
-      setPaymentFormError(err.response?.data?.message ?? t('requestFinance.errorGeneric'))
+      setPaymentFormError(apiErrorMessage(err, t('requestFinance.errorGeneric'), t))
     } finally {
       setPaymentBusy(false)
     }
@@ -198,7 +199,7 @@ export default function RequestDetailPage() {
       setReversingPaymentId(null); setReversalReason('')
       load()
     } catch (err) {
-      setFinanceError(err.response?.data?.message ?? t('requestFinance.errorGeneric'))
+      setFinanceError(apiErrorMessage(err, t('requestFinance.errorGeneric'), t))
     } finally {
       setReverseBusy(false)
     }

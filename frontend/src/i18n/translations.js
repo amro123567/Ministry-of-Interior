@@ -3,6 +3,7 @@
 export const translations = {
   en: {
     common: {
+      noPermission: "You don't have permission to do this. Ask a manager or administrator if you need access.",
       signIn: 'Sign In',
       signOut: 'Sign out',
       save: 'Save',
@@ -706,6 +707,7 @@ export const translations = {
 
   ar: {
     common: {
+      noPermission: 'ليس لديك صلاحية للقيام بهذا الإجراء. راجع المدير أو مسؤول النظام إذا كنت بحاجة إلى وصول.',
       signIn: 'تسجيل الدخول',
       signOut: 'تسجيل الخروج',
       save: 'حفظ',
