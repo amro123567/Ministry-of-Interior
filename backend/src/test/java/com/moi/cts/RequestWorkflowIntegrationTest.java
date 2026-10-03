@@ -1532,6 +1532,36 @@ class RequestWorkflowIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void anOpenRequestCanBeAssignedButADecidedOneCannot() throws Exception {
+        String officerToken = tokenFor("officer", "Officer1234!");
+        String managerToken = tokenFor("manager", "Manager1234!");
+        String adminToken = tokenFor("admin", "Admin1234!");
+        long assigneeId = userIdByUsername(adminToken, "officer");
+        long citizenId = createCitizen(officerToken, "REG-900779", "Assign", "Rule");
+        long requestId = createRequest(officerToken, citizenId, firstDocumentTypeId(officerToken), firstOfficeId(officerToken));
+        String body = "{\"userId\":" + assigneeId + ",\"note\":\"please handle\"}";
+
+        // Open states accept assignment.
+        mockMvc.perform(patch("/api/requests/" + requestId + "/assign")
+                        .header("Authorization", "Bearer " + managerToken)
+                        .contentType("application/json").content(body))
+                .andExpect(status().isOk());
+        transition(officerToken, requestId, "SUBMITTED", null).andExpect(status().isOk());
+        transition(managerToken, requestId, "UNDER_REVIEW", null).andExpect(status().isOk());
+        mockMvc.perform(patch("/api/requests/" + requestId + "/assign")
+                        .header("Authorization", "Bearer " + managerToken)
+                        .contentType("application/json").content(body))
+                .andExpect(status().isOk());
+
+        // Once approved, the request is closed to assignment.
+        transition(managerToken, requestId, "APPROVED", null).andExpect(status().isOk());
+        mockMvc.perform(patch("/api/requests/" + requestId + "/assign")
+                        .header("Authorization", "Bearer " + managerToken)
+                        .contentType("application/json").content(body))
+                .andExpect(status().isBadRequest());
+    }
+
     // ---- direction / subject / department ------------------------------------
 
     @Test

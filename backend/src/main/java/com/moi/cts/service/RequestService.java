@@ -214,9 +214,16 @@ public class RequestService {
     public RequestDetailDto assign(Long id, AssignRequest request, AppUserPrincipal actor) {
         // Assignment is a field on the request, independent of its workflow
         // status -- a request can be pre-assigned while still DRAFT, or
-        // reassigned later. Status changes go through transition() only,
+        // reassigned later while it is still open. Status changes go through transition() only,
         // which is where the legal-transition matrix is enforced.
         CorrespondenceRequest req = find(id);
+        // Once a request is decided or archived it is closed to further work, so it
+        // cannot be (re)assigned. Open states (DRAFT, SUBMITTED, UNDER_REVIEW) can.
+        if (req.getStatus() == RequestStatus.APPROVED || req.getStatus() == RequestStatus.REJECTED
+                || req.getStatus() == RequestStatus.ARCHIVED) {
+            throw new BadRequestException("Request " + req.getReferenceNumber() + " is "
+                    + req.getStatus() + " and can no longer be assigned.");
+        }
         AppUser assignee = userRepository.findById(request.userId())
                 .orElseThrow(() -> new NotFoundException("User not found: " + request.userId()));
         AppUser assignedBy = currentUser(actor);
