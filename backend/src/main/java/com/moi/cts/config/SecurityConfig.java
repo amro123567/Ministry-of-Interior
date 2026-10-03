@@ -125,6 +125,10 @@ public class SecurityConfig {
                 // CITIZEN_REGISTRY_DECIDE-style split. Reads stay open to
                 // any authenticated user, matching every other read in this
                 // migration.
+                // Validating a document is a decision on someone else's work, so it
+                // reuses CITIZEN_REGISTRY_DECIDE (ADMIN/MANAGER). It must come before
+                // the general documents rule below, because the first match wins.
+                .requestMatchers(HttpMethod.POST, "/api/documents/*/validations").hasAuthority("CITIZEN_REGISTRY_DECIDE")
                 .requestMatchers(HttpMethod.POST, "/api/documents/**").hasAuthority("CITIZEN_MANAGE")
                 // The workflow engine's *catalog* (states/transitions) is
                 // system configuration, not day-to-day data entry -- the

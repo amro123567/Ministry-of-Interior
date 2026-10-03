@@ -35,7 +35,9 @@ public class AuditTableProtection {
             "record_access_log",
             "login_attempts",
             "request_state_history",
-            "request_assignment_history");
+            "request_assignment_history",
+            "document_validations",
+            "physical_document_handling");
 
     private final DataSource dataSource;
     private final JdbcTemplate jdbc;

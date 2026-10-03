@@ -5,6 +5,8 @@ import com.moi.cts.entity.AuditLogEntry;
 import com.moi.cts.repository.AppendOnlyRepository;
 import com.moi.cts.repository.AuditLogRepository;
 import com.moi.cts.repository.CitizenAuditLogRepository;
+import com.moi.cts.repository.DocumentValidationRepository;
+import com.moi.cts.repository.PhysicalDocumentHandlingRepository;
 import com.moi.cts.repository.LoginAttemptRepository;
 import com.moi.cts.repository.RecordAccessLogRepository;
 import com.moi.cts.repository.RequestAssignmentHistoryRepository;
@@ -36,7 +38,8 @@ class AuditImmutabilityTest {
         List<Class<?>> repositories = List.of(
                 AuditLogRepository.class, CitizenAuditLogRepository.class,
                 RecordAccessLogRepository.class, LoginAttemptRepository.class,
-                RequestStateHistoryRepository.class, RequestAssignmentHistoryRepository.class);
+                RequestStateHistoryRepository.class, RequestAssignmentHistoryRepository.class,
+                DocumentValidationRepository.class, PhysicalDocumentHandlingRepository.class);
 
         for (Class<?> repository : repositories) {
             assertThat(AppendOnlyRepository.class).isAssignableFrom(repository);
@@ -75,6 +78,6 @@ class AuditImmutabilityTest {
     void databaseTriggersAreOnlyInstalledOnMySql() {
         // The tests run on H2, where the protection is a deliberate no-op.
         assertThat(protection.install()).isZero();
-        assertThat(AuditTableProtection.PROTECTED_TABLES).hasSize(6);
+        assertThat(AuditTableProtection.PROTECTED_TABLES).hasSize(8);
     }
 }

@@ -4,6 +4,7 @@ import { format } from 'date-fns'
 import client from '../api/client.js'
 import { kindByApiSegment } from '../documentKinds.js'
 import { SkeletonLine } from '../components/Skeleton.jsx'
+import DocumentReviewSection from '../components/DocumentReviewSection.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 
 function fmt(d) { return d ? format(new Date(d), 'MMM d, yyyy') : null }
@@ -150,6 +151,8 @@ export default function DocumentDetailPage() {
           )}
         </div>
       </div>
+
+      <DocumentReviewSection documentId={doc.id} />
     </div>
   )
 }
