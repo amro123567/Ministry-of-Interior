@@ -53,6 +53,13 @@ public class RequestController {
         return auditService.forEntity("CorrespondenceRequest", id);
     }
 
+    /** Status changes the signed-in user may make on this request now (driven by the workflow catalog). */
+    @GetMapping("/{id}/transitions")
+    public List<AvailableRequestTransitionDto> transitions(@PathVariable Long id,
+                                                          @AuthenticationPrincipal AppUserPrincipal actor) {
+        return requestService.availableTransitions(id, actor);
+    }
+
     @GetMapping("/{id}/history")
     public List<HistoryDto> history(@PathVariable Long id) { return requestService.history(id); }
 

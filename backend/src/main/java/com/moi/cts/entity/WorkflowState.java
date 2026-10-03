@@ -7,12 +7,9 @@ import jakarta.persistence.*;
  * domain 3, {@code workflow_states} -- see
  * {@code FULL_DATABASE_MIGRATION_ANALYSIS.md}'s "workflow states/
  * transitions become data an admin edits at runtime" description). This
- * is a genuinely separate catalog from {@link RequestStatus}/
- * {@link WorkflowTransitionRule}, which remain exactly as they were and
- * continue to drive the live {@code CorrespondenceRequest} workflow --
- * see this class's package-level Javadoc note in
- * {@code WorkflowEngineService} for why the two are not merged in this
- * item.
+ * is the rule catalog for {@link RequestStatus}: {@code RequestService.transition()}
+ * matches a request's status to a state by code and reads the legal moves from
+ * {@link WorkflowTransition}.
  *
  * <p>Reuses {@link ReferenceRecord} for {@code isActive}/{@code createdAt}/
  * {@code updatedAt} rather than hand-rolling those three columns again;

@@ -18,12 +18,12 @@ import java.util.stream.Collectors;
  * The admin-configurable workflow engine (ERD domain 3): an admin-edited
  * catalog of {@link WorkflowState}s and {@link WorkflowTransition}s, plus
  * a {@link WorkflowInstance} runtime that actually walks a tracked
- * subject through that catalog, permission-gated, with history --
- * see {@link WorkflowInstance}'s Javadoc for why instances are keyed by
- * ({@code entityType}, {@code entityId}) rather than by a hard FK onto
- * {@code CorrespondenceRequest}, and why {@code RequestService.
- * transition()} / {@link WorkflowTransitionRule} are deliberately left
- * untouched by this item.
+ * subject through that catalog, permission-gated, with history. The catalog
+ * also drives the live correspondence workflow: {@code RequestService.transition()}
+ * reads the legal status changes and their required permissions from the active
+ * {@link WorkflowTransition}s, matching request statuses to state codes. Instances are
+ * keyed by ({@code entityType}, {@code entityId}) so other subjects can use the same
+ * engine without a hard FK onto {@code CorrespondenceRequest}.
  *
  * <p>Two invariants are enforced here that the schema alone can't
  * express, in the same spirit as Item 2's SI-1..SI-12: at most one

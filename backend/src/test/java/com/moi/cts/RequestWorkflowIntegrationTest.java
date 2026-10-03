@@ -1587,6 +1587,32 @@ class RequestWorkflowIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    void availableTransitionsFollowTheCatalogAndTheCallersPermissions() throws Exception {
+        String officerToken = tokenFor("officer", "Officer1234!");
+        String managerToken = tokenFor("manager", "Manager1234!");
+        String viewerToken = tokenFor("viewer", "Viewer1234!");
+        long citizenId = createCitizen(officerToken, "REG-900781", "Next", "Moves");
+        long requestId = createRequest(officerToken, citizenId, firstDocumentTypeId(officerToken), firstOfficeId(officerToken));
+
+        mockMvc.perform(get("/api/requests/" + requestId + "/transitions").header("Authorization", "Bearer " + officerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].toStatus").value("SUBMITTED"))
+                .andExpect(jsonPath("$[0].labelEn").value("Submit"));
+        mockMvc.perform(get("/api/requests/" + requestId + "/transitions").header("Authorization", "Bearer " + viewerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+
+        transition(officerToken, requestId, "SUBMITTED", null).andExpect(status().isOk());
+        transition(managerToken, requestId, "UNDER_REVIEW", null).andExpect(status().isOk());
+        mockMvc.perform(get("/api/requests/" + requestId + "/transitions").header("Authorization", "Bearer " + managerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[?(@.toStatus == 'APPROVED')]").isNotEmpty())
+                .andExpect(jsonPath("$[?(@.toStatus == 'REJECTED' && @.requiresComment == true)]").isNotEmpty());
+    }
+
     // ---- direction / subject / department ------------------------------------
 
     @Test

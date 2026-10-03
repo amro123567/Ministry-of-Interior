@@ -33,6 +33,10 @@ public class RequestDtos {
 
     public record TransitionRequest(@NotNull String toStatus, String note, String rejectionReason) {}
 
+    /** One status change the signed-in user may make on a request right now, as defined by the workflow catalog. */
+    public record AvailableRequestTransitionDto(String toStatus, String actionCode, String labelEn, String labelAr,
+                                                 boolean requiresComment) {}
+
     public record AssignRequest(@NotNull Long userId, String note) {}
 
     public record HistoryDto(Long id, String fromStatus, String toStatus, String changedByName,

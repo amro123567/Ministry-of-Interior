@@ -11,22 +11,8 @@ import { useLanguage } from '../context/LanguageContext.jsx'
 const inputCls = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
 const labelCls = 'block text-sm font-semibold text-slate-700 mb-1.5'
 
-// Permission codes match the backend's WorkflowTransitionRule.requiredPermission
-// exactly (seeded in DataSeeder) -- this map used to carry a role name and
-// special-case 'ADMIN' in every hasRole() check below; now it carries the
-// same permission the backend checks, so ADMIN needs no special case here
-// either (ADMIN is simply granted every permission).
-const TRANSITIONS = {
-  DRAFT: [{ to: 'SUBMITTED', label: 'Submit', permission: 'REQUEST_TRANSITION_SUBMIT' }],
-  SUBMITTED: [{ to: 'UNDER_REVIEW', label: 'Start review', permission: 'REQUEST_TRANSITION_REVIEW' }],
-  UNDER_REVIEW: [
-    { to: 'APPROVED', label: 'Approve', permission: 'REQUEST_TRANSITION_DECIDE' },
-    { to: 'REJECTED', label: 'Reject', permission: 'REQUEST_TRANSITION_DECIDE', needsReason: true },
-  ],
-  APPROVED: [{ to: 'ARCHIVED', label: 'Archive', permission: 'REQUEST_TRANSITION_ARCHIVE' }],
-  REJECTED: [{ to: 'ARCHIVED', label: 'Archive', permission: 'REQUEST_TRANSITION_ARCHIVE' }],
-  ARCHIVED: [],
-}
+// The status changes offered on this page come from the backend (GET /requests/{id}/transitions),
+// which reads the workflow catalog and filters it by the signed-in user's permissions.
 
 const PAYMENT_METHODS = ['CASH', 'BANK_TRANSFER', 'CHEQUE', 'WAIVED']
 
@@ -53,6 +39,8 @@ export default function RequestDetailPage() {
   const [request, setRequest] = useState(null)
   const [history, setHistory] = useState([])
   const [auditEntries, setAuditEntries] = useState([])
+  const [nextTransitions, setNextTransitions] = useState([])
+  const [pendingTo, setPendingTo] = useState(null)
   const [assignments, setAssignments] = useState([])
   const [attachments, setAttachments] = useState([])
   const [users, setUsers] = useState([])
@@ -79,6 +67,7 @@ export default function RequestDetailPage() {
   const load = useCallback(() => {
     client.get(`/requests/${id}`).then((r) => setRequest(r.data))
     client.get(`/requests/${id}/history`).then((r) => setHistory(r.data))
+    client.get(`/requests/${id}/transitions`).then((r) => setNextTransitions(r.data)).catch(() => setNextTransitions([]))
     client.get(`/requests/${id}/audit`).then((r) => setAuditEntries(r.data)).catch(() => setAuditEntries([]))
     client.get(`/requests/${id}/assignments`).then((r) => setAssignments(r.data))
     client.get(`/requests/${id}/documents`).then((r) => setAttachments(r.data))
@@ -97,8 +86,8 @@ export default function RequestDetailPage() {
   async function doTransition(to, reason) {
     setBusy(true); setError(null)
     try {
-      await client.patch(`/requests/${id}/transition`, { toStatus: to, rejectionReason: reason ?? null })
-      setPendingReject(false); setRejectionReason('')
+      await client.patch(`/requests/${id}/transition`, { toStatus: to, rejectionReason: reason ?? null, note: reason ?? null })
+      setPendingReject(false); setPendingTo(null); setRejectionReason('')
       load()
     } catch (err) {
       setError(apiErrorMessage(err, t('requestDetail.transitionRefused'), t))
@@ -209,7 +198,12 @@ export default function RequestDetailPage() {
 
   if (!request) return <p className="text-sm text-slate-400">{t('common.loading')}</p>
 
-  const available = (TRANSITIONS[request.status] ?? []).filter((tr) => hasPermission(tr.permission))
+  const available = nextTransitions.map((tr) => ({
+    to: tr.toStatus,
+    label: tr.labelEn ?? tr.actionCode,
+    needsReason: tr.requiresComment || tr.toStatus === 'REJECTED',
+    destructive: tr.toStatus === 'REJECTED',
+  }))
 
   return (
     <div>
@@ -248,8 +242,8 @@ export default function RequestDetailPage() {
           <div className="flex flex-wrap gap-2.5 mb-2">
             {available.map((tr) =>
               tr.needsReason ? (
-                <button key={tr.to} type="button" disabled={busy} onClick={() => setPendingReject(true)}
-                        className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60">
+                <button key={tr.to} type="button" disabled={busy} onClick={() => { setPendingTo(tr.to); setPendingReject(true) }}
+                        className={`rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 ${tr.destructive ? 'bg-rose-600 hover:bg-rose-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
                   {t(`workflow.${tr.label}`, tr.label)}
                 </button>
               ) : (
@@ -266,7 +260,7 @@ export default function RequestDetailPage() {
             <input id="rd-reject-reason" className={inputCls} value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} />
             <div className="flex justify-end mt-2">
               <button type="button" className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
-                      disabled={!rejectionReason || busy} onClick={() => doTransition('REJECTED', rejectionReason)}>
+                      disabled={!rejectionReason || busy} onClick={() => doTransition(pendingTo ?? 'REJECTED', rejectionReason)}>
                 {t('requestDetail.confirmRejection')}
               </button>
             </div>

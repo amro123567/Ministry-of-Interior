@@ -39,7 +39,6 @@ public class DataSeeder implements CommandLineRunner {
     private final PermissionRepository permissionRepository;
     private final OfficeRepository officeRepository;
     private final DocumentTypeRepository documentTypeRepository;
-    private final WorkflowTransitionRuleRepository transitionRuleRepository;
     private final AppUserRepository userRepository;
     private final CitizenRepository citizenRepository;
     private final CorrespondenceRequestRepository requestRepository;
@@ -79,7 +78,6 @@ public class DataSeeder implements CommandLineRunner {
     public DataSeeder(RoleRepository roleRepository, PermissionRepository permissionRepository,
                        OfficeRepository officeRepository,
                        DocumentTypeRepository documentTypeRepository,
-                       WorkflowTransitionRuleRepository transitionRuleRepository,
                        AppUserRepository userRepository, CitizenRepository citizenRepository,
                        CorrespondenceRequestRepository requestRepository,
                        RequestStateHistoryRepository historyRepository,
@@ -114,7 +112,6 @@ public class DataSeeder implements CommandLineRunner {
         this.permissionRepository = permissionRepository;
         this.officeRepository = officeRepository;
         this.documentTypeRepository = documentTypeRepository;
-        this.transitionRuleRepository = transitionRuleRepository;
         this.userRepository = userRepository;
         this.citizenRepository = citizenRepository;
         this.requestRepository = requestRepository;
@@ -347,12 +344,6 @@ public class DataSeeder implements CommandLineRunner {
         DocumentType nameChangeType = documentTypeRepository.save(
                 docType("NAME_CHANGE", "Name Change Record", "سجل تغيير اسم", 15));
 
-        transitionRuleRepository.save(new WorkflowTransitionRule(RequestStatus.DRAFT, RequestStatus.SUBMITTED, transitionSubmit));
-        transitionRuleRepository.save(new WorkflowTransitionRule(RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW, transitionReview));
-        transitionRuleRepository.save(new WorkflowTransitionRule(RequestStatus.UNDER_REVIEW, RequestStatus.APPROVED, transitionDecide));
-        transitionRuleRepository.save(new WorkflowTransitionRule(RequestStatus.UNDER_REVIEW, RequestStatus.REJECTED, transitionDecide));
-        transitionRuleRepository.save(new WorkflowTransitionRule(RequestStatus.APPROVED, RequestStatus.ARCHIVED, transitionArchive));
-        transitionRuleRepository.save(new WorkflowTransitionRule(RequestStatus.REJECTED, RequestStatus.ARCHIVED, transitionArchive));
 
         AppUser adminUser = user("admin", "Admin1234!", "System Administrator", "admin@moi.gov.lb", admin, beirut);
         AppUser managerUser = user("manager", "Manager1234!", "Rana Haddad", "manager@moi.gov.lb", manager, beirut);
@@ -797,9 +788,9 @@ public class DataSeeder implements CommandLineRunner {
         nameChangeRecordRepository.save(nameChange);
 
         // ---- admin-configurable workflow engine ----------------------------
-        // Seeded to faithfully mirror the existing 6-status/6-transition
-        // request workflow (RequestStatus/WorkflowTransitionRule), which
-        // this catalog does NOT replace -- see WorkflowInstance's Javadoc.
+        // This catalog is the request workflow's rule set: RequestService.transition()
+        // reads the legal moves and their required permissions from here, matching
+        // request statuses to state codes.
         // Reuses the same 4 REQUEST_TRANSITION_* permissions seeded above
         // rather than inventing a parallel permission set.
         WorkflowState draft = workflowState("DRAFT", "Draft", "مسودة", true, false, 1, "#9CA3AF");

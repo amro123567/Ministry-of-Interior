@@ -18,11 +18,11 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Owns the correspondence workflow. The legal-transition check here is the
- * Spring-side replacement for the SQLite/MySQL trg_request_legal_transition
- * trigger and the trg_request_sla_close trigger: both are service-layer
- * logic now instead of database triggers, which is the tradeoff this
- * rewrite makes deliberately (see README "What changed and why").
+ * Owns the correspondence workflow. Which status changes are legal, and which
+ * permission each needs, is read from the admin-configurable workflow engine
+ * catalog (WorkflowState / WorkflowTransition), so editing the catalog changes
+ * what requests may do. The service-layer check replaces the old SQLite/MySQL
+ * trg_request_legal_transition trigger (see README "What changed and why").
  */
 @Service
 public class RequestService {
@@ -35,7 +35,7 @@ public class RequestService {
     private final AppUserRepository userRepository;
     private final RequestStateHistoryRepository historyRepository;
     private final RequestAssignmentHistoryRepository assignmentHistoryRepository;
-    private final WorkflowTransitionRuleRepository transitionRuleRepository;
+    private final WorkflowTransitionRepository workflowTransitionRepository;
     private final NotificationRepository notificationRepository;
     private final AuditService auditService;
     private final CitizenService citizenService;
@@ -45,7 +45,7 @@ public class RequestService {
                            DocumentTypeRepository documentTypeRepository, OfficeRepository officeRepository,
                            DepartmentRepository departmentRepository, AppUserRepository userRepository, RequestStateHistoryRepository historyRepository,
                            RequestAssignmentHistoryRepository assignmentHistoryRepository,
-                           WorkflowTransitionRuleRepository transitionRuleRepository,
+                           WorkflowTransitionRepository workflowTransitionRepository,
                            NotificationRepository notificationRepository, AuditService auditService,
                            CitizenService citizenService, ReferenceNumberService referenceNumberService) {
         this.requestRepository = requestRepository;
@@ -58,7 +58,7 @@ public class RequestService {
         this.referenceNumberService = referenceNumberService;
         this.historyRepository = historyRepository;
         this.assignmentHistoryRepository = assignmentHistoryRepository;
-        this.transitionRuleRepository = transitionRuleRepository;
+        this.workflowTransitionRepository = workflowTransitionRepository;
         this.notificationRepository = notificationRepository;
         this.auditService = auditService;
     }
@@ -248,31 +248,68 @@ public class RequestService {
         return toDetail(req);
     }
 
+    /** The status changes the signed-in user may make on this request now, read from the workflow catalog. */
+    public List<AvailableRequestTransitionDto> availableTransitions(Long id, AppUserPrincipal actor) {
+        CorrespondenceRequest req = find(id);
+        java.util.Set<String> permissions = permissionCodes(actor);
+        return workflowTransitionRepository.findActiveFromStateCode(req.getStatus().name()).stream()
+                .filter(t -> isRequestStatus(t.getToState().getCode()))
+                .filter(t -> t.isPermittedFor(permissions))
+                .map(t -> new AvailableRequestTransitionDto(t.getToState().getCode(), t.getActionCode(),
+                        t.getLabelEn(), t.getLabelAr(), t.isRequiresComment()))
+                .toList();
+    }
+
+    private java.util.Set<String> permissionCodes(AppUserPrincipal actor) {
+        return actor.getUser().getRoles().stream()
+                .flatMap(r -> r.getPermissions().stream())
+                .map(Permission::getCode)
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
+    private boolean isRequestStatus(String code) {
+        try {
+            RequestStatus.valueOf(code);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
     @Transactional
     public RequestDetailDto transition(Long id, TransitionRequest request, AppUserPrincipal actor) {
         CorrespondenceRequest req = find(id);
         RequestStatus from = req.getStatus();
         RequestStatus to = parseStatus(request.toStatus());
 
-        WorkflowTransitionRule rule = transitionRuleRepository.findByFromStatusAndToStatus(from, to)
+        // The workflow engine's catalog (admin-configurable states and transitions) decides
+        // which moves are legal and which permission each one needs. Request statuses are
+        // matched to engine states by code.
+        WorkflowTransition transition = workflowTransitionRepository
+                .findActiveByStateCodes(from.name(), to.name())
                 .orElseThrow(() -> new IllegalTransitionException(
                         "Cannot move a request from " + from + " to " + to + "."));
 
-        // Permission-based: does any role this user holds grant the
-        // permission this transition requires? There's no separate ADMIN
-        // override here any more -- ADMIN can do every transition simply
-        // because DataSeeder grants the ADMIN role every permission.
-        String requiredPermissionCode = rule.getRequiredPermission().getCode();
-        boolean actorHasPermission = actor.getUser().getRoles().stream()
-                .anyMatch(r -> r.grants(requiredPermissionCode));
-        if (!actorHasPermission) {
-            throw new IllegalTransitionException(
-                    "This transition requires the '" + requiredPermissionCode + "' permission.");
+        // Permission-based: does any role this user holds grant a permission this
+        // transition requires? There is no separate ADMIN override: ADMIN can do every
+        // transition because DataSeeder grants the ADMIN role every permission.
+        java.util.Set<String> actorPermissions = permissionCodes(actor);
+        if (!transition.isPermittedFor(actorPermissions)) {
+            String needed = transition.getRequiredPermissions().stream()
+                    .map(p -> "'" + p.getCode() + "'").sorted()
+                    .collect(java.util.stream.Collectors.joining(" or "));
+            throw new IllegalTransitionException("This transition requires the " + needed + " permission.");
         }
 
         if (to == RequestStatus.REJECTED
                 && (request.rejectionReason() == null || request.rejectionReason().isBlank())) {
             throw new BadRequestException("A rejection reason is required.");
+        }
+        // Any other transition the catalog marks as requiring a comment needs a note.
+        if (transition.isRequiresComment() && to != RequestStatus.REJECTED
+                && (request.note() == null || request.note().isBlank())
+                && (request.rejectionReason() == null || request.rejectionReason().isBlank())) {
+            throw new BadRequestException("This transition requires a comment.");
         }
 
         AppUser actorUser = currentUser(actor);
