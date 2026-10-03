@@ -44,6 +44,7 @@ public class DataSeeder implements CommandLineRunner {
     private final CitizenRepository citizenRepository;
     private final CorrespondenceRequestRepository requestRepository;
     private final RequestStateHistoryRepository historyRepository;
+    private final RequestAssignmentHistoryRepository assignmentHistoryRepository;
     private final GovernorateRepository governorateRepository;
     private final DistrictRepository districtRepository;
     private final DepartmentRepository departmentRepository;
@@ -82,6 +83,7 @@ public class DataSeeder implements CommandLineRunner {
                        AppUserRepository userRepository, CitizenRepository citizenRepository,
                        CorrespondenceRequestRepository requestRepository,
                        RequestStateHistoryRepository historyRepository,
+                       RequestAssignmentHistoryRepository assignmentHistoryRepository,
                        GovernorateRepository governorateRepository, DistrictRepository districtRepository,
                        DepartmentRepository departmentRepository, CourtRepository courtRepository,
                        ReligiousAuthorityRepository religiousAuthorityRepository,
@@ -117,6 +119,7 @@ public class DataSeeder implements CommandLineRunner {
         this.citizenRepository = citizenRepository;
         this.requestRepository = requestRepository;
         this.historyRepository = historyRepository;
+        this.assignmentHistoryRepository = assignmentHistoryRepository;
         this.governorateRepository = governorateRepository;
         this.districtRepository = districtRepository;
         this.departmentRepository = departmentRepository;
@@ -1020,5 +1023,17 @@ public class DataSeeder implements CommandLineRunner {
         h.setChangedBy(createdBy);
         h.setNote("Created (seed data)");
         historyRepository.save(h);
+
+        // A seeded assignee must also have an assignment-history row, exactly as
+        // RequestService.assign() would have written, so the history view agrees
+        // with the request's current assignee.
+        if (assignedTo != null) {
+            RequestAssignmentHistory ah = new RequestAssignmentHistory();
+            ah.setRequest(r);
+            ah.setAssignedTo(assignedTo);
+            ah.setAssignedBy(createdBy);
+            ah.setNote("Assigned (seed data)");
+            assignmentHistoryRepository.save(ah);
+        }
     }
 }
