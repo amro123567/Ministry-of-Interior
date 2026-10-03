@@ -189,10 +189,46 @@
                   "key": "assignedToMe",
                   "value": "false",
                   "description": "true = only requests assigned to the caller (optional)"
+                },
+                {
+                  "key": "officeId",
+                  "value": "",
+                  "description": "office id (optional)",
+                  "disabled": true
+                },
+                {
+                  "key": "priority",
+                  "value": "",
+                  "description": "NORMAL | HIGH | URGENT (optional)",
+                  "disabled": true
+                },
+                {
+                  "key": "direction",
+                  "value": "",
+                  "description": "INCOMING | OUTGOING (optional)",
+                  "disabled": true
+                },
+                {
+                  "key": "sla",
+                  "value": "",
+                  "description": "ON_TRACK | DUE_SOON | OVERDUE | MET | BREACHED (optional)",
+                  "disabled": true
+                },
+                {
+                  "key": "from",
+                  "value": "",
+                  "description": "created on/after this day, YYYY-MM-DD (optional)",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "description": "created on/before this day, YYYY-MM-DD (optional)",
+                  "disabled": true
                 }
               ]
             },
-            "description": "Returns RequestSummaryDto[]: id, referenceNumber, citizenName, documentTypeName, status, priority, assignedToName, dueAt, overdue, slaStatus, createdAt, direction, subject. search matches reference number, subject, citizen name or registry number."
+            "description": "Returns RequestSummaryDto[]: id, referenceNumber, citizenName, documentTypeName, status, priority, assignedToName, dueAt, overdue, slaStatus, createdAt, direction, subject. search matches reference number, subject, citizen name or registry number. Optional filters (disabled by default, enable the ones you need): officeId, priority, direction, sla, from, to (UTC days on the created date). Reference numbers look like CTS-2026-000123."
           }
         },
         {
@@ -216,6 +252,22 @@
             "method": "GET",
             "url": "{{baseUrl}}/requests/{{requestId}}/assignments",
             "description": "New: reassignment log for this request (assignedToName, assignedByName, note, assignedAt)."
+          }
+        },
+        {
+          "name": "Get available transitions",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/requests/{{requestId}}/transitions",
+            "description": "Status changes the signed-in user may make on this request right now. Read from the workflow catalog and filtered by the caller's permissions (a VIEWER gets an empty list)."
+          }
+        },
+        {
+          "name": "Get activity log",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/requests/{{requestId}}/audit",
+            "description": "Logged actions on this request (CREATE, ASSIGN, TRANSITION, DOCUMENT_UPLOAD...). Readable by any signed-in user."
           }
         },
         {
