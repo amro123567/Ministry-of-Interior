@@ -12,7 +12,7 @@ Thumbs.db
 .env
 
 # Postman local workspace and temporary work folders
-postman/
-.postman/
+/postman/
+/.postman/
 docs/postman/CTS API */
 _work_cts/
