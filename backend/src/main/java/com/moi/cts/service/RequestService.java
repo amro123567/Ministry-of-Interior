@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Locale;
@@ -61,13 +62,24 @@ public class RequestService {
     }
 
     public List<RequestSummaryDto> list(String status, String search, Boolean assignedToMe, Long actorUserId) {
+        return list(new RequestFilter(status, search, assignedToMe, null, null, null, null, null, null), actorUserId);
+    }
+
+    /**
+     * Filtered list. Every filter is optional and they combine with AND.
+     * Dates compare against createdAt and are read as UTC calendar days
+     * (from = start of that day, to = end of that day, both inclusive). The SLA
+     * filter is applied after the query because the SLA status is computed on
+     * the entity (see CorrespondenceRequest.getSlaStatus) rather than stored.
+     */
+    public List<RequestSummaryDto> list(RequestFilter f, Long actorUserId) {
         Specification<CorrespondenceRequest> spec = Specification.where(null);
-        if (status != null && !status.isBlank()) {
-            RequestStatus s = parseStatus(status);
+        if (f.status() != null && !f.status().isBlank()) {
+            RequestStatus s = parseStatus(f.status());
             spec = spec.and((root, q, cb) -> cb.equal(root.get("status"), s));
         }
-        if (search != null && !search.isBlank()) {
-            String like = "%" + search.trim().toLowerCase(Locale.ROOT) + "%";
+        if (f.search() != null && !f.search().isBlank()) {
+            String like = "%" + f.search().trim().toLowerCase(Locale.ROOT) + "%";
             spec = spec.and((root, q, cb) -> cb.or(
                     cb.like(cb.lower(root.get("referenceNumber")), like),
                     cb.like(cb.lower(cb.coalesce(root.<String>get("subject"), "")), like),
@@ -75,10 +87,53 @@ public class RequestService {
                     cb.like(cb.lower(root.join("citizen").get("lastNameEn")), like),
                     cb.like(root.join("citizen").get("registryNumber"), like)));
         }
-        if (Boolean.TRUE.equals(assignedToMe) && actorUserId != null) {
+        if (Boolean.TRUE.equals(f.assignedToMe()) && actorUserId != null) {
             spec = spec.and((root, q, cb) -> cb.equal(root.get("assignedTo").get("id"), actorUserId));
         }
-        return requestRepository.findAll(spec).stream().map(this::toSummary).toList();
+        if (f.officeId() != null) {
+            Long officeId = f.officeId();
+            spec = spec.and((root, q, cb) -> cb.equal(root.get("office").get("id"), officeId));
+        }
+        if (f.priority() != null && !f.priority().isBlank()) {
+            String priority = f.priority().trim().toUpperCase(Locale.ROOT);
+            if (!List.of("NORMAL", "HIGH", "URGENT").contains(priority)) {
+                throw new BadRequestException("Unknown priority: " + f.priority());
+            }
+            spec = spec.and((root, q, cb) -> cb.equal(root.get("priority"), priority));
+        }
+        if (f.direction() != null && !f.direction().isBlank()) {
+            CorrespondenceDirection direction;
+            try {
+                direction = CorrespondenceDirection.valueOf(f.direction().trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Unknown direction: " + f.direction());
+            }
+            spec = spec.and((root, q, cb) -> cb.equal(root.get("direction"), direction));
+        }
+        if (f.from() != null) {
+            Instant start = f.from().atStartOfDay(ZoneOffset.UTC).toInstant();
+            spec = spec.and((root, q, cb) -> cb.greaterThanOrEqualTo(root.<Instant>get("createdAt"), start));
+        }
+        if (f.to() != null) {
+            Instant endExclusive = f.to().plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+            spec = spec.and((root, q, cb) -> cb.lessThan(root.<Instant>get("createdAt"), endExclusive));
+        }
+        if (f.from() != null && f.to() != null && f.to().isBefore(f.from())) {
+            throw new BadRequestException("The 'to' date cannot be before the 'from' date.");
+        }
+        SlaStatus slaWanted = null;
+        if (f.sla() != null && !f.sla().isBlank()) {
+            try {
+                slaWanted = SlaStatus.valueOf(f.sla().trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Unknown SLA status: " + f.sla());
+            }
+        }
+        final SlaStatus sla = slaWanted;
+        return requestRepository.findAll(spec).stream()
+                .filter(r -> sla == null || r.getSlaStatus() == sla)
+                .map(this::toSummary)
+                .toList();
     }
 
     /** SLA-status list views for {@link com.moi.cts.controller.SlaController}. */

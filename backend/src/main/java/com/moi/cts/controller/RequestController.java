@@ -4,10 +4,12 @@ import com.moi.cts.dto.RequestDtos.*;
 import com.moi.cts.security.AppUserPrincipal;
 import com.moi.cts.service.RequestService;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -24,8 +26,17 @@ public class RequestController {
     public List<RequestSummaryDto> list(@RequestParam(required = false) String status,
                                          @RequestParam(required = false) String search,
                                          @RequestParam(required = false) Boolean assignedToMe,
+                                         @RequestParam(required = false) Long officeId,
+                                         @RequestParam(required = false) String priority,
+                                         @RequestParam(required = false) String direction,
+                                         @RequestParam(required = false) String sla,
+                                         @RequestParam(required = false)
+                                         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                                         @RequestParam(required = false)
+                                         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
                                          @AuthenticationPrincipal AppUserPrincipal actor) {
-        return requestService.list(status, search, assignedToMe, actor != null ? actor.getId() : null);
+        return requestService.list(new RequestFilter(status, search, assignedToMe, officeId,
+                priority, direction, sla, from, to), actor != null ? actor.getId() : null);
     }
 
     @GetMapping("/{id}")

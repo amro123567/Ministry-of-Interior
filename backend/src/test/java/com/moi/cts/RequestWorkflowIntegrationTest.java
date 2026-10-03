@@ -1581,6 +1581,43 @@ class RequestWorkflowIntegrationTest {
     }
 
     @Test
+    void theRequestListCanBeNarrowedByOfficePriorityDirectionSlaAndDateRange() throws Exception {
+        String token = tokenFor("officer", "Officer1234!");
+        long citizenId = createCitizen(token, "REG-900881", "Fil", "Ter");
+        long docTypeId = firstDocumentTypeId(token);
+        long officeId = firstOfficeId(token);
+        long urgentOut = createRequestWith(token, citizenId, docTypeId, officeId, "URGENT", "OUTGOING", "filtertoken out");
+        long normalIn = createRequestWith(token, citizenId, docTypeId, officeId, "NORMAL", "INCOMING", "filtertoken in");
+
+        String q = "search=filtertoken";
+        assertThat(requestIds(token, q)).containsExactlyInAnyOrder(urgentOut, normalIn);
+
+        assertThat(requestIds(token, q + "&priority=urgent")).containsExactly(urgentOut);
+        assertThat(requestIds(token, q + "&priority=NORMAL")).containsExactly(normalIn);
+        assertThat(requestIds(token, q + "&direction=INCOMING")).containsExactly(normalIn);
+        assertThat(requestIds(token, q + "&direction=outgoing")).containsExactly(urgentOut);
+        assertThat(requestIds(token, q + "&officeId=" + officeId)).containsExactlyInAnyOrder(urgentOut, normalIn);
+        assertThat(requestIds(token, q + "&officeId=999999")).isEmpty();
+        assertThat(requestIds(token, q + "&priority=URGENT&direction=INCOMING")).isEmpty();
+
+        String today = java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString();
+        String yesterday = java.time.LocalDate.now(java.time.ZoneOffset.UTC).minusDays(1).toString();
+        String tomorrow = java.time.LocalDate.now(java.time.ZoneOffset.UTC).plusDays(1).toString();
+        assertThat(requestIds(token, q + "&from=" + today + "&to=" + today)).containsExactlyInAnyOrder(urgentOut, normalIn);
+        assertThat(requestIds(token, q + "&to=" + yesterday)).isEmpty();
+        assertThat(requestIds(token, q + "&from=" + tomorrow)).isEmpty();
+
+        assertThat(requestIds(token, q + "&sla=ON_TRACK")).containsExactlyInAnyOrder(urgentOut, normalIn);
+        assertThat(requestIds(token, q + "&sla=OVERDUE")).isEmpty();
+
+        for (String bad : new String[]{"priority=BOGUS", "direction=SIDEWAYS", "sla=SOMETIMES",
+                "from=" + today + "&to=" + yesterday}) {
+            mockMvc.perform(get("/api/requests?" + bad).header("Authorization", "Bearer " + token))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Test
     void loggingOutClosesTheOpenSessionLogEntry() throws Exception {
         String adminToken = tokenFor("admin", "Admin1234!");
         long officerId = userIdByUsername(adminToken, "officer");
@@ -1711,6 +1748,29 @@ class RequestWorkflowIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asLong();
+    }
+
+    private long createRequestWith(String token, long citizenId, long docTypeId, long officeId,
+                                    String priority, String direction, String subject) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/requests")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType("application/json")
+                        .content("{\"citizenId\":" + citizenId + ",\"documentTypeId\":" + docTypeId
+                                + ",\"officeId\":" + officeId + ",\"priority\":\"" + priority
+                                + "\",\"direction\":\"" + direction + "\",\"subject\":\"" + subject + "\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asLong();
+    }
+
+    private java.util.Set<Long> requestIds(String token, String query) throws Exception {
+        MvcResult result = mockMvc.perform(get("/api/requests?" + query).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andReturn();
+        java.util.Set<Long> ids = new java.util.HashSet<>();
+        for (JsonNode n : objectMapper.readTree(result.getResponse().getContentAsString())) {
+            ids.add(n.get("id").asLong());
+        }
+        return ids;
     }
 
     private long createRequest(String token, long citizenId, long docTypeId, long officeId) throws Exception {

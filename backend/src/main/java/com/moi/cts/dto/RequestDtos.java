@@ -2,8 +2,14 @@ package com.moi.cts.dto;
 
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
+import java.time.LocalDate;
 
 public class RequestDtos {
+
+    /** Optional search filters for the request list; any field may be null. */
+    public record RequestFilter(String status, String search, Boolean assignedToMe, Long officeId,
+                                String priority, String direction, String sla,
+                                LocalDate from, LocalDate to) {}
 
     public record RequestSummaryDto(Long id, String referenceNumber, String citizenName,
                                      String documentTypeName, String status, String priority,

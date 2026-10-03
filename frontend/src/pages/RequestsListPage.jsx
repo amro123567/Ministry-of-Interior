@@ -9,6 +9,8 @@ import { useLanguage } from '../context/LanguageContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const STATUSES = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'ARCHIVED']
+const PRIORITIES = ['NORMAL', 'HIGH', 'URGENT']
+const SLA_STATES = ['ON_TRACK', 'DUE_SOON', 'OVERDUE']
 const inputCls = 'rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
 
 export default function RequestsListPage() {
@@ -19,6 +21,13 @@ export default function RequestsListPage() {
   const [status, setStatus] = useState('')
   const [search, setSearch] = useState(searchParams.get('q') || '')
   const [assignedToMe, setAssignedToMe] = useState(false)
+  const [officeId, setOfficeId] = useState('')
+  const [priority, setPriority] = useState('')
+  const [direction, setDirection] = useState('')
+  const [sla, setSla] = useState('')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const [offices, setOffices] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -29,6 +38,17 @@ export default function RequestsListPage() {
     setSearch((current) => (current === q ? current : q))
   }, [searchParams])
 
+  useEffect(() => {
+    client.get('/offices').then((r) => setOffices(r.data)).catch(() => setOffices([]))
+  }, [])
+
+  const anyFilter = Boolean(status || assignedToMe || officeId || priority || direction || sla || from || to)
+
+  function clearFilters() {
+    setStatus(''); setAssignedToMe(false); setOfficeId(''); setPriority('')
+    setDirection(''); setSla(''); setFrom(''); setTo('')
+  }
+
   const load = useCallback(() => {
     setLoading(true)
     client.get('/requests', {
@@ -36,12 +56,18 @@ export default function RequestsListPage() {
         status: status || undefined,
         search: search || undefined,
         assignedToMe: assignedToMe || undefined,
+        officeId: officeId || undefined,
+        priority: priority || undefined,
+        direction: direction || undefined,
+        sla: sla || undefined,
+        from: from || undefined,
+        to: to || undefined,
       },
     })
       .then((r) => setRequests(r.data))
       .catch(() => setError(t('requests.couldNotLoad')))
       .finally(() => setLoading(false))
-  }, [status, search, assignedToMe, t])
+  }, [status, search, assignedToMe, officeId, priority, direction, sla, from, to, t])
 
   useEffect(() => { load() }, [load])
 
@@ -110,6 +136,45 @@ export default function RequestsListPage() {
         >
           {t('requests.assignedToMe')}
         </button>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-2.5 mb-5">
+        <select value={officeId} onChange={(e) => setOfficeId(e.target.value)} className={`${inputCls} w-[200px]`} aria-label={t('requests.filterOffice')}>
+          <option value="">{t('requests.allOffices')}</option>
+          {offices.map((o) => (
+            <option key={o.id} value={o.id}>{document.dir === 'rtl' && o.nameAr ? o.nameAr : o.nameEn}</option>
+          ))}
+        </select>
+        <select value={priority} onChange={(e) => setPriority(e.target.value)} className={`${inputCls} w-[160px]`} aria-label={t('requests.filterPriority')}>
+          <option value="">{t('requests.allPriorities')}</option>
+          {PRIORITIES.map((p) => <option key={p} value={p}>{t(`requests.priority.${p}`, p)}</option>)}
+        </select>
+        <select value={direction} onChange={(e) => setDirection(e.target.value)} className={`${inputCls} w-[160px]`} aria-label={t('requests.colDirection')}>
+          <option value="">{t('requests.allDirections')}</option>
+          <option value="INCOMING">{t('requests.directionIncoming')}</option>
+          <option value="OUTGOING">{t('requests.directionOutgoing')}</option>
+        </select>
+        <select value={sla} onChange={(e) => setSla(e.target.value)} className={`${inputCls} w-[160px]`} aria-label={t('requests.filterSla')}>
+          <option value="">{t('requests.allSla')}</option>
+          {SLA_STATES.map((x) => <option key={x} value={x}>{t(`sla.${x}`, x)}</option>)}
+        </select>
+        <label className="flex flex-col text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          {t('requests.dateFrom')}
+          <input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} className={`${inputCls} mt-1 normal-case font-normal`} />
+        </label>
+        <label className="flex flex-col text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          {t('requests.dateTo')}
+          <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} className={`${inputCls} mt-1 normal-case font-normal`} />
+        </label>
+        {anyFilter && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            {t('requests.clearFilters')}
+          </button>
+        )}
       </div>
 
       {error && (
