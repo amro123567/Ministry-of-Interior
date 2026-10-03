@@ -152,7 +152,7 @@ export default function DocumentDetailPage() {
         </div>
       </div>
 
-      <DocumentReviewSection documentId={doc.id} />
+      <DocumentReviewSection documentId={doc.id} documentTypeId={doc.documentTypeId} />
     </div>
   )
 }

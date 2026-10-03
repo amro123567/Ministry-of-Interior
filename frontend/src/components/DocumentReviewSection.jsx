@@ -18,10 +18,11 @@ function when(d) { return d ? format(new Date(d), 'MMM d, yyyy HH:mm') : '' }
 // Validation sign-offs and the physical chain of custody for one document (FR-11).
 // Anyone signed in can read it; validating needs CITIZEN_REGISTRY_DECIDE and recording
 // custody needs CITIZEN_MANAGE -- the same permissions the API enforces.
-export default function DocumentReviewSection({ documentId }) {
+export default function DocumentReviewSection({ documentId, documentTypeId }) {
   const { t } = useLanguage()
   const { hasPermission } = useAuth()
   const [review, setReview] = useState(null)
+  const [authorities, setAuthorities] = useState([])
   const [error, setError] = useState(null)
   const [formError, setFormError] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -38,6 +39,13 @@ export default function DocumentReviewSection({ documentId }) {
   }, [documentId, t])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    if (!documentTypeId) return
+    client.get(`/document-types/${documentTypeId}/authorities`)
+      .then((r) => setAuthorities(r.data.authorities))
+      .catch(() => setAuthorities([]))
+  }, [documentTypeId])
 
   async function submit(path, body, reset) {
     setBusy(true)
@@ -63,6 +71,12 @@ export default function DocumentReviewSection({ documentId }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+      {authorities.length > 0 && (
+        <p className="lg:col-span-2 text-sm text-slate-600">
+          <span className="font-semibold text-slate-800">{t('documentReview.authorisedBy')}: </span>
+          {authorities.map((a) => t(`documentReview.authority.${a}`, a)).join(' · ')}
+        </p>
+      )}
       <section className="rounded-xl border border-slate-200 bg-white p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-bold text-slate-900">{t('documentReview.validationTitle')}</h2>

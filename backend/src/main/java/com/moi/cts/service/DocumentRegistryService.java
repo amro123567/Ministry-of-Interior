@@ -40,6 +40,7 @@ public class DocumentRegistryService {
     private final ReligiousAuthorityRepository religiousAuthorityRepository;
     private final CivilStatusAmendmentRepository amendmentRepository;
     private final AppUserRepository userRepository;
+    private final DocumentTypeAuthorityService authorityService;
 
     public DocumentRegistryService(DocumentRepository documentRepository,
                                     BirthCertificateRepository birthCertificateRepository,
@@ -54,7 +55,8 @@ public class DocumentRegistryService {
                                     CourtRepository courtRepository,
                                     ReligiousAuthorityRepository religiousAuthorityRepository,
                                     CivilStatusAmendmentRepository amendmentRepository,
-                                    AppUserRepository userRepository) {
+                                    AppUserRepository userRepository,
+                                    DocumentTypeAuthorityService authorityService) {
         this.documentRepository = documentRepository;
         this.birthCertificateRepository = birthCertificateRepository;
         this.marriageCertificateRepository = marriageCertificateRepository;
@@ -71,6 +73,7 @@ public class DocumentRegistryService {
         this.religiousAuthorityRepository = religiousAuthorityRepository;
         this.amendmentRepository = amendmentRepository;
         this.userRepository = userRepository;
+        this.authorityService = authorityService;
     }
 
     // ==== generic supertype ================================================
@@ -91,6 +94,7 @@ public class DocumentRegistryService {
                 request.issueDate(), request.issuingOfficeId(), actor);
         if (request.attestedByMukhtarId() != null) {
             doc.setAttestedByMukhtar(findMukhtar(request.attestedByMukhtarId()));
+            authorityService.requireAllowed(doc.getDocumentType(), AuthorityKind.MUKHTAR);
         }
         doc.setStatus(DocumentStatus.ISSUED);
         doc = documentRepository.save(doc);
@@ -140,9 +144,13 @@ public class DocumentRegistryService {
         cert.setWifeNameSnapshot(wife.getFirstNameEn() + " " + wife.getLastNameEn());
         cert.setMarriageDate(request.marriageDate());
         cert.setMarriagePlace(request.marriagePlace());
-        if (request.courtId() != null) cert.setCourt(findCourt(request.courtId()));
+        if (request.courtId() != null) {
+            cert.setCourt(findCourt(request.courtId()));
+            authorityService.requireAllowed(doc.getDocumentType(), AuthorityKind.COURT);
+        }
         if (request.religiousAuthorityId() != null) {
             cert.setReligiousAuthority(findReligiousAuthority(request.religiousAuthorityId()));
+            authorityService.requireAllowed(doc.getDocumentType(), AuthorityKind.RELIGIOUS_AUTHORITY);
         }
         cert.setContractNumber(request.contractNumber());
         cert.setDowryAmount(request.dowryAmount());
@@ -186,7 +194,10 @@ public class DocumentRegistryService {
         cert.setWife(marriage.getWife());
         cert.setDivorceDate(request.divorceDate());
         cert.setDivorcePlace(request.divorcePlace());
-        if (request.courtId() != null) cert.setCourt(findCourt(request.courtId()));
+        if (request.courtId() != null) {
+            cert.setCourt(findCourt(request.courtId()));
+            authorityService.requireAllowed(doc.getDocumentType(), AuthorityKind.COURT);
+        }
         cert.setCourtDecisionNumber(request.courtDecisionNumber());
         cert.setDivorceType(parseDivorceType(request.divorceType()));
         cert.setDivorceReason(request.divorceReason());
@@ -196,6 +207,7 @@ public class DocumentRegistryService {
         cert.setSettlementCurrency(request.settlementCurrency());
         if (request.religiousAuthorityId() != null) {
             cert.setReligiousAuthority(findReligiousAuthority(request.religiousAuthorityId()));
+            authorityService.requireAllowed(doc.getDocumentType(), AuthorityKind.RELIGIOUS_AUTHORITY);
         }
         cert.setShariaCourtApproval(request.shariaCourtApproval());
         cert.setStatus(RecordStatus.ACTIVE);

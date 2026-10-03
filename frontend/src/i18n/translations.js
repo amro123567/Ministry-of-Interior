@@ -302,6 +302,8 @@ export const translations = {
     },
     documentReview: {
       validationTitle: 'Validation',
+      authorisedBy: 'Can be authorised by',
+      authority: { OFFICE: 'Civil status office', COURT: 'Court', RELIGIOUS_AUTHORITY: 'Religious authority', MUKHTAR: 'Mukhtar' },
       custodyTitle: 'Physical custody',
       noValidations: 'Nobody has validated this document yet.',
       noCustody: 'No custody events recorded for the paper original.',
@@ -1023,6 +1025,8 @@ export const translations = {
     },
     documentReview: {
       validationTitle: 'التحقق',
+      authorisedBy: 'جهات الإصدار المسموحة',
+      authority: { OFFICE: 'دائرة النفوس', COURT: 'محكمة', RELIGIOUS_AUTHORITY: 'مرجع ديني', MUKHTAR: 'مختار' },
       custodyTitle: 'الحيازة المادية',
       noValidations: 'لم يتحقق أحد من هذه الوثيقة بعد.',
       noCustody: 'لا توجد حركات حيازة مسجّلة للأصل الورقي.',
