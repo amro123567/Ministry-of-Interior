@@ -39,6 +39,7 @@ public class RequestService {
     private final NotificationRepository notificationRepository;
     private final AuditService auditService;
     private final CitizenService citizenService;
+    private final ReferenceNumberService referenceNumberService;
 
     public RequestService(CorrespondenceRequestRepository requestRepository, CitizenRepository citizenRepository,
                            DocumentTypeRepository documentTypeRepository, OfficeRepository officeRepository,
@@ -46,7 +47,7 @@ public class RequestService {
                            RequestAssignmentHistoryRepository assignmentHistoryRepository,
                            WorkflowTransitionRuleRepository transitionRuleRepository,
                            NotificationRepository notificationRepository, AuditService auditService,
-                           CitizenService citizenService) {
+                           CitizenService citizenService, ReferenceNumberService referenceNumberService) {
         this.requestRepository = requestRepository;
         this.citizenRepository = citizenRepository;
         this.documentTypeRepository = documentTypeRepository;
@@ -54,6 +55,7 @@ public class RequestService {
         this.departmentRepository = departmentRepository;
         this.userRepository = userRepository;
         this.citizenService = citizenService;
+        this.referenceNumberService = referenceNumberService;
         this.historyRepository = historyRepository;
         this.assignmentHistoryRepository = assignmentHistoryRepository;
         this.transitionRuleRepository = transitionRuleRepository;
@@ -188,7 +190,7 @@ public class RequestService {
         AppUser createdBy = currentUser(actor);
 
         CorrespondenceRequest req = new CorrespondenceRequest();
-        req.setReferenceNumber(generateReferenceNumber());
+        req.setReferenceNumber(referenceNumberService.next(Instant.now()));
         req.setCitizen(citizen);
         req.setDocumentType(docType);
         req.setOffice(office);
@@ -307,10 +309,6 @@ public class RequestService {
         } catch (IllegalArgumentException e) {
             throw new BadRequestException("Unknown status: " + raw);
         }
-    }
-
-    private String generateReferenceNumber() {
-        return "CTS-" + Instant.now().toEpochMilli();
     }
 
     private RequestSummaryDto toSummary(CorrespondenceRequest r) {

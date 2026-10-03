@@ -32,6 +32,8 @@ class RequestWorkflowIntegrationTest {
 
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
+    @Autowired com.moi.cts.service.ReferenceNumberService referenceNumberService;
+    @Autowired com.moi.cts.repository.CorrespondenceRequestRepository requestRepository;
 
     private String tokenFor(String username, String password) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/auth/login")
@@ -295,7 +297,7 @@ class RequestWorkflowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("correspondence_requests.csv")))
                 .andReturn();
-        assertThat(result.getResponse().getContentAsString()).contains("CTS-DEMO-1");
+        assertThat(result.getResponse().getContentAsString()).containsPattern("CTS-\\d{4}-\\d{6}");
     }
 
     // ---- audit ----------------------------------------------------------------
@@ -1618,6 +1620,42 @@ class RequestWorkflowIntegrationTest {
     }
 
     @Test
+    void referencesAreReadableSequentialAndOldOnesGetRenumbered() throws Exception {
+        String token = tokenFor("officer", "Officer1234!");
+        long citizenId = createCitizen(token, "REG-900883", "Seq", "Uence");
+        long docTypeId = firstDocumentTypeId(token);
+        long officeId = firstOfficeId(token);
+
+        // everything already in the database (seed data included) is in the new format
+        MvcResult all = mockMvc.perform(get("/api/requests").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andReturn();
+        for (JsonNode n : objectMapper.readTree(all.getResponse().getContentAsString())) {
+            assertThat(n.get("referenceNumber").asText())
+                    .matches(com.moi.cts.service.ReferenceNumberService.FORMAT);
+        }
+
+        long a = createRequest(token, citizenId, docTypeId, officeId);
+        long b = createRequest(token, citizenId, docTypeId, officeId);
+        java.util.regex.Matcher ma = com.moi.cts.service.ReferenceNumberService.FORMAT.matcher(referenceOf(token, a));
+        java.util.regex.Matcher mb = com.moi.cts.service.ReferenceNumberService.FORMAT.matcher(referenceOf(token, b));
+        assertThat(ma.matches()).isTrue();
+        assertThat(mb.matches()).isTrue();
+        assertThat(ma.group(1)).isEqualTo(String.valueOf(java.time.Year.now(java.time.ZoneOffset.UTC).getValue()));
+        assertThat(mb.group(1)).isEqualTo(ma.group(1));
+        assertThat(Long.parseLong(mb.group(2))).isEqualTo(Long.parseLong(ma.group(2)) + 1);
+
+        // a request that still carries an old-style reference is converted, continuing the counter
+        var legacy = requestRepository.findById(a).orElseThrow();
+        legacy.setReferenceNumber("CTS-1790053649915");
+        requestRepository.saveAndFlush(legacy);
+        assertThat(referenceNumberService.renumberLegacy()).isEqualTo(1);
+        java.util.regex.Matcher fixed = com.moi.cts.service.ReferenceNumberService.FORMAT.matcher(referenceOf(token, a));
+        assertThat(fixed.matches()).isTrue();
+        assertThat(Long.parseLong(fixed.group(2))).isEqualTo(Long.parseLong(mb.group(2)) + 1);
+        assertThat(referenceNumberService.renumberLegacy()).isZero();
+    }
+
+    @Test
     void loggingOutClosesTheOpenSessionLogEntry() throws Exception {
         String adminToken = tokenFor("admin", "Admin1234!");
         long officerId = userIdByUsername(adminToken, "officer");
@@ -1771,6 +1809,12 @@ class RequestWorkflowIntegrationTest {
             ids.add(n.get("id").asLong());
         }
         return ids;
+    }
+
+    private String referenceOf(String token, long requestId) throws Exception {
+        MvcResult result = mockMvc.perform(get("/api/requests/" + requestId).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andReturn();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("referenceNumber").asText();
     }
 
     private long createRequest(String token, long citizenId, long docTypeId, long officeId) throws Exception {
