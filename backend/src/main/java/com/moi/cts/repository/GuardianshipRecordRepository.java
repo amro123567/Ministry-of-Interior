@@ -10,6 +10,4 @@ public interface GuardianshipRecordRepository extends JpaRepository<Guardianship
     // "who is this minor's guardian" -- the primary query per the design
     // docs' own index rationale for this table.
     List<GuardianshipRecord> findByMinorCitizenIdAndStatus(Long minorCitizenId, GuardianshipStatus status);
-
-    List<GuardianshipRecord> findByMinorCitizenId(Long minorCitizenId);
 }

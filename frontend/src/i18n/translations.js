@@ -36,7 +36,6 @@ export const translations = {
       ministry: 'Ministry of Interior and Municipalities',
       system: 'Correspondence Tracking System',
       support: 'Support',
-      hotline: 'Internal helpdesk',
       rights: 'All rights reserved.',
       internal: 'Internal system — authorized personnel only.',
     },
@@ -145,7 +144,6 @@ export const translations = {
       saveLineage: 'Save lineage',
       savingLineage: 'Saving…',
       lineageUpdateError: 'Could not update lineage.',
-      lineageUpdated: 'Lineage updated.',
     },
     citizenCreate: {
       title: 'Register New Citizen',
@@ -759,7 +757,6 @@ export const translations = {
       ministry: 'وزارة الداخلية والبلديات',
       system: 'نظام تتبع المراسلات',
       support: 'الدعم الفني',
-      hotline: 'الدعم الداخلي',
       rights: 'جميع الحقوق محفوظة.',
       internal: 'نظام داخلي — يقتصر استخدامه على الموظفين المخوّلين.',
     },
@@ -868,7 +865,6 @@ export const translations = {
       saveLineage: 'حفظ النسب',
       savingLineage: 'جارٍ الحفظ…',
       lineageUpdateError: 'تعذّر تحديث النسب.',
-      lineageUpdated: 'تم تحديث النسب.',
     },
     citizenCreate: {
       title: 'تسجيل مواطن جديد',

@@ -6,5 +6,4 @@ import java.util.List;
 
 public interface CitizenAuditLogRepository extends AppendOnlyRepository<CitizenAuditLog, Long> {
     List<CitizenAuditLog> findByCitizenIdOrderByChangedAtDesc(Long citizenId);
-    List<CitizenAuditLog> findByChangedByIdOrderByChangedAtDesc(Long changedById);
 }

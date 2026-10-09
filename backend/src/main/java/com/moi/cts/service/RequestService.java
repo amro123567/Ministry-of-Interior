@@ -389,12 +389,4 @@ public class RequestService {
     }
 
     private String safe(String s) { return s == null ? "" : s; }
-
-    List<CorrespondenceRequest> rawList(String status, String search) {
-        Specification<CorrespondenceRequest> spec = Specification.where(null);
-        if (status != null && !status.isBlank()) {
-            spec = spec.and((root, q, cb) -> cb.equal(root.get("status"), parseStatus(status)));
-        }
-        return requestRepository.findAll(spec);
-    }
 }
