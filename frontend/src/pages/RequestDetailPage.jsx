@@ -25,6 +25,36 @@ function Field({ label, children }) {
   )
 }
 
+// Visual progress of the request through its lifecycle. REJECTED and
+// APPROVED share the "decision" step; the label shows whichever applies.
+const LIFECYCLE = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'DECISION', 'ARCHIVED']
+
+function Stepper({ status, t }) {
+  const current = ['APPROVED', 'REJECTED'].includes(status) ? 3 : LIFECYCLE.indexOf(status)
+  return (
+    <ol className="flex items-center" aria-label={t('requestDetail.progress')}>
+      {LIFECYCLE.map((step, i) => {
+        const done = i < current
+        const active = i === current
+        const rejected = step === 'DECISION' && status === 'REJECTED'
+        const label = step === 'DECISION' ? t(`status.${status === 'REJECTED' ? 'REJECTED' : 'APPROVED'}`) : t(`status.${step}`, step)
+        const dot = rejected && active ? 'bg-rose-600 text-white'
+          : active ? 'bg-indigo-600 text-white'
+          : done ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'
+        return (
+          <li key={step} className={`flex items-center ${i < LIFECYCLE.length - 1 ? 'flex-1' : ''}`} aria-current={active ? 'step' : undefined}>
+            <div className="flex flex-col items-center gap-1.5 min-w-[64px]">
+              <span className={`h-7 w-7 rounded-full grid place-items-center text-xs font-bold ${dot}`}>{done ? '✓' : i + 1}</span>
+              <span className={`text-[11px] text-center leading-tight ${active ? 'font-bold text-slate-900' : 'text-slate-500'}`}>{label}</span>
+            </div>
+            {i < LIFECYCLE.length - 1 && <div className={`h-0.5 flex-1 mx-1 mb-5 ${done ? 'bg-emerald-400' : 'bg-slate-200'}`} />}
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
 // The request detail page -- restyled to the same Tailwind conventions as
 // every other screen (it was the last of two pages still on the pre-
 // Tailwind CSS classes; see PROJECT_STATE's Item 6 discrepancy note) while
@@ -223,6 +253,40 @@ export default function RequestDetailPage() {
       )}
 
       <div className="rounded-xl border border-slate-200 bg-white p-5 mb-4">
+        <Stepper status={request.status} t={t} />
+        <div className={available.length > 0 || pendingReject ? 'mt-4 pt-4 border-t border-slate-100' : 'hidden'}>
+        {available.length > 0 && (
+          <div className="flex flex-wrap gap-2.5 mb-0">
+            {available.map((tr) =>
+              tr.needsReason ? (
+                <button key={tr.to} type="button" disabled={busy} onClick={() => { setPendingTo(tr.to); setPendingReject(true) }}
+                        className={`rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 ${tr.destructive ? 'bg-rose-600 hover:bg-rose-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+                  {t(`workflow.${tr.label}`, tr.label)}
+                </button>
+              ) : (
+                <button key={tr.to} type="button" disabled={busy} onClick={() => doTransition(tr.to)}
+                        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
+                  {t(`workflow.${tr.label}`, tr.label)}
+                </button>
+              ))}
+          </div>
+        )}
+        {pendingReject && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 mb-0">
+            <label className={labelCls} htmlFor="rd-reject-reason">{t('requestDetail.rejectionReason')}</label>
+            <input id="rd-reject-reason" className={inputCls} value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} />
+            <div className="flex justify-end mt-2">
+              <button type="button" className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
+                      disabled={!rejectionReason || busy} onClick={() => doTransition(pendingTo ?? 'REJECTED', rejectionReason)}>
+                {t('requestDetail.confirmRejection')}
+              </button>
+            </div>
+          </div>
+        )}
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-5 mb-4">
         <h2 className="text-sm font-bold text-slate-900 mb-4">{t('requestDetail.details')}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
           <Field label={t('requestDetail.citizen')}>{request.citizen.firstNameEn} {request.citizen.lastNameEn} ({request.citizen.registryNumber})</Field>
@@ -241,34 +305,6 @@ export default function RequestDetailPage() {
           {request.notes && <Field label={t('requestDetail.notes')}>{request.notes}</Field>}
         </div>
 
-        {available.length > 0 && (
-          <div className="flex flex-wrap gap-2.5 mb-2">
-            {available.map((tr) =>
-              tr.needsReason ? (
-                <button key={tr.to} type="button" disabled={busy} onClick={() => { setPendingTo(tr.to); setPendingReject(true) }}
-                        className={`rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 ${tr.destructive ? 'bg-rose-600 hover:bg-rose-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
-                  {t(`workflow.${tr.label}`, tr.label)}
-                </button>
-              ) : (
-                <button key={tr.to} type="button" disabled={busy} onClick={() => doTransition(tr.to)}
-                        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
-                  {t(`workflow.${tr.label}`, tr.label)}
-                </button>
-              ))}
-          </div>
-        )}
-        {pendingReject && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 mb-2">
-            <label className={labelCls} htmlFor="rd-reject-reason">{t('requestDetail.rejectionReason')}</label>
-            <input id="rd-reject-reason" className={inputCls} value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} />
-            <div className="flex justify-end mt-2">
-              <button type="button" className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
-                      disabled={!rejectionReason || busy} onClick={() => doTransition(pendingTo ?? 'REJECTED', rejectionReason)}>
-                {t('requestDetail.confirmRejection')}
-              </button>
-            </div>
-          </div>
-        )}
 
         {hasPermission('USER_VIEW') && !CLOSED_STATUSES.includes(request.status) && (
           <div className="rounded-lg border border-slate-200 p-4 mt-2">

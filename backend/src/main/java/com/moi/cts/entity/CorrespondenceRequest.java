@@ -120,7 +120,9 @@ public class CorrespondenceRequest {
     public void setBreachedAt(Instant breachedAt) { this.breachedAt = breachedAt; }
 
     public boolean isOverdue() {
+        // A draft has not been submitted yet, so its SLA clock is not running.
         return dueAt != null && closedAt == null
+                && status != RequestStatus.DRAFT
                 && status != RequestStatus.ARCHIVED && status != RequestStatus.REJECTED
                 && Instant.now().isAfter(dueAt);
     }
@@ -137,7 +139,7 @@ public class CorrespondenceRequest {
     public SlaStatus getSlaStatus() {
         if (dueAt == null) return SlaStatus.ON_TRACK;
         if (isOverdue()) return SlaStatus.OVERDUE;
-        boolean open = closedAt == null && status != RequestStatus.ARCHIVED && status != RequestStatus.REJECTED;
+        boolean open = closedAt == null && status != RequestStatus.DRAFT && status != RequestStatus.ARCHIVED && status != RequestStatus.REJECTED;
         if (open && Instant.now().isAfter(dueAt.minus(48, ChronoUnit.HOURS))) {
             return SlaStatus.DUE_SOON;
         }

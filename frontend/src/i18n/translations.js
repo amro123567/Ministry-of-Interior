@@ -27,6 +27,7 @@ export const translations = {
       workflow: 'Workflow',
       users: 'Users',
       auditLog: 'Audit',
+      admin: 'Admin',
       reports: 'Reports',
       searchPlaceholder: 'Search correspondence…',
       home: 'Home',
@@ -68,6 +69,11 @@ export const translations = {
       couldNotLoad: 'Could not load the dashboard.',
     },
     requests: {
+      showing: 'Showing',
+      of: 'of',
+      perPage: 'Per page',
+      prev: 'Previous',
+      next: 'Next',
       colDirection: 'Direction',
       directionIncoming: 'Incoming',
       directionOutgoing: 'Outgoing',
@@ -508,6 +514,7 @@ export const translations = {
       errorGeneric: 'Could not create the request.',
     },
     requestDetail: {
+      progress: 'Request progress',
       direction: 'Direction',
       directionIncoming: 'Incoming',
       directionOutgoing: 'Outgoing',
@@ -577,6 +584,8 @@ export const translations = {
       Archive: 'Archive',
     },
     adminUsers: {
+      newUser: 'New user',
+      cancel: 'Cancel',
       title: 'Users & roles',
       staffAccounts: 'Staff accounts',
       colUsername: 'Username',
@@ -748,6 +757,7 @@ export const translations = {
       workflow: 'محرك سير العمل',
       users: 'المستخدمون',
       auditLog: 'سجلّ التدقيق',
+      admin: 'الإدارة',
       reports: 'التقارير',
       searchPlaceholder: 'ابحث في المراسلات…',
       home: 'الرئيسية',
@@ -789,6 +799,11 @@ export const translations = {
       couldNotLoad: 'تعذّر تحميل لوحة التحكم.',
     },
     requests: {
+      showing: 'عرض',
+      of: 'من',
+      perPage: 'لكل صفحة',
+      prev: 'السابق',
+      next: 'التالي',
       colDirection: 'الاتجاه',
       directionIncoming: 'وارد',
       directionOutgoing: 'صادر',
@@ -1222,6 +1237,7 @@ export const translations = {
       errorGeneric: 'تعذّر إنشاء الطلب.',
     },
     requestDetail: {
+      progress: 'مراحل المعاملة',
       direction: 'الاتجاه',
       directionIncoming: 'وارد',
       directionOutgoing: 'صادر',
@@ -1291,6 +1307,8 @@ export const translations = {
       Archive: 'أرشفة',
     },
     adminUsers: {
+      newUser: 'مستخدم جديد',
+      cancel: 'إلغاء',
       title: 'المستخدمون والصلاحيات',
       staffAccounts: 'حسابات الموظفين',
       colUsername: 'اسم المستخدم',

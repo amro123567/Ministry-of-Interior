@@ -27,6 +27,7 @@ export default function AdminUsersPage() {
   const [form, setForm] = useState({ username: '', password: '', fullName: '', email: '', roleName: '', officeId: '' })
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [showForm, setShowForm] = useState(false)
 
   function reload() {
     client.get('/users').then((r) => setUsers(r.data))
@@ -47,6 +48,7 @@ export default function AdminUsersPage() {
       await client.post('/users', { ...form, officeId: form.officeId ? Number(form.officeId) : null })
       setForm((f) => ({ ...f, username: '', password: '', fullName: '', email: '' }))
       reload()
+      setShowForm(false)
     } catch (err) {
       setError(err.response?.data?.message ?? t('adminUsers.errorGeneric'))
     } finally { setBusy(false) }
@@ -54,11 +56,19 @@ export default function AdminUsersPage() {
 
   return (
     <div>
-      <div className="mb-5">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-slate-900">{t('adminUsers.title')}</h1>
+        <button
+          type="button"
+          onClick={() => { setShowForm((v) => !v); setError(null) }}
+          aria-expanded={showForm}
+          className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
+        >
+          {showForm ? t('adminUsers.cancel') : t('adminUsers.newUser')}
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-4 items-start">
+      <div className={`grid grid-cols-1 gap-4 items-start ${showForm ? 'lg:grid-cols-[1fr_380px]' : ''}`}>
         <div className="rounded-xl border border-slate-200 bg-white p-5">
           <h2 className="text-sm font-bold text-slate-900 mb-4">{t('adminUsers.staffAccounts')}</h2>
           <div className="overflow-x-auto">
@@ -105,6 +115,7 @@ export default function AdminUsersPage() {
           </div>
         </div>
 
+        {showForm && (
         <form className="rounded-xl border border-slate-200 bg-white p-5" onSubmit={handleSubmit}>
           <h2 className="text-sm font-bold text-slate-900 mb-4">{t('adminUsers.createUser')}</h2>
           {error && (
@@ -152,6 +163,7 @@ export default function AdminUsersPage() {
             {busy ? t('adminUsers.creating') : t('adminUsers.create')}
           </button>
         </form>
+        )}
       </div>
     </div>
   )

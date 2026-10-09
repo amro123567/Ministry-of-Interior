@@ -13,30 +13,49 @@ const PRIORITIES = ['NORMAL', 'HIGH', 'URGENT']
 const SLA_STATES = ['ON_TRACK', 'DUE_SOON', 'OVERDUE']
 const inputCls = 'rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
 
+const PAGE_SIZES = [10, 25, 50]
+// Column key -> how to read a sortable value from a row.
+const SORTERS = {
+  referenceNumber: (r) => r.referenceNumber ?? '',
+  direction: (r) => r.direction ?? '',
+  citizenName: (r) => (r.citizenName ?? '').toLowerCase(),
+  documentTypeName: (r) => (r.documentTypeName ?? '').toLowerCase(),
+  status: (r) => r.status ?? '',
+  assignedToName: (r) => (r.assignedToName ?? '').toLowerCase(),
+  dueAt: (r) => (r.dueAt ? new Date(r.dueAt).getTime() : Number.POSITIVE_INFINITY),
+}
+
 export default function RequestsListPage() {
   const { t } = useLanguage()
   const { hasPermission } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const [requests, setRequests] = useState([])
-  const [status, setStatus] = useState('')
-  const [search, setSearch] = useState(searchParams.get('q') || '')
-  const [assignedToMe, setAssignedToMe] = useState(false)
-  const [officeId, setOfficeId] = useState('')
-  const [priority, setPriority] = useState('')
-  const [direction, setDirection] = useState('')
-  const [sla, setSla] = useState('')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
   const [offices, setOffices] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [sort, setSort] = useState({ key: null, dir: 'asc' })
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
-  // The header's global search links here as /requests?q=... -- pick up a
-  // change to that param without fighting the user's own typing below.
-  useEffect(() => {
-    const q = searchParams.get('q') || ''
-    setSearch((current) => (current === q ? current : q))
-  }, [searchParams])
+  // The URL is the single source of truth for filters, so dashboard cards,
+  // the header search and bookmarks all open this page pre-filtered.
+  const get = (k) => searchParams.get(k) || ''
+  const status = get('status')
+  const search = get('q')
+  const assignedToMe = get('mine') === '1'
+  const officeId = get('office')
+  const priority = get('priority')
+  const direction = get('direction')
+  const sla = get('sla')
+  const from = get('from')
+  const to = get('to')
+
+  function setParam(key, value) {
+    const next = new URLSearchParams(searchParams)
+    if (value) next.set(key, value)
+    else next.delete(key)
+    setSearchParams(next, { replace: true })
+  }
 
   useEffect(() => {
     client.get('/offices').then((r) => setOffices(r.data)).catch(() => setOffices([]))
@@ -45,8 +64,9 @@ export default function RequestsListPage() {
   const anyFilter = Boolean(status || assignedToMe || officeId || priority || direction || sla || from || to)
 
   function clearFilters() {
-    setStatus(''); setAssignedToMe(false); setOfficeId(''); setPriority('')
-    setDirection(''); setSla(''); setFrom(''); setTo('')
+    const next = new URLSearchParams()
+    if (search) next.set('q', search)
+    setSearchParams(next, { replace: true })
   }
 
   // One source of truth for the active filters: the list and the CSV export both use it.
@@ -64,21 +84,14 @@ export default function RequestsListPage() {
 
   const load = useCallback(() => {
     setLoading(true)
+    setError(null)
     client.get('/requests', { params: filterParams })
-      .then((r) => setRequests(r.data))
+      .then((r) => { setRequests(r.data); setPage(1) })
       .catch(() => setError(t('requests.couldNotLoad')))
       .finally(() => setLoading(false))
   }, [filterParams, t])
 
   useEffect(() => { load() }, [load])
-
-  function handleSearchChange(value) {
-    setSearch(value)
-    const next = new URLSearchParams(searchParams)
-    if (value) next.set('q', value)
-    else next.delete('q')
-    setSearchParams(next, { replace: true })
-  }
 
   async function exportCsv() {
     const res = await client.get('/requests/export', { params: filterParams, responseType: 'blob' })
@@ -88,6 +101,43 @@ export default function RequestsListPage() {
     a.download = 'correspondence_requests.csv'
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  function toggleSort(key) {
+    setSort((cur) => (cur.key === key ? { key, dir: cur.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
+    setPage(1)
+  }
+
+  const sorted = useMemo(() => {
+    if (!sort.key) return requests
+    const read = SORTERS[sort.key]
+    const factor = sort.dir === 'asc' ? 1 : -1
+    return [...requests].sort((x, y) => {
+      const a = read(x); const b = read(y)
+      return a < b ? -factor : a > b ? factor : 0
+    })
+  }, [requests, sort])
+
+  const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
+  const currentPage = Math.min(page, pageCount)
+  const visible = sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
+  function SortHeader({ k, label }) {
+    const active = sort.key === k
+    return (
+      <th
+        scope="col"
+        aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+        className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200"
+      >
+        <button type="button" onClick={() => toggleSort(k)} className="inline-flex items-center gap-1 uppercase tracking-wide hover:text-slate-900">
+          {label}
+          <span aria-hidden="true" className={active ? 'text-indigo-600' : 'text-slate-300'}>
+            {active ? (sort.dir === 'asc' ? '▲' : '▼') : '↕'}
+          </span>
+        </button>
+      </th>
+    )
   }
 
   const showEmpty = !loading && !error && requests.length === 0
@@ -115,20 +165,49 @@ export default function RequestsListPage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2.5 mb-5">
+      <div className="rounded-xl border border-slate-200 bg-white p-3 mb-5 flex flex-wrap items-end gap-2.5">
         <input
           placeholder={t('requests.searchPlaceholder')}
+          aria-label={t('requests.searchPlaceholder')}
           value={search}
-          onChange={(e) => handleSearchChange(e.target.value)}
+          onChange={(e) => setParam('q', e.target.value)}
           className={`${inputCls} flex-1 min-w-[220px]`}
         />
-        <select value={status} onChange={(e) => setStatus(e.target.value)} className={`${inputCls} w-[200px]`}>
+        <select value={status} onChange={(e) => setParam('status', e.target.value)} className={`${inputCls} w-auto`} aria-label={t('requests.colStatus')}>
           <option value="">{t('requests.allStatuses')}</option>
           {STATUSES.map((s) => <option key={s} value={s}>{t(`status.${s}`, s)}</option>)}
         </select>
+        <select value={officeId} onChange={(e) => setParam('office', e.target.value)} className={`${inputCls} w-auto max-w-[200px]`} aria-label={t('requests.filterOffice')}>
+          <option value="">{t('requests.allOffices')}</option>
+          {offices.map((o) => (
+            <option key={o.id} value={o.id}>{document.dir === 'rtl' && o.nameAr ? o.nameAr : o.nameEn}</option>
+          ))}
+        </select>
+        <select value={priority} onChange={(e) => setParam('priority', e.target.value)} className={`${inputCls} w-auto`} aria-label={t('requests.filterPriority')}>
+          <option value="">{t('requests.allPriorities')}</option>
+          {PRIORITIES.map((p) => <option key={p} value={p}>{t(`requests.priority.${p}`, p)}</option>)}
+        </select>
+        <select value={direction} onChange={(e) => setParam('direction', e.target.value)} className={`${inputCls} w-auto`} aria-label={t('requests.colDirection')}>
+          <option value="">{t('requests.allDirections')}</option>
+          <option value="INCOMING">{t('requests.directionIncoming')}</option>
+          <option value="OUTGOING">{t('requests.directionOutgoing')}</option>
+        </select>
+        <select value={sla} onChange={(e) => setParam('sla', e.target.value)} className={`${inputCls} w-auto`} aria-label={t('requests.filterSla')}>
+          <option value="">{t('requests.allSla')}</option>
+          {SLA_STATES.map((x) => <option key={x} value={x}>{t(`sla.${x}`, x)}</option>)}
+        </select>
+        <label className="flex flex-col text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          {t('requests.dateFrom')}
+          <input type="date" value={from} max={to || undefined} onChange={(e) => setParam('from', e.target.value)} className={`${inputCls} mt-1 normal-case font-normal`} />
+        </label>
+        <label className="flex flex-col text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          {t('requests.dateTo')}
+          <input type="date" value={to} min={from || undefined} onChange={(e) => setParam('to', e.target.value)} className={`${inputCls} mt-1 normal-case font-normal`} />
+        </label>
         <button
           type="button"
-          onClick={() => setAssignedToMe((v) => !v)}
+          onClick={() => setParam('mine', assignedToMe ? '' : '1')}
+          aria-pressed={assignedToMe}
           className={`rounded-lg px-4 py-2.5 text-sm font-semibold border transition-colors ${
             assignedToMe
               ? 'bg-indigo-600 border-indigo-600 text-white'
@@ -137,36 +216,6 @@ export default function RequestsListPage() {
         >
           {t('requests.assignedToMe')}
         </button>
-      </div>
-
-      <div className="flex flex-wrap items-end gap-2.5 mb-5">
-        <select value={officeId} onChange={(e) => setOfficeId(e.target.value)} className={`${inputCls} w-[200px]`} aria-label={t('requests.filterOffice')}>
-          <option value="">{t('requests.allOffices')}</option>
-          {offices.map((o) => (
-            <option key={o.id} value={o.id}>{document.dir === 'rtl' && o.nameAr ? o.nameAr : o.nameEn}</option>
-          ))}
-        </select>
-        <select value={priority} onChange={(e) => setPriority(e.target.value)} className={`${inputCls} w-[160px]`} aria-label={t('requests.filterPriority')}>
-          <option value="">{t('requests.allPriorities')}</option>
-          {PRIORITIES.map((p) => <option key={p} value={p}>{t(`requests.priority.${p}`, p)}</option>)}
-        </select>
-        <select value={direction} onChange={(e) => setDirection(e.target.value)} className={`${inputCls} w-[160px]`} aria-label={t('requests.colDirection')}>
-          <option value="">{t('requests.allDirections')}</option>
-          <option value="INCOMING">{t('requests.directionIncoming')}</option>
-          <option value="OUTGOING">{t('requests.directionOutgoing')}</option>
-        </select>
-        <select value={sla} onChange={(e) => setSla(e.target.value)} className={`${inputCls} w-[160px]`} aria-label={t('requests.filterSla')}>
-          <option value="">{t('requests.allSla')}</option>
-          {SLA_STATES.map((x) => <option key={x} value={x}>{t(`sla.${x}`, x)}</option>)}
-        </select>
-        <label className="flex flex-col text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-          {t('requests.dateFrom')}
-          <input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} className={`${inputCls} mt-1 normal-case font-normal`} />
-        </label>
-        <label className="flex flex-col text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-          {t('requests.dateTo')}
-          <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} className={`${inputCls} mt-1 normal-case font-normal`} />
-        </label>
         {anyFilter && (
           <button
             type="button"
@@ -195,20 +244,20 @@ export default function RequestsListPage() {
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-slate-50">
-                    <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('requests.colReference')}</th>
-                    <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('requests.colDirection')}</th>
-                    <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('requests.colCitizen')}</th>
-                    <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('requests.colDocType')}</th>
-                    <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('requests.colStatus')}</th>
-                    <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('requests.colAssignedTo')}</th>
-                    <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('requests.colDue')}</th>
+                    <SortHeader k="referenceNumber" label={t('requests.colReference')} />
+                    <SortHeader k="direction" label={t('requests.colDirection')} />
+                    <SortHeader k="citizenName" label={t('requests.colCitizen')} />
+                    <SortHeader k="documentTypeName" label={t('requests.colDocType')} />
+                    <SortHeader k="status" label={t('requests.colStatus')} />
+                    <SortHeader k="assignedToName" label={t('requests.colAssignedTo')} />
+                    <SortHeader k="dueAt" label={t('requests.colDue')} />
                     <th className="text-end text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200" aria-hidden="true"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <SkeletonTableRows rows={6} cols={8} />
-                  ) : requests.map((r) => (
+                  ) : visible.map((r) => (
                     <tr key={r.id} className="hover:bg-slate-50 border-b border-slate-100 last:border-0">
                       <td className="px-4 py-3.5 font-semibold text-indigo-600">
                         <Link to={`/requests/${r.id}`}>{r.referenceNumber}</Link>
@@ -255,7 +304,7 @@ export default function RequestsListPage() {
               ? Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="h-28 rounded-xl border border-slate-200 bg-slate-100 animate-pulse" />
               ))
-              : requests.map((r) => (
+              : visible.map((r) => (
                 <Link
                   to={`/requests/${r.id}`}
                   key={r.id}
@@ -277,6 +326,31 @@ export default function RequestsListPage() {
                 </Link>
               ))}
           </div>
+
+          {!loading && sorted.length > 0 && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
+              <span>
+                {t('requests.showing')} {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, sorted.length)} {t('requests.of')} {sorted.length}
+              </span>
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-2">
+                  {t('requests.perPage')}
+                  <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1) }} className={`${inputCls} py-1.5`}>
+                    {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </label>
+                <button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 font-semibold hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed">
+                  {t('requests.prev')}
+                </button>
+                <span>{currentPage} / {pageCount}</span>
+                <button type="button" disabled={currentPage >= pageCount} onClick={() => setPage(currentPage + 1)}
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 font-semibold hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed">
+                  {t('requests.next')}
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

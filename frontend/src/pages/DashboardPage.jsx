@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { FileText, AlertTriangle, Clock, CheckCircle2, Gauge } from 'lucide-react'
 import client from '../api/client.js'
@@ -15,9 +15,15 @@ const KPI_TINTS = {
   sky: 'bg-sky-50 text-sky-700',
 }
 
-function KpiCard({ icon: Icon, value, label, tint, valueClassName = 'text-slate-900' }) {
+function KpiCard({ icon: Icon, value, label, tint, valueClassName = 'text-slate-900', to }) {
+  const Wrapper = to ? Link : 'div'
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col gap-3.5">
+    <Wrapper
+      {...(to ? { to } : {})}
+      className={`rounded-xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col gap-3.5 ${
+        to ? 'transition-colors hover:border-indigo-300 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300' : ''
+      }`}
+    >
       <div className={`h-10 w-10 rounded-[10px] grid place-items-center ${KPI_TINTS[tint]}`}>
         <Icon size={20} />
       </div>
@@ -25,12 +31,13 @@ function KpiCard({ icon: Icon, value, label, tint, valueClassName = 'text-slate-
         <div className={`text-2xl font-extrabold ${valueClassName}`}>{value}</div>
         <div className="text-sm text-slate-500 mt-0.5">{label}</div>
       </div>
-    </div>
+    </Wrapper>
   )
 }
 
 export default function DashboardPage() {
   const { t } = useLanguage()
+  const navigate = useNavigate()
   const [summary, setSummary] = useState(null)
   const [error, setError] = useState(null)
 
@@ -70,9 +77,9 @@ export default function DashboardPage() {
       <h1 className="text-xl font-bold text-slate-900 mb-5">{t('dashboard.title')}</h1>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-        <KpiCard icon={FileText} value={summary.total} label={t('dashboard.totalRequests')} tint="indigo" />
-        <KpiCard icon={AlertTriangle} value={summary.overdueCount} label={t('dashboard.overdue')} tint="red" valueClassName="text-red-600" />
-        <KpiCard icon={Clock} value={summary.dueSoonCount} label={t('dashboard.dueSoon')} tint="amber" valueClassName="text-amber-600" />
+        <KpiCard icon={FileText} value={summary.total} label={t('dashboard.totalRequests')} tint="indigo" to="/requests" />
+        <KpiCard icon={AlertTriangle} value={summary.overdueCount} label={t('dashboard.overdue')} tint="red" valueClassName="text-red-600" to="/requests?sla=OVERDUE" />
+        <KpiCard icon={Clock} value={summary.dueSoonCount} label={t('dashboard.dueSoon')} tint="amber" valueClassName="text-amber-600" to="/requests?sla=DUE_SOON" />
         <KpiCard icon={CheckCircle2} value={summary.closedThisWeek} label={t('dashboard.closedThisWeek')} tint="emerald" />
         <KpiCard icon={Gauge} value={`${summary.avgResolutionHours}h`} label={t('dashboard.avgResolution')} tint="sky" />
       </div>
@@ -86,7 +93,7 @@ export default function DashboardPage() {
               <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
               <YAxis type="category" dataKey="label" width={110} tick={{ fontSize: 13, fill: '#475569' }} axisLine={false} tickLine={false} />
               <Tooltip formatter={(value) => [value, t('dashboard.totalRequests')]} cursor={{ fill: '#f8fafc' }} />
-              <Bar dataKey="count" radius={[6, 6, 6, 6]} maxBarSize={22}>
+              <Bar dataKey="count" radius={[6, 6, 6, 6]} maxBarSize={22} cursor="pointer" onClick={(d) => d?.status && navigate(`/requests?status=${d.status}`)}>
                 {chartData.map((entry) => (
                   <Cell key={entry.status} fill={STATUS_COLORS[entry.status] ?? '#94a3b8'} />
                 ))}

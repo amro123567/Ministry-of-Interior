@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutGrid, Mail, CirclePlus, IdCard, Workflow, Users, ScrollText, BarChart3, Search, ChevronDown, LogOut, Menu, X } from 'lucide-react'
+import { LayoutGrid, Mail, CirclePlus, IdCard, Workflow, Users, ScrollText, BarChart3, Search, Settings, ChevronDown, LogOut, Menu, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import LangToggle from './LangToggle.jsx'
@@ -19,17 +19,20 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [adminOpen, setAdminOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const menuRef = useRef(null)
   const searchRef = useRef(null)
+  const adminRef = useRef(null)
 
   useEffect(() => {
     function onClickOutside(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false)
       if (searchRef.current && !searchRef.current.contains(e.target)) setSearchOpen(false)
+      if (adminRef.current && !adminRef.current.contains(e.target)) setAdminOpen(false)
     }
     function onEscape(e) {
-      if (e.key === 'Escape') { setMenuOpen(false); setMobileOpen(false); setSearchOpen(false) }
+      if (e.key === 'Escape') { setMenuOpen(false); setMobileOpen(false); setSearchOpen(false); setAdminOpen(false) }
     }
     document.addEventListener('mousedown', onClickOutside)
     document.addEventListener('keydown', onEscape)
@@ -81,10 +84,18 @@ export default function Navbar() {
     // USER_MANAGE, checked inline on the page itself), so this link isn't
     // hidden from anyone who can actually use what's behind it.
     { to: '/workflow', end: false, label: t('nav.workflow'), icon: Workflow },
+  ]
+
+  // Administration links are grouped under one dropdown on desktop so a
+  // full-permission admin's bar never outgrows the header (it used to scroll
+  // sideways at 1280px). The mobile menu still lists every link flat.
+  const adminLinks = [
     ...(hasPermission('REPORTS_VIEW') ? [{ to: '/reports', end: false, label: t('nav.reports'), icon: BarChart3 }] : []),
     ...(hasPermission('USER_MANAGE') ? [{ to: '/admin/users', end: false, label: t('nav.users'), icon: Users }] : []),
     ...(hasPermission('AUDIT_VIEW') ? [{ to: '/admin/audit', end: false, label: t('nav.auditLog'), icon: ScrollText }] : []),
   ]
+
+  const allLinks = [...links, ...adminLinks]
 
   const navLinkCls = ({ isActive }) =>
     `flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
@@ -129,13 +140,38 @@ export default function Navbar() {
           <span className="sr-only">{t('nav.brand')}</span>
         </NavLink>
 
-        <nav className="hidden xl:flex items-center gap-1 min-w-0 overflow-x-auto">
+        <nav className="hidden xl:flex items-center gap-1 min-w-0">
           {links.map(({ to, end, label, icon: Icon }) => (
             <NavLink key={to} to={to} end={end} className={navLinkCls}>
               <Icon size={16} className="flex-shrink-0" />
               {label}
             </NavLink>
           ))}
+          {adminLinks.length > 0 && (
+            <div className="relative" ref={adminRef}>
+              <button
+                type="button"
+                onClick={() => setAdminOpen((v) => !v)}
+                aria-haspopup="true"
+                aria-expanded={adminOpen}
+                className="flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+              >
+                <Settings size={16} className="flex-shrink-0" />
+                {t('nav.admin')}
+                <ChevronDown size={14} className={`text-slate-400 transition-transform ${adminOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {adminOpen && (
+                <div className="absolute start-0 top-[calc(100%+8px)] w-48 rounded-xl border border-slate-200 bg-white p-1 shadow-lg z-30">
+                  {adminLinks.map(({ to, end, label, icon: Icon }) => (
+                    <NavLink key={to} to={to} end={end} onClick={() => setAdminOpen(false)} className={navLinkCls}>
+                      <Icon size={16} className="flex-shrink-0" />
+                      {label}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </nav>
 
         <div className="flex items-center gap-3 ms-auto flex-shrink-0">
@@ -210,7 +246,7 @@ export default function Navbar() {
         <div className="xl:hidden border-t border-slate-200 bg-white px-5 sm:px-8 py-3">
           <SearchForm className="md:hidden mb-3" />
           <nav className="flex flex-col gap-1">
-            {links.map(({ to, end, label, icon: Icon }) => (
+            {allLinks.map(({ to, end, label, icon: Icon }) => (
               <NavLink key={to} to={to} end={end} onClick={() => setMobileOpen(false)} className={navLinkCls}>
                 <Icon size={18} className="flex-shrink-0" />
                 {label}

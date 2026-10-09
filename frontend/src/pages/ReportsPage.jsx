@@ -8,6 +8,17 @@ import client from '../api/client.js'
 import { SkeletonLine } from '../components/Skeleton.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 
+// The backend labels each weekly window "Oct 2" (English). Re-render it with
+// the browser's own month names so the chart follows the selected language.
+const EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+function localizeWeekLabel(label, lang) {
+  const m = /^([A-Za-z]{3}) (\d{1,2})$/.exec(label ?? '')
+  if (!m || lang === 'en') return label
+  const month = EN_MONTHS.indexOf(m[1])
+  if (month < 0) return label
+  return new Intl.DateTimeFormat(lang, { month: 'short', day: 'numeric' }).format(new Date(2024, month, Number(m[2])))
+}
+
 // Same wide-hue-spread categorical set already used for status colors
 // elsewhere in the app (StatusBadge.jsx's STATUS_COLORS), reused here so
 // the aging buckets read as distinct without introducing a new, unvetted
@@ -40,7 +51,7 @@ function Card({ title, children }) {
 }
 
 export default function ReportsPage() {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
 
@@ -92,9 +103,9 @@ export default function ReportsPage() {
             <ResponsiveContainer>
               <LineChart data={data.throughput} margin={{ left: 8, right: 16, top: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="periodLabel" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="periodLabel" tickFormatter={(v) => localizeWeekLabel(v, lang)} tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <Tooltip />
+                <Tooltip labelFormatter={(v) => localizeWeekLabel(v, lang)} />
                 <Legend wrapperStyle={{ fontSize: 13 }} formatter={(v) => t(`reports.${v}`, v)} />
                 <Line type="monotone" dataKey="created" name="created" stroke={THROUGHPUT_COLORS.created}
                       strokeWidth={2} dot={{ r: 3 }} />
@@ -119,7 +130,7 @@ export default function ReportsPage() {
               <tbody>
                 {data.throughput.map((p) => (
                   <tr key={p.periodLabel} className="border-t border-slate-100">
-                    <td className="px-2 py-1.5 text-slate-600">{p.periodLabel}</td>
+                    <td className="px-2 py-1.5 text-slate-600">{localizeWeekLabel(p.periodLabel, lang)}</td>
                     <td className="px-2 py-1.5 text-end text-slate-700">{p.created}</td>
                     <td className="px-2 py-1.5 text-end text-slate-700">{p.closed}</td>
                   </tr>
