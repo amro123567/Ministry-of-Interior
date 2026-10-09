@@ -2,6 +2,7 @@ package com.moi.cts.config;
 
 import com.moi.cts.entity.*;
 import com.moi.cts.repository.*;
+import com.moi.cts.service.AuditService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -73,6 +74,7 @@ public class DataSeeder implements CommandLineRunner {
     private final LoginAttemptRepository loginAttemptRepository;
     private final SessionLogRepository sessionLogRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditService auditService;
     private final SeedDataInvariantChecker invariantChecker;
 
     public DataSeeder(RoleRepository roleRepository, PermissionRepository permissionRepository,
@@ -107,7 +109,9 @@ public class DataSeeder implements CommandLineRunner {
                        LoginAttemptRepository loginAttemptRepository,
                        SessionLogRepository sessionLogRepository,
                        PasswordEncoder passwordEncoder,
+                       AuditService auditService,
                        SeedDataInvariantChecker invariantChecker) {
+        this.auditService = auditService;
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
         this.officeRepository = officeRepository;
@@ -1025,6 +1029,16 @@ public class DataSeeder implements CommandLineRunner {
             ah.setAssignedBy(createdBy);
             ah.setNote("Assigned (seed data)");
             assignmentHistoryRepository.save(ah);
+        }
+
+        // The request's Activity log reads the global audit log, so seeded requests get the
+        // same CREATE (and ASSIGN) entries the service would have written. These rows are
+        // stamped with the seed time and say so, rather than pretending to be older history.
+        auditService.log("CorrespondenceRequest", r.getId(), "CREATE", createdBy,
+                "direction=" + direction + " (seed data)");
+        if (assignedTo != null) {
+            auditService.log("CorrespondenceRequest", r.getId(), "ASSIGN", createdBy,
+                    "assignedTo=" + assignedTo.getUsername() + " (seed data)");
         }
     }
 }
