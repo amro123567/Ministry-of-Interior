@@ -3,6 +3,7 @@ import { format } from 'date-fns'
 import client from '../api/client.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
+import WorkflowDiagram from '../components/WorkflowDiagram.jsx'
 
 const inputCls = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
 const labelCls = 'block text-sm font-semibold text-slate-700 mb-1.5'
@@ -52,6 +53,7 @@ export default function WorkflowEnginePage() {
   const [permissions, setPermissions] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
+  const [view, setView] = useState('diagram') // diagram | list
 
   function load() {
     setLoading(true)
@@ -329,11 +331,26 @@ export default function WorkflowEnginePage() {
       <div className="rounded-xl border border-slate-200 bg-white p-5 mb-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-bold text-slate-900">{t('workflowEngine.transitions')}</h2>
+          <div className="flex items-center gap-3">
+          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 text-xs font-semibold" role="group" aria-label={t('workflowEngine.viewLabel')}>
+            {['diagram', 'list'].map((v) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={view === v}
+                onClick={() => setView(v)}
+                className={`rounded-md px-2.5 py-1 ${view === v ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+              >
+                {t(`workflowEngine.view_${v}`)}
+              </button>
+            ))}
+          </div>
           {!addingTransition && canManage && (
             <button type="button" onClick={startAddingTransition} className="text-sm font-semibold text-indigo-600 hover:underline">
               {t('workflowEngine.addTransition')}
             </button>
           )}
+          </div>
         </div>
 
         {addingTransition && (
@@ -408,6 +425,14 @@ export default function WorkflowEnginePage() {
 
         {!loading && transitions.length === 0 ? (
           <p className="text-sm text-slate-400">{t('workflowEngine.noTransitions')}</p>
+        ) : view === 'diagram' ? (
+          <WorkflowDiagram
+            states={states}
+            transitions={transitions}
+            lang={lang}
+            label={t('workflowEngine.diagramLabel')}
+            currentCode={instance?.currentStateCode}
+          />
         ) : (
           <ul className="divide-y divide-slate-100">
             {transitions.map((tr) => (

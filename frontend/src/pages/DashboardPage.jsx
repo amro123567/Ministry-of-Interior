@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { FileText, AlertTriangle, Clock, CheckCircle2, Gauge } from 'lucide-react'
 import client from '../api/client.js'
-import { STATUS_COLORS } from '../components/StatusBadge.jsx'
+import StatusBadge, { SlaBadge, STATUS_COLORS } from '../components/StatusBadge.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import { SkeletonKpiRow, SkeletonLine } from '../components/Skeleton.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 
@@ -13,6 +14,64 @@ const KPI_TINTS = {
   amber: 'bg-amber-50 text-amber-700',
   emerald: 'bg-emerald-50 text-emerald-600',
   sky: 'bg-sky-50 text-sky-700',
+}
+
+const OPEN = ['SUBMITTED', 'UNDER_REVIEW']
+const SLA_RANK = { OVERDUE: 0, DUE_SOON: 1, ON_TRACK: 2 }
+
+// What the signed-in person should look at first, decided by what they are allowed to do:
+// reviewers see what is waiting for review, officers see what is assigned to them, and
+// read-only users see the most urgent requests in the system.
+function queueFor(hasPermission) {
+  if (hasPermission('REQUEST_TRANSITION_REVIEW', 'REQUEST_TRANSITION_DECIDE')) {
+    return { key: 'review', params: {}, keep: (r) => OPEN.includes(r.status), more: '/requests?status=SUBMITTED' }
+  }
+  if (hasPermission('REQUEST_TRANSITION_SUBMIT')) {
+    return { key: 'mine', params: { assignedToMe: true }, keep: (r) => r.status !== 'ARCHIVED' && r.status !== 'REJECTED' && r.status !== 'APPROVED', more: '/requests?mine=1' }
+  }
+  return { key: 'watch', params: {}, keep: (r) => r.slaStatus !== 'ON_TRACK', more: '/requests?sla=OVERDUE' }
+}
+
+function WorkQueue({ queue, t }) {
+  const [rows, setRows] = useState(null)
+
+  useEffect(() => {
+    client.get('/requests', { params: queue.params })
+      .then((r) => setRows(r.data.filter(queue.keep)
+        .sort((a, b) => (SLA_RANK[a.slaStatus] ?? 3) - (SLA_RANK[b.slaStatus] ?? 3)
+          || String(a.dueAt ?? '9').localeCompare(String(b.dueAt ?? '9')))
+        .slice(0, 6)))
+      .catch(() => setRows([]))
+  }, [queue])
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-6 mb-6">
+      <div className="flex items-start justify-between gap-3 mb-1">
+        <h2 className="text-base font-bold text-slate-900">{t(`dashboard.queue.${queue.key}.title`)}</h2>
+        <Link to={queue.more} className="text-sm font-semibold text-indigo-600 hover:underline whitespace-nowrap">{t('dashboard.queue.seeAll')}</Link>
+      </div>
+      <p className="text-sm text-slate-500 mb-4">{t(`dashboard.queue.${queue.key}.hint`)}</p>
+      {rows === null ? (
+        <SkeletonLine height={120} />
+      ) : rows.length === 0 ? (
+        <p className="text-sm text-slate-400 py-4">{t(`dashboard.queue.${queue.key}.empty`)}</p>
+      ) : (
+        <ul className="divide-y divide-slate-100" aria-label={t(`dashboard.queue.${queue.key}.title`)}>
+          {rows.map((r) => (
+            <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+              <div className="min-w-0">
+                <Link to={`/requests/${r.id}`} className="font-semibold text-indigo-600 hover:underline">{r.referenceNumber}</Link>
+                <div className="text-xs text-slate-500 truncate max-w-[22rem]">{r.subject || r.citizenName}</div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <StatusBadge status={r.status} /> <SlaBadge slaStatus={r.slaStatus} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
 }
 
 function KpiCard({ icon: Icon, value, label, tint, valueClassName = 'text-slate-900', to }) {
@@ -37,7 +96,9 @@ function KpiCard({ icon: Icon, value, label, tint, valueClassName = 'text-slate-
 
 export default function DashboardPage() {
   const { t } = useLanguage()
+  const { hasPermission } = useAuth()
   const navigate = useNavigate()
+  const queue = useMemo(() => queueFor(hasPermission), [hasPermission])
   const [summary, setSummary] = useState(null)
   const [error, setError] = useState(null)
 
@@ -83,6 +144,8 @@ export default function DashboardPage() {
         <KpiCard icon={CheckCircle2} value={summary.closedThisWeek} label={t('dashboard.closedThisWeek')} tint="emerald" />
         <KpiCard icon={Gauge} value={`${summary.avgResolutionHours}h`} label={t('dashboard.avgResolution')} tint="sky" />
       </div>
+
+      <WorkQueue queue={queue} t={t} />
 
       <div className="rounded-xl border border-slate-200 bg-white p-6">
         <h2 className="text-base font-bold text-slate-900 mb-4">{t('dashboard.requestsByStatus')}</h2>

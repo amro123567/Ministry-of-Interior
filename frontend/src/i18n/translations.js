@@ -58,6 +58,12 @@ export const translations = {
       auditNotice: 'All sign-in attempts and record access are logged for audit purposes.',
     },
     dashboard: {
+      queue: {
+        seeAll: 'See all',
+        review: { title: 'Waiting for review', hint: 'Submitted and under-review requests, most urgent first.', empty: 'Nothing is waiting for review.' },
+        mine: { title: 'My queue', hint: 'Open requests assigned to you, most urgent first.', empty: 'No open requests are assigned to you.' },
+        watch: { title: 'Needs attention', hint: 'Requests that are overdue or due soon.', empty: 'Nothing is overdue or due soon.' },
+      },
       title: 'Dashboard',
       totalRequests: 'Total requests',
       overdue: 'Overdue',
@@ -446,6 +452,10 @@ export const translations = {
     },
     workflowEngine: {
       title: 'Workflow Engine',
+      viewLabel: 'Transitions view',
+      view_diagram: 'Diagram',
+      view_list: 'List',
+      diagramLabel: 'Diagram of workflow states and the transitions between them',
       subtitle: 'An admin-configurable catalog of states and transitions, separate from the correspondence request workflow.',
       couldNotLoad: 'Could not load the workflow catalog.',
       states: 'States',
@@ -836,6 +846,12 @@ export const translations = {
       auditNotice: 'تُسجَّل جميع محاولات تسجيل الدخول وعمليات الاطلاع على السجلات لأغراض التدقيق.',
     },
     dashboard: {
+      queue: {
+        seeAll: 'عرض الكل',
+        review: { title: 'بانتظار المراجعة', hint: 'الطلبات المقدّمة وقيد المراجعة، الأكثر إلحاحاً أولاً.', empty: 'لا توجد طلبات بانتظار المراجعة.' },
+        mine: { title: 'طلباتي', hint: 'الطلبات المفتوحة المسندة إليك، الأكثر إلحاحاً أولاً.', empty: 'لا توجد طلبات مفتوحة مسندة إليك.' },
+        watch: { title: 'تحتاج إلى انتباه', hint: 'الطلبات المتأخرة أو التي يقترب موعدها.', empty: 'لا توجد طلبات متأخرة أو يقترب موعدها.' },
+      },
       title: 'لوحة التحكم',
       totalRequests: 'إجمالي الطلبات',
       overdue: 'متأخرة',
@@ -1217,6 +1233,10 @@ export const translations = {
     },
     workflowEngine: {
       title: 'محرك سير العمل',
+      viewLabel: 'عرض الانتقالات',
+      view_diagram: 'مخطط',
+      view_list: 'قائمة',
+      diagramLabel: 'مخطط لحالات سير العمل والانتقالات بينها',
       subtitle: 'كتالوج حالات وانتقالات قابل للتهيئة من قبل المسؤول، منفصل عن سير عمل طلبات المراسلة.',
       couldNotLoad: 'تعذّر تحميل كتالوج سير العمل.',
       states: 'الحالات',
