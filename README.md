@@ -14,7 +14,8 @@ available in English and Arabic (RTL).
 |---|---|
 | `backend/` | Spring Boot 3.3 / Java 21 REST API — setup, demo accounts, architecture notes in `backend/README.md` |
 | `frontend/` | React 18 + Vite UI — screens and setup in `frontend/README.md` |
-| `docs/postman/` | Postman collection for the REST API |
+| `docs/postman/` | Postman collection for the REST API (44 requests, 51 assertions; run with newman) |
+| `docs/UAT.md`, `docs/screens/` | User acceptance test log (10 scenarios) and screenshots |
 | `docs/database/` | Database design source (ERD) |
 | `docker-compose.yml` | MySQL 8 + backend + HTTPS frontend, one command |
 
@@ -33,6 +34,8 @@ available in English and Arabic (RTL).
 - **Due dates and SLA** — due date per request, live status (on track / due
   soon / overdue), persisted MET / BREACHED records, and a scheduled daily job.
 - **Documents** — upload and download, 15 MB limit, SHA-256 hash per file.
+  Only listed file types are accepted (pdf, png, jpg, jpeg, gif, txt, csv, doc,
+  docx, xls, xlsx); executables and scripts are refused.
 - **Audit** — global audit log, per-request status history and activity log,
   citizen field changes, record access, login attempts and sessions. These
   tables are append-only: immutable entities, repositories without delete
@@ -104,15 +107,35 @@ database first; see `backend/README.md`.
 
 ## Tests
 
+Backend — 110 tests on an in-memory H2 database (no MySQL needed): end-to-end
+workflow tests over the real REST API, JWT unit tests, seed-data invariant
+checks, audit immutability, CSV export filtering, reference-number migration,
+and upload file-type validation.
+
 ```powershell
 cd backend
 mvn test
 ```
 
-95 tests on an in-memory H2 database (no MySQL needed): 70 end-to-end
-workflow tests over the real REST API, 5 JWT unit tests, 14 seed-data
-invariant checks, and 6 focused tests (audit immutability, seeded assignment
-history, workflow catalog driving requests).
+Frontend — 12 component tests (Vitest + React Testing Library): login, route
+and button permission gating, and the create-request form.
+
+```powershell
+cd frontend
+npm install
+npm test
+```
+
+API — import `docs/postman/CTS_API_Collection.json` into Postman, or run it
+from the command line against a running backend:
+
+```powershell
+npx newman run docs/postman/CTS_API_Collection.json
+```
+
+User acceptance — ten scenarios (registration, review, assignment, viewer
+access, audit, SLA, attachments, search and export, reports and Arabic, user
+administration) are recorded in `docs/UAT.md`.
 
 ## Documented deviations from the proposal
 
