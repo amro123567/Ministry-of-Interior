@@ -20,7 +20,7 @@
 | 9 | Reports consistency and Arabic/RTL | Admin | PASS (N3) | `uat9-01` |
 | 10 | User administration and RBAC enforcement | Admin, then new Viewer | PASS | `uat10-01` |
 
-**Result: 10 of 10 pass. One defect (D1) was found during the run and fixed; scenario 7 was re-run after the fix.**
+**Result: 10 of 10 pass. One defect (D1) was found during the run and fixed, and one minor UI finding (F1) was fixed afterwards; scenario 7 was re-run after the fix.**
 
 ## Details
 
@@ -39,7 +39,7 @@
 ## Defects and findings
 
 - **D1 (security, medium — FIXED):** the upload endpoint accepted any file type, including `.exe`. The design (SDD §12.3) says allowed types are listed and others refused. Fix: server-side extension allow-list in `AttachmentService` (last extension, case-insensitive, so `report.pdf.exe` is refused) plus `AttachmentTypeValidationTest` (3 tests). Verified by re-running scenario 7.
-- **F1 (UI, minor):** the detail page shows the "Reassign to" form on APPROVED / REJECTED / ARCHIVED requests, although the backend refuses it (HTTP 400). Fix: hide the form for closed statuses.
+- **F1 (UI, minor — FIXED):** the detail page showed the "Reassign to" form on APPROVED / REJECTED / ARCHIVED requests, although the backend refuses it (HTTP 400). Fix: the form is now hidden for closed statuses (`RequestDetailPage.jsx`). Verified live: hidden on an approved request, shown on one under review.
 - **N1:** a DRAFT request counts as overdue because the SLA clock starts at creation. Document it, or start the clock on submission.
 - **N2:** `?sla=OVERDUE` in the URL does not pre-select the filter (the search term does persist).
 - **N3:** week labels in the throughput chart stay in English (`Aug 14`) in Arabic mode.
