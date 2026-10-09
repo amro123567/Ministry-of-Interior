@@ -223,28 +223,6 @@
           ]
         },
         {
-          "name": "List requests (all filters)",
-          "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/requests?status=DRAFT&priority=NORMAL&direction=INCOMING&sla=ON_TRACK&from=2020-01-01&to=2099-12-31&assignedToMe=false",
-            "description": "Every list filter at once: status, priority, direction, sla, from/to (created date, inclusive), officeId, search, assignedToMe. Filters combine with AND."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
-                  "const rows = pm.response.json();",
-                  "pm.test('every row matches the filters', () => rows.forEach(r => { pm.expect(r.status).to.eql('DRAFT'); pm.expect(r.priority).to.eql('NORMAL'); pm.expect(r.direction).to.eql('INCOMING'); }));",
-                  "pm.collectionVariables.set('filteredCount', rows.length);"
-                ]
-              }
-            }
-          ]
-        },
-        {
           "name": "Get request detail",
           "request": {
             "method": "GET",
@@ -577,6 +555,28 @@
                 "exec": [
                   "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
                   "pm.test('is csv', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('text/csv'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List requests (all filters)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/requests?status=DRAFT&priority=NORMAL&direction=INCOMING&sla=ON_TRACK&from=2020-01-01&to=2099-12-31&assignedToMe=false",
+            "description": "Every list filter at once: status, priority, direction, sla, from/to (created date, inclusive), officeId, search, assignedToMe. Filters combine with AND."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "const rows = pm.response.json();",
+                  "pm.test('every row matches the filters', () => rows.forEach(r => { pm.expect(r.status).to.eql('DRAFT'); pm.expect(r.priority).to.eql('NORMAL'); pm.expect(r.direction).to.eql('INCOMING'); }));",
+                  "pm.collectionVariables.set('filteredCount', rows.length);"
                 ]
               }
             }
