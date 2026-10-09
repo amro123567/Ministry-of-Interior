@@ -10,6 +10,12 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
+        // The backend only allows the Docker front end's origin (CORS_ORIGINS).
+        // Dropping the browser's Origin header here makes the proxied call a plain
+        // server-to-server request, so `npm run dev` works against the same backend.
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => proxyReq.removeHeader('origin'))
+        },
       },
     },
   },

@@ -21,10 +21,16 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class AttachmentService {
+
+    /** File types staff may attach. Anything else (notably executables and scripts) is refused. */
+    static final Set<String> ALLOWED_EXTENSIONS =
+            Set.of("pdf", "png", "jpg", "jpeg", "gif", "txt", "csv", "doc", "docx", "xls", "xlsx");
 
     private final AttachmentRepository attachmentRepository;
     private final CorrespondenceRequestRepository requestRepository;
@@ -51,6 +57,7 @@ public class AttachmentService {
     @Transactional
     public AttachmentDto upload(Long requestId, MultipartFile file, AppUserPrincipal actor) {
         if (file.isEmpty()) throw new BadRequestException("The uploaded file is empty.");
+        requireAllowedType(file.getOriginalFilename());
         CorrespondenceRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new NotFoundException("Request not found: " + requestId));
         AppUser uploader = userRepository.findById(actor.getId())
@@ -96,6 +103,17 @@ public class AttachmentService {
             return Files.readAllBytes(Path.of(attachment.getStoredPath()));
         } catch (IOException e) {
             throw new IllegalStateException("Stored file is missing on disk: " + attachment.getStoredPath(), e);
+        }
+    }
+
+    /** Checks the last extension only, so "report.pdf.exe" is refused and "REPORT.PDF" is accepted. */
+    static void requireAllowedType(String originalName) {
+        String name = originalName == null ? "" : originalName.trim();
+        int dot = name.lastIndexOf('.');
+        String ext = dot < 0 ? "" : name.substring(dot + 1).toLowerCase(Locale.ROOT);
+        if (!ALLOWED_EXTENSIONS.contains(ext)) {
+            throw new BadRequestException("File type not allowed. Allowed types: "
+                    + String.join(", ", new java.util.TreeSet<>(ALLOWED_EXTENSIONS)) + ".");
         }
     }
 
