@@ -26,9 +26,17 @@ public class ReferenceNumberMigration {
 
     @EventListener(ApplicationReadyEvent.class)
     public void renumberLegacyReferences() {
-        int changed = referenceNumberService.renumberLegacy();
-        if (changed > 0) {
-            log.info("Converted {} request reference(s) to the CTS-YYYY-NNNNNN format", changed);
+        // Non-fatal on purpose: the conversion is one transaction, so a failure leaves every
+        // reference unchanged, and the system can still serve requests. It is retried on the
+        // next start.
+        try {
+            int changed = referenceNumberService.renumberLegacy();
+            if (changed > 0) {
+                log.info("Converted {} request reference(s) to the CTS-YYYY-NNNNNN format", changed);
+            }
+        } catch (RuntimeException e) {
+            log.error("Reference-number migration failed; legacy references were left unchanged "
+                    + "and the migration will be retried on the next start", e);
         }
     }
 }

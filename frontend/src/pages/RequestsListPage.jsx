@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { format } from 'date-fns'
 import { Eye } from 'lucide-react'
@@ -49,25 +49,26 @@ export default function RequestsListPage() {
     setDirection(''); setSla(''); setFrom(''); setTo('')
   }
 
+  // One source of truth for the active filters: the list and the CSV export both use it.
+  const filterParams = useMemo(() => ({
+    status: status || undefined,
+    search: search || undefined,
+    assignedToMe: assignedToMe || undefined,
+    officeId: officeId || undefined,
+    priority: priority || undefined,
+    direction: direction || undefined,
+    sla: sla || undefined,
+    from: from || undefined,
+    to: to || undefined,
+  }), [status, search, assignedToMe, officeId, priority, direction, sla, from, to])
+
   const load = useCallback(() => {
     setLoading(true)
-    client.get('/requests', {
-      params: {
-        status: status || undefined,
-        search: search || undefined,
-        assignedToMe: assignedToMe || undefined,
-        officeId: officeId || undefined,
-        priority: priority || undefined,
-        direction: direction || undefined,
-        sla: sla || undefined,
-        from: from || undefined,
-        to: to || undefined,
-      },
-    })
+    client.get('/requests', { params: filterParams })
       .then((r) => setRequests(r.data))
       .catch(() => setError(t('requests.couldNotLoad')))
       .finally(() => setLoading(false))
-  }, [status, search, assignedToMe, officeId, priority, direction, sla, from, to, t])
+  }, [filterParams, t])
 
   useEffect(() => { load() }, [load])
 
@@ -80,7 +81,7 @@ export default function RequestsListPage() {
   }
 
   async function exportCsv() {
-    const res = await client.get('/requests/export', { responseType: 'blob' })
+    const res = await client.get('/requests/export', { params: filterParams, responseType: 'blob' })
     const url = URL.createObjectURL(res.data)
     const a = document.createElement('a')
     a.href = url

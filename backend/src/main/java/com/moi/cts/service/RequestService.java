@@ -75,6 +75,11 @@ public class RequestService {
      * the entity (see CorrespondenceRequest.getSlaStatus) rather than stored.
      */
     public List<RequestSummaryDto> list(RequestFilter f, Long actorUserId) {
+        return findMatching(f, actorUserId).stream().map(this::toSummary).toList();
+    }
+
+    /** Entities matching the filter; shared by the list endpoint and the CSV export so they never disagree. */
+    public List<CorrespondenceRequest> findMatching(RequestFilter f, Long actorUserId) {
         Specification<CorrespondenceRequest> spec = Specification.where(null);
         if (f.status() != null && !f.status().isBlank()) {
             RequestStatus s = parseStatus(f.status());
@@ -134,7 +139,6 @@ public class RequestService {
         final SlaStatus sla = slaWanted;
         return requestRepository.findAll(spec).stream()
                 .filter(r -> sla == null || r.getSlaStatus() == sla)
-                .map(this::toSummary)
                 .toList();
     }
 
