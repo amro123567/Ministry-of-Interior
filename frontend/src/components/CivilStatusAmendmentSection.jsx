@@ -5,9 +5,8 @@ import ApprovalStatusBadge from './ApprovalStatusBadge.jsx'
 import DistrictScopedSelect from './DistrictScopedSelect.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
+import { inputCls, labelCls } from '../ui.js'
 
-const inputCls = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
-const labelCls = 'block text-sm font-semibold text-slate-700 mb-1.5'
 
 // Matches CitizenRegistryService.decideAmendment()'s AMENDABLE_FIELDS
 // whitelist exactly -- those are the only fields the backend will ever
@@ -114,26 +113,26 @@ export default function CivilStatusAmendmentSection({ citizenId, citizen, onDeci
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 mb-4">
+    <div className="card p-5 mb-4">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-bold text-slate-900">{t('civilStatusAmendment.title')}</h2>
+        <h2 className="text-sm font-bold text-text-primary">{t('civilStatusAmendment.title')}</h2>
         {!requesting && hasPermission('CITIZEN_MANAGE') && (
-          <button type="button" onClick={startRequesting} className="text-sm font-semibold text-indigo-600 hover:underline">
+          <button type="button" onClick={startRequesting} className="text-sm font-semibold text-primary hover:underline">
             {t('civilStatusAmendment.request')}
           </button>
         )}
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-4" role="alert">{error}</div>
+        <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">{error}</div>
       )}
 
       {requesting && (
-        <form onSubmit={handleSubmit} className="rounded-lg border border-slate-200 p-4 mb-4">
+        <form onSubmit={handleSubmit} className="rounded-lg border border-border-subtle p-4 mb-4">
           {formError && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-4" role="alert">{formError}</div>
+            <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">{formError}</div>
           )}
-          <p className="text-xs text-slate-400 mb-4">{t('civilStatusAmendment.applyNote')}</p>
+          <p className="text-xs text-text-secondary mb-4">{t('civilStatusAmendment.applyNote')}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div>
               <label className={labelCls} htmlFor="a-field">{t('civilStatusAmendment.field')}</label>
@@ -147,13 +146,13 @@ export default function CivilStatusAmendmentSection({ citizenId, citizen, onDeci
             </div>
             <div>
               <label className={labelCls} htmlFor="a-new">
-                {t('civilStatusAmendment.newValue')} <span className="text-red-500">*</span>
+                {t('civilStatusAmendment.newValue')} <span className="text-required">*</span>
               </label>
               <input id="a-new" className={inputCls} required value={newValue} onChange={(e) => setNewValue(e.target.value)} />
             </div>
             <div>
               <label className={labelCls} htmlFor="a-legal">
-                {t('civilStatusAmendment.legalBasis')} <span className="text-red-500">*</span>
+                {t('civilStatusAmendment.legalBasis')} <span className="text-required">*</span>
               </label>
               <input id="a-legal" className={inputCls} required value={legalBasis} onChange={(e) => setLegalBasis(e.target.value)} />
             </div>
@@ -181,10 +180,10 @@ export default function CivilStatusAmendmentSection({ citizenId, citizen, onDeci
             </div>
           </div>
           <div className="flex justify-end gap-2.5">
-            <button type="button" onClick={() => setRequesting(false)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+            <button type="button" onClick={() => setRequesting(false)} className="btn-secondary">
               {t('common.cancel')}
             </button>
-            <button type="submit" disabled={busy} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
+            <button type="submit" disabled={busy} className="btn-primary ">
               {busy ? t('civilStatusAmendment.submitting') : t('civilStatusAmendment.submit')}
             </button>
           </div>
@@ -192,18 +191,18 @@ export default function CivilStatusAmendmentSection({ citizenId, citizen, onDeci
       )}
 
       {!loading && amendments.length === 0 ? (
-        <p className="text-sm text-slate-400">{t('civilStatusAmendment.empty')}</p>
+        <p className="text-sm text-text-secondary">{t('civilStatusAmendment.empty')}</p>
       ) : (
         <ul className="divide-y divide-slate-100">
           {amendments.map((a) => (
             <li key={a.id} className="py-3">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-                <span className="text-sm font-semibold text-slate-800">
+                <span className="text-sm font-semibold text-text-primary">
                   {t(`civilStatusAmendment.fieldNames.${a.fieldChanged}`, a.fieldChanged)}: {a.oldValue || '—'} → {a.newValue}
                 </span>
                 <ApprovalStatusBadge status={a.status} />
               </div>
-              <div className="text-xs text-slate-400">
+              <div className="text-xs text-text-secondary">
                 {t('civilStatusAmendment.colLegalBasis')}: {a.legalBasis}
                 {a.requestedByName && ` · ${a.requestedByName}`}
                 {a.approvedByName && ` · ${a.approvedByName}`}
@@ -212,18 +211,18 @@ export default function CivilStatusAmendmentSection({ citizenId, citizen, onDeci
               {a.status === 'PENDING' && canDecide && (
                 decidingId === a.id ? (
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <button type="button" disabled={busy} onClick={() => decide(a.id, 'APPROVE')} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
+                    <button type="button" disabled={busy} onClick={() => decide(a.id, 'APPROVE')} className="btn-success btn-sm ">
                       {t('civilStatusAmendment.approve')}
                     </button>
-                    <button type="button" disabled={busy} onClick={() => decide(a.id, 'REJECT')} className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-60">
+                    <button type="button" disabled={busy} onClick={() => decide(a.id, 'REJECT')} className="btn-danger btn-sm ">
                       {t('civilStatusAmendment.reject')}
                     </button>
-                    <button type="button" onClick={() => setDecidingId(null)} className="text-xs font-semibold text-slate-500 hover:underline">
+                    <button type="button" onClick={() => setDecidingId(null)} className="text-xs font-semibold text-text-secondary hover:underline">
                       {t('common.cancel')}
                     </button>
                   </div>
                 ) : (
-                  <button type="button" onClick={() => setDecidingId(a.id)} className="mt-2 text-xs font-semibold text-indigo-600 hover:underline">
+                  <button type="button" onClick={() => setDecidingId(a.id)} className="mt-2 text-xs font-semibold text-primary hover:underline">
                     {t('civilStatusAmendment.decide')}
                   </button>
                 )

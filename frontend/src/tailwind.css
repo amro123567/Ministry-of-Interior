@@ -1,19 +1,140 @@
 @import "tailwindcss";
 
-/* Tailwind v4 is CSS-first: no tailwind.config.js needed for this project.
-   The Vite plugin (vite.config.js) auto-detects which files to scan for
-   class names, and this @theme block is the only customization we need. */
-@theme {
+/* ==========================================================================
+   CTS design tokens (single source of truth)
+   --------------------------------------------------------------------------
+   Every colour / radius used by the shared UI layer (src/ui.js and the
+   components under src/components/ui) comes from this @theme block, so the
+   whole application can be re-themed from here. Tailwind v4 turns each
+   --color-* variable into matching utilities (bg-app, text-text-primary,
+   border-border-subtle, ...).
+   ========================================================================== */
+@theme static {
   --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+
+  /* Surfaces */
+  --color-app: #F1F5F9;            /* application background  (Slate 50)  */
+  --color-surface-card: #FFFFFF;   /* cards, modals, tables                */
+  --color-footer: #0B132B;         /* global footer                        */
+  --color-header: #0F172A;         /* dark top header (structural anchor)  */
+  --color-nav-active: #3730A3;     /* Indigo 800: active nav pill          */
+  --color-table-head: #E2E8F0;     /* table header fill                    */
+  --color-ink-strong: #334155;     /* table header text                    */
+  --color-danger-solid: #B91C1C;   /* solid destructive buttons / KPI icons */
+  --color-success-solid: #047857;  /* solid success buttons                */
+  --color-warning-solid: #B45309;
+
+  /* Brand */
+  --color-primary: #4F46E5;        /* Indigo 600 */
+  --color-primary-hover: #4338CA;  /* Indigo 700 */
+  --color-primary-tint: #EEF2FF;   /* Indigo 50: active nav / subtle fills */
+
+  /* Lines */
+  --color-border-subtle: #CBD5E1;  /* Slate 200 */
+  --color-row-divider: #E2E8F0;    /* Slate 100 */
+  --color-row-hover: #F1F5F9;
+
+  /* Text */
+  --color-text-primary: #0F172A;   /* Slate 900 */
+  --color-text-secondary: #475569; /* Slate 600 */
+  --color-text-muted: #64748B;     /* Slate 400 (decorative / placeholder) */
+  --color-label: #334155;          /* Slate 700: form labels               */
+  --color-required: #EF4444;       /* required-field asterisk              */
+
+  /* Semantic status badges: bg / text / border (high-contrast set, all text >= 7:1) */
+  --color-badge-draft-bg: #E2E8F0;   --color-badge-draft-fg: #1E293B;   --color-badge-draft-bd: #94A3B8;
+  --color-badge-info-bg: #DBEAFE;    --color-badge-info-fg: #1E3A8A;    --color-badge-info-bd: #93C5FD;
+  --color-badge-warning-bg: #FEF3C7; --color-badge-warning-fg: #78350F; --color-badge-warning-bd: #FCD34D;
+  --color-badge-success-bg: #D1FAE5; --color-badge-success-fg: #064E3B; --color-badge-success-bd: #6EE7B7;
+  --color-badge-danger-bg: #FEE2E2;  --color-badge-danger-fg: #7F1D1D;  --color-badge-danger-bd: #FCA5A5;
+
+  /* Radii */
+  --radius-card: 8px;      /* cards, modals                */
+  --radius-control: 6px;   /* buttons, inputs, selects     */
 }
 
 @layer base {
+  html { background: var(--color-app); }
   body {
     font-family: var(--font-sans);
+    background: var(--color-app);
+    color: var(--color-text-primary);
   }
-  /* Arabic falls back to Cairo (already loaded in index.html), same as
-     the legacy styles.css rule this project used before Tailwind. */
-  html[dir='rtl'] body {
-    font-family: 'Cairo', var(--font-sans);
+  /* Arabic falls back to Cairo (already loaded in index.html). */
+  html[dir='rtl'] body { font-family: 'Cairo', var(--font-sans); }
+
+  /* One focus ring, everywhere: a 2px indigo outline offset by 2px.
+     Controls must NOT add their own border-colour change, box-shadow or
+     ring on focus -- that is what produced the old "double border". */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
   }
+  :where(input, select, textarea):focus { outline: none; }
+  :where(input, select, textarea):focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  /* Native date pickers: same height / font as every other control. */
+  input[type='date'] { min-height: 38px; }
+}
+
+/* ==========================================================================
+   Shared component classes
+   --------------------------------------------------------------------------
+   Built from the tokens above with @apply. They live in the `components`
+   layer so any one-off utility on an element (w-auto, ms-auto, ...) still
+   wins. Pages use these names directly or via src/ui.js / components/ui.
+   ========================================================================== */
+@layer components {
+  /* ---- Form controls: 38px high, 12px side padding, 14px text, 6px radius */
+  .field {
+    @apply h-[38px] w-full rounded-md border border-border-subtle bg-surface-card px-3 text-sm text-text-primary
+      placeholder:text-slate-500 disabled:cursor-not-allowed disabled:bg-app disabled:text-text-muted;
+  }
+  textarea.field { @apply h-auto min-h-[76px] py-2; }
+  .field-label { @apply mb-1.5 block text-[13px] font-medium text-label; }
+
+  /* ---- Buttons ---- */
+  .btn-primary, .btn-secondary, .btn-danger {
+    @apply inline-flex h-[38px] items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 text-sm font-semibold
+      transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary { @apply bg-primary text-white hover:bg-primary-hover; }
+  .btn-secondary { @apply border border-border-subtle bg-surface-card text-text-secondary hover:bg-row-hover hover:text-text-primary; }
+  .btn-danger { @apply bg-danger-solid text-white hover:bg-red-800; }
+  .btn-sm { @apply h-8 px-3 text-[13px]; }
+  /* 32 x 32 icon-only action (table rows) */
+  .icon-btn {
+    @apply inline-grid h-8 w-8 place-items-center rounded-md text-text-secondary transition-colors
+      hover:bg-row-hover hover:text-text-primary;
+  }
+
+  /* ---- Surfaces ---- */
+  .card {
+    @apply rounded-lg border border-border-subtle bg-surface-card;
+    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.06);
+  }
+
+  /* ---- Data tables ---- */
+  .data-table { @apply w-full border-collapse; }
+  .data-table thead tr, .data-head { @apply bg-table-head; }
+  .th-cell {
+    @apply h-11 whitespace-nowrap border-b border-border-subtle px-4 text-start text-xs font-bold uppercase
+      tracking-wide text-ink-strong;
+  }
+  .data-row { @apply h-12 border-b border-row-divider transition-colors last:border-0 hover:bg-row-hover; }
+  .td-cell { @apply px-4 py-2 align-middle text-sm text-text-secondary; }
+  .num-cell { @apply text-end tabular-nums; }
+  .center-cell { @apply text-center; }
+}
+
+@layer components {
+  .btn-success {
+    @apply inline-flex h-[38px] items-center justify-center gap-2 whitespace-nowrap rounded-md bg-success-solid px-4
+      text-sm font-semibold text-white transition-colors hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-success.btn-sm { @apply h-8 px-3 text-[13px]; }
+  .btn-danger.btn-sm { @apply h-8 px-3 text-[13px]; }
 }

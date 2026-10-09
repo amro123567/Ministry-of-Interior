@@ -30,13 +30,13 @@ const THROUGHPUT_COLORS = { created: '#4f46e5', closed: '#10b981' }
 
 function KpiCard({ icon: Icon, value, label }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col gap-3.5">
-      <div className="h-10 w-10 rounded-[10px] grid place-items-center bg-indigo-50 text-indigo-600">
+    <div className="card p-5 shadow-sm flex flex-col gap-3.5">
+      <div className="h-10 w-10 rounded-[10px] grid place-items-center bg-primary-tint text-primary">
         <Icon size={20} />
       </div>
       <div>
-        <div className="text-2xl font-extrabold text-slate-900">{value}</div>
-        <div className="text-sm text-slate-500 mt-0.5">{label}</div>
+        <div className="text-2xl font-extrabold text-text-primary">{value}</div>
+        <div className="text-sm text-text-secondary mt-0.5">{label}</div>
       </div>
     </div>
   )
@@ -44,8 +44,8 @@ function KpiCard({ icon: Icon, value, label }) {
 
 function Card({ title, children }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-6">
-      <h2 className="text-base font-bold text-slate-900 mb-4">{title}</h2>
+    <div className="card p-6">
+      <h2 className="text-base font-bold text-text-primary mb-4">{title}</h2>
       {children}
     </div>
   )
@@ -68,7 +68,7 @@ export default function ReportsPage() {
 
   if (error) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600" role="alert">
+      <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg" role="alert">
         {error}
       </div>
     )
@@ -77,11 +77,11 @@ export default function ReportsPage() {
   if (!data) {
     return (
       <div>
-        <h1 className="text-xl font-bold text-slate-900 mb-5">{t('reports.title')}</h1>
-        <div className="rounded-xl border border-slate-200 bg-white p-6 mb-6">
+        <h1 className="text-xl font-bold text-text-primary mb-5">{t('reports.title')}</h1>
+        <div className="card p-6 mb-6">
           <SkeletonLine height={280} />
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-6">
+        <div className="card p-6">
           <SkeletonLine height={220} />
         </div>
       </div>
@@ -94,28 +94,28 @@ export default function ReportsPage() {
     <div>
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">{t('reports.title')}</h1>
-          <p className="text-sm text-slate-500 mt-1">{t('reports.subtitle')}</p>
+          <h1 className="text-xl font-bold text-text-primary">{t('reports.title')}</h1>
+          <p className="text-sm text-text-secondary mt-1">{t('reports.subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-end gap-2.5">
-          <label className="flex flex-col text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <label className="flex flex-col text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
             {t('reports.dateFrom')}
             <input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)}
-              className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal normal-case text-slate-900" />
+              className="field mt-1 font-normal normal-case" />
           </label>
-          <label className="flex flex-col text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <label className="flex flex-col text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
             {t('reports.dateTo')}
             <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)}
-              className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal normal-case text-slate-900" />
+              className="field mt-1 font-normal normal-case" />
           </label>
           {(from || to) && (
             <button type="button" onClick={() => { setFrom(''); setTo('') }}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              className="btn-secondary">
               {t('reports.clearRange')}
             </button>
           )}
           <button type="button" onClick={() => downloadCsv('/reports/export', range, 'reports_summary.csv')}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+            className="btn-primary">
             {t('reports.exportCsv')}
           </button>
         </div>
@@ -132,8 +132,8 @@ export default function ReportsPage() {
             <ResponsiveContainer>
               <LineChart data={data.throughput} margin={{ left: 8, right: 16, top: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="periodLabel" tickFormatter={(v) => localizeWeekLabel(v, lang)} tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="periodLabel" tickFormatter={(v) => localizeWeekLabel(v, lang)} tick={{ fontSize: 12, fill: '#475569' }} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#475569' }} axisLine={false} tickLine={false} />
                 <Tooltip labelFormatter={(v) => localizeWeekLabel(v, lang)} />
                 <Legend wrapperStyle={{ fontSize: 13 }} formatter={(v) => t(`reports.${v}`, v)} />
                 <Line type="monotone" dataKey="created" name="created" stroke={THROUGHPUT_COLORS.created}
@@ -148,20 +148,20 @@ export default function ReportsPage() {
               relief for its two close-in-lightness series is a visible,
               color-independent alternative -- not just a hover tooltip. */}
           <div className="mt-4 overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
+            <table className="data-table">
               <thead>
-                <tr className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                  <th className="text-start px-2 py-1.5">{t('reports.colPeriod')}</th>
-                  <th className="text-end px-2 py-1.5">{t('reports.created')}</th>
-                  <th className="text-end px-2 py-1.5">{t('reports.closed')}</th>
+                <tr>
+                  <th className="th-cell">{t('reports.colPeriod')}</th>
+                  <th className="th-cell !text-end">{t('reports.created')}</th>
+                  <th className="th-cell !text-end">{t('reports.closed')}</th>
                 </tr>
               </thead>
               <tbody>
                 {data.throughput.map((p) => (
-                  <tr key={p.periodLabel} className="border-t border-slate-100">
-                    <td className="px-2 py-1.5 text-slate-600">{localizeWeekLabel(p.periodLabel, lang)}</td>
-                    <td className="px-2 py-1.5 text-end text-slate-700">{p.created}</td>
-                    <td className="px-2 py-1.5 text-end text-slate-700">{p.closed}</td>
+                  <tr key={p.periodLabel} className="data-row">
+                    <td className="td-cell">{localizeWeekLabel(p.periodLabel, lang)}</td>
+                    <td className="td-cell num-cell text-text-primary">{p.created}</td>
+                    <td className="td-cell num-cell text-text-primary">{p.closed}</td>
                   </tr>
                 ))}
               </tbody>
@@ -172,13 +172,13 @@ export default function ReportsPage() {
 
       <div className="mb-6">
         <Card title={t('reports.agingTitle')}>
-          <p className="text-xs text-slate-400 mb-3 -mt-2">{t('reports.agingHint')}</p>
+          <p className="text-xs text-text-secondary mb-3 -mt-2">{t('reports.agingHint')}</p>
           <div style={{ width: '100%', height: 220 }}>
             <ResponsiveContainer>
               <BarChart data={data.aging} margin={{ top: 16 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="bucket" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="bucket" tick={{ fontSize: 12, fill: '#475569' }} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#475569' }} axisLine={false} tickLine={false} />
                 <Tooltip cursor={{ fill: '#f8fafc' }} />
                 <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={64}>
                   {data.aging.map((entry, i) => (
@@ -195,22 +195,22 @@ export default function ReportsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card title={t('reports.byDocumentTypeTitle')}>
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
+            <table className="data-table">
               <thead>
-                <tr className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                  <th className="text-start px-2 py-2">{t('reports.colDocumentType')}</th>
-                  <th className="text-end px-2 py-2">{t('reports.colTotal')}</th>
-                  <th className="text-end px-2 py-2">{t('reports.colAvgResolution')}</th>
+                <tr>
+                  <th className="th-cell">{t('reports.colDocumentType')}</th>
+                  <th className="th-cell !text-end">{t('reports.colTotal')}</th>
+                  <th className="th-cell !text-end">{t('reports.colAvgResolution')}</th>
                 </tr>
               </thead>
               <tbody>
                 {data.byDocumentType.length === 0 ? (
-                  <tr><td colSpan={3} className="px-2 py-4 text-center text-slate-400">{t('common.noResults')}</td></tr>
+                  <tr><td colSpan={3} className="td-cell !py-6 text-center">{t('common.noResults')}</td></tr>
                 ) : data.byDocumentType.map((row) => (
-                  <tr key={row.documentTypeName} className="border-t border-slate-100">
-                    <td className="px-2 py-2 text-slate-700">{row.documentTypeName}</td>
-                    <td className="px-2 py-2 text-end text-slate-700">{row.total}</td>
-                    <td className="px-2 py-2 text-end text-slate-500">{row.avgResolutionHours}h</td>
+                  <tr key={row.documentTypeName} className="data-row">
+                    <td className="td-cell text-text-primary">{row.documentTypeName}</td>
+                    <td className="td-cell num-cell text-text-primary">{row.total}</td>
+                    <td className="td-cell num-cell">{row.avgResolutionHours}h</td>
                   </tr>
                 ))}
               </tbody>
@@ -220,22 +220,22 @@ export default function ReportsPage() {
 
         <Card title={t('reports.byOfficeTitle')}>
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
+            <table className="data-table">
               <thead>
-                <tr className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                  <th className="text-start px-2 py-2">{t('reports.colOffice')}</th>
-                  <th className="text-end px-2 py-2">{t('reports.colTotal')}</th>
-                  <th className="text-end px-2 py-2">{t('reports.colOverdue')}</th>
+                <tr>
+                  <th className="th-cell">{t('reports.colOffice')}</th>
+                  <th className="th-cell !text-end">{t('reports.colTotal')}</th>
+                  <th className="th-cell !text-end">{t('reports.colOverdue')}</th>
                 </tr>
               </thead>
               <tbody>
                 {data.byOffice.length === 0 ? (
-                  <tr><td colSpan={3} className="px-2 py-4 text-center text-slate-400">{t('common.noResults')}</td></tr>
+                  <tr><td colSpan={3} className="td-cell !py-6 text-center">{t('common.noResults')}</td></tr>
                 ) : data.byOffice.map((row) => (
-                  <tr key={row.officeName} className="border-t border-slate-100">
-                    <td className="px-2 py-2 text-slate-700">{row.officeName}</td>
-                    <td className="px-2 py-2 text-end text-slate-700">{row.total}</td>
-                    <td className={`px-2 py-2 text-end ${row.overdueCount > 0 ? 'text-red-600 font-semibold' : 'text-slate-500'}`}>
+                  <tr key={row.officeName} className="data-row">
+                    <td className="td-cell text-text-primary">{row.officeName}</td>
+                    <td className="td-cell num-cell text-text-primary">{row.total}</td>
+                    <td className={`td-cell num-cell ${row.overdueCount > 0 ? '!text-badge-danger-fg font-semibold' : ''}`}>
                       {row.overdueCount}
                     </td>
                   </tr>

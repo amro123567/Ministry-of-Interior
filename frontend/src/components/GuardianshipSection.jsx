@@ -6,9 +6,8 @@ import CitizenSearchPicker from './CitizenSearchPicker.jsx'
 import DistrictScopedSelect from './DistrictScopedSelect.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
+import { inputCls, labelCls } from '../ui.js'
 
-const inputCls = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
-const labelCls = 'block text-sm font-semibold text-slate-700 mb-1.5'
 const emptyGuardian = { citizenId: null, citizenLabel: null }
 
 // GET /api/citizens/{id}/guardians only ever returns ACTIVE guardianships
@@ -89,24 +88,24 @@ export default function GuardianshipSection({ citizenId }) {
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 mb-4">
+    <div className="card p-5 mb-4">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-bold text-slate-900">{t('guardianship.title')}</h2>
+        <h2 className="text-sm font-bold text-text-primary">{t('guardianship.title')}</h2>
         {!adding && hasPermission('CITIZEN_MANAGE') && (
-          <button type="button" onClick={startAdding} className="text-sm font-semibold text-indigo-600 hover:underline">
+          <button type="button" onClick={startAdding} className="text-sm font-semibold text-primary hover:underline">
             {t('guardianship.add')}
           </button>
         )}
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-4" role="alert">{error}</div>
+        <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">{error}</div>
       )}
 
       {adding && (
-        <form onSubmit={handleSubmit} className="rounded-lg border border-slate-200 p-4 mb-4">
+        <form onSubmit={handleSubmit} className="rounded-lg border border-border-subtle p-4 mb-4">
           {formError && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-4" role="alert">{formError}</div>
+            <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">{formError}</div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div className="sm:col-span-2">
@@ -149,10 +148,10 @@ export default function GuardianshipSection({ citizenId }) {
             </div>
           </div>
           <div className="flex justify-end gap-2.5">
-            <button type="button" onClick={() => setAdding(false)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+            <button type="button" onClick={() => setAdding(false)} className="btn-secondary">
               {t('common.cancel')}
             </button>
-            <button type="submit" disabled={busy} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
+            <button type="submit" disabled={busy} className="btn-primary ">
               {busy ? t('guardianship.submitting') : t('guardianship.submit')}
             </button>
           </div>
@@ -160,18 +159,18 @@ export default function GuardianshipSection({ citizenId }) {
       )}
 
       {!loading && guardianships.length === 0 ? (
-        <p className="text-sm text-slate-400">{t('guardianship.empty')}</p>
+        <p className="text-sm text-text-secondary">{t('guardianship.empty')}</p>
       ) : (
         <ul className="divide-y divide-slate-100">
           {guardianships.map((g) => (
             <li key={g.id} className="py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <Link to={`/citizens/${g.guardianCitizenId}`} className="text-sm font-semibold text-indigo-600 hover:underline">
+                <Link to={`/citizens/${g.guardianCitizenId}`} className="text-sm font-semibold text-primary hover:underline">
                   {g.guardianName}
                 </Link>
-                <span className="text-xs font-semibold text-slate-500">{t(`guardianship.typeLabel.${g.guardianshipType}`, g.guardianshipType)}</span>
+                <span className="text-xs font-semibold text-text-secondary">{t(`guardianship.typeLabel.${g.guardianshipType}`, g.guardianshipType)}</span>
               </div>
-              <div className="text-xs text-slate-400 mt-0.5">
+              <div className="text-xs text-text-secondary mt-0.5">
                 {g.courtName ?? '—'} · {t('guardianship.courtDecisionNumber')} {g.courtDecisionNumber} ·{' '}
                 {g.startDate ? format(new Date(g.startDate), 'MMM d, yyyy') : '—'}
                 {g.endDate && ` → ${format(new Date(g.endDate), 'MMM d, yyyy')}`}

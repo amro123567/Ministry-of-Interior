@@ -12,8 +12,8 @@ function fmt(d) { return d ? format(new Date(d), 'MMM d, yyyy') : null }
 function Field({ label, value }) {
   return (
     <div>
-      <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1">{label}</div>
-      <div className="text-sm text-slate-800">{value ?? <span className="text-slate-300">—</span>}</div>
+      <div className="text-[11px] font-bold uppercase tracking-wide text-text-secondary mb-1">{label}</div>
+      <div className="text-sm text-text-primary">{value ?? <span className="text-slate-300">—</span>}</div>
     </div>
   )
 }
@@ -42,7 +42,7 @@ export default function DocumentDetailPage() {
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-5">
+      <div className="card p-5">
         <SkeletonLine width="40%" height={22} className="mb-3" />
         <SkeletonLine width="60%" height={14} />
       </div>
@@ -51,7 +51,7 @@ export default function DocumentDetailPage() {
 
   if (error || !data) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600" role="alert">
+      <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg" role="alert">
         {error ?? t('documentRegistry.couldNotLoad')}
       </div>
     )
@@ -63,30 +63,30 @@ export default function DocumentDetailPage() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">{doc.documentTypeName}</h1>
-          <p className="text-sm text-slate-500 mt-1">{doc.documentNumber || '—'}</p>
+          <h1 className="text-xl font-bold text-text-primary">{doc.documentTypeName}</h1>
+          <p className="text-sm text-text-secondary mt-1">{doc.documentNumber || '—'}</p>
         </div>
-        <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+        <span className="inline-flex items-center rounded-full border border-badge-success-bd bg-badge-success-bg px-3 py-1 text-xs font-semibold text-badge-success-fg">
           {t(`documentRegistry.status.${doc.status}`, doc.status)}
         </span>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 mb-4">
-        <h2 className="text-sm font-bold text-slate-900 mb-4">{t('documentRegistry.title')}</h2>
+      <div className="card p-5 mb-4">
+        <h2 className="text-sm font-bold text-text-primary mb-4">{t('documentRegistry.title')}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Field label={t('documentRegistry.issueDate')} value={fmt(doc.issueDate)} />
           <Field label={t('documentRegistry.issuingOffice')} value={doc.issuingOfficeName} />
           {kind.key !== 'marriage' && kind.key !== 'divorce' && (
             <Field
               label={t('documentRegistry.citizen')}
-              value={<Link to={`/citizens/${doc.citizenId}`} className="font-semibold text-indigo-600 hover:underline">{doc.citizenName}</Link>}
+              value={<Link to={`/citizens/${doc.citizenId}`} className="font-semibold text-primary hover:underline">{doc.citizenName}</Link>}
             />
           )}
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5">
-        <h2 className="text-sm font-bold text-slate-900 mb-4">{t('documentRegistry.subtypeDetails')}</h2>
+      <div className="card p-5">
+        <h2 className="text-sm font-bold text-text-primary mb-4">{t('documentRegistry.subtypeDetails')}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {kind.key === 'birth' && (
             <>
@@ -101,8 +101,8 @@ export default function DocumentDetailPage() {
           )}
           {kind.key === 'marriage' && (
             <>
-              <Field label={t('documentRegistry.husband')} value={<Link to={`/citizens/${data.husbandId}`} className="font-semibold text-indigo-600 hover:underline">{data.husbandName}</Link>} />
-              <Field label={t('documentRegistry.wife')} value={<Link to={`/citizens/${data.wifeId}`} className="font-semibold text-indigo-600 hover:underline">{data.wifeName}</Link>} />
+              <Field label={t('documentRegistry.husband')} value={<Link to={`/citizens/${data.husbandId}`} className="font-semibold text-primary hover:underline">{data.husbandName}</Link>} />
+              <Field label={t('documentRegistry.wife')} value={<Link to={`/citizens/${data.wifeId}`} className="font-semibold text-primary hover:underline">{data.wifeName}</Link>} />
               <Field label={t('documentRegistry.marriageDate')} value={fmt(data.marriageDate)} />
               <Field label={t('documentRegistry.marriagePlace')} value={data.marriagePlace} />
               <Field label={t('documentRegistry.contractNumber')} value={data.contractNumber} />
@@ -112,13 +112,13 @@ export default function DocumentDetailPage() {
           )}
           {kind.key === 'divorce' && (
             <>
-              <Field label={t('documentRegistry.husband')} value={<Link to={`/citizens/${data.husbandId}`} className="font-semibold text-indigo-600 hover:underline">{data.husbandName}</Link>} />
-              <Field label={t('documentRegistry.wife')} value={<Link to={`/citizens/${data.wifeId}`} className="font-semibold text-indigo-600 hover:underline">{data.wifeName}</Link>} />
+              <Field label={t('documentRegistry.husband')} value={<Link to={`/citizens/${data.husbandId}`} className="font-semibold text-primary hover:underline">{data.husbandName}</Link>} />
+              <Field label={t('documentRegistry.wife')} value={<Link to={`/citizens/${data.wifeId}`} className="font-semibold text-primary hover:underline">{data.wifeName}</Link>} />
               <Field label={t('documentRegistry.divorceDate')} value={fmt(data.divorceDate)} />
               <Field label={t('documentRegistry.divorceType')} value={data.divorceType ? t(`documentRegistry.divorceTypeLabel.${data.divorceType}`, data.divorceType) : null} />
               <Field
                 label={t('documentRegistry.marriageCertificateId')}
-                value={<Link to={`/documents/marriage-certificates/${data.marriageCertificateId}`} className="font-semibold text-indigo-600 hover:underline">#{data.marriageCertificateId}</Link>}
+                value={<Link to={`/documents/marriage-certificates/${data.marriageCertificateId}`} className="font-semibold text-primary hover:underline">#{data.marriageCertificateId}</Link>}
               />
             </>
           )}

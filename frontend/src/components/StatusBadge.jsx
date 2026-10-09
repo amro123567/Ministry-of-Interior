@@ -1,36 +1,38 @@
 import { useLanguage } from '../context/LanguageContext.jsx'
+import { Badge } from './ui/index.jsx'
 
-// Hex colors used by the dashboard bar chart's per-segment fill. This is
-// the dataviz-skill validated categorical order (adjacent-pair CVD
-// Delta-E >= 9.1 in light mode), kept as the single source of truth so the
-// chart's colors never drift from any other place that might reuse them.
+// Hex colours for the dashboard bar chart's per-segment fill. They follow the
+// same semantics as the badge tones (draft = slate, submitted = blue, under
+// review = amber, approved = green, rejected = red, archived = light slate)
+// so a status reads the same colour in the chart and in the table. Every bar
+// also carries a text label and a value, so colour is never the only cue.
 export const STATUS_COLORS = {
-  DRAFT: '#2a78d6',
-  SUBMITTED: '#eb6834',
-  UNDER_REVIEW: '#1baf7a',
-  APPROVED: '#eda100',
-  REJECTED: '#e87ba4',
-  ARCHIVED: '#008300',
+  DRAFT: '#64748B',
+  SUBMITTED: '#2563EB',
+  UNDER_REVIEW: '#D97706',
+  APPROVED: '#059669',
+  REJECTED: '#DC2626',
+  ARCHIVED: '#94A3B8',
 }
 
-// Independent Tailwind soft-pill treatment for the badge itself -- chosen
-// for readability at small badge size, not tied to the chart's hexes above.
-const STATUS_STYLES = {
-  DRAFT: 'bg-slate-50 text-slate-600 border-slate-200',
-  SUBMITTED: 'bg-blue-50 text-blue-700 border-blue-200',
-  UNDER_REVIEW: 'bg-violet-50 text-violet-700 border-violet-200',
-  APPROVED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  REJECTED: 'bg-rose-50 text-rose-700 border-rose-200',
-  ARCHIVED: 'bg-stone-50 text-stone-600 border-stone-200',
+// Semantic tone per request status (colours live in the @theme tokens in
+// tailwind.css): Draft = neutral, Submitted = info, Under Review = warning,
+// Approved = success, Rejected = danger, Archived = neutral.
+const STATUS_TONES = {
+  DRAFT: 'draft',
+  SUBMITTED: 'info',
+  UNDER_REVIEW: 'warning',
+  APPROVED: 'success',
+  REJECTED: 'danger',
+  ARCHIVED: 'draft',
 }
 
 export default function StatusBadge({ status }) {
   const { t } = useLanguage()
-  const style = STATUS_STYLES[status] || STATUS_STYLES.DRAFT
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${style}`}>
+    <Badge tone={STATUS_TONES[status] || 'draft'}>
       {t(`status.${status}`, status.replace('_', ' '))}
-    </span>
+    </Badge>
   )
 }
 
@@ -47,18 +49,10 @@ export default function StatusBadge({ status }) {
 export function SlaBadge({ slaStatus }) {
   const { t } = useLanguage()
   if (slaStatus === 'OVERDUE') {
-    return (
-      <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-600">
-        {t('sla.OVERDUE')}
-      </span>
-    )
+    return <Badge tone="danger">{t('sla.OVERDUE')}</Badge>
   }
   if (slaStatus === 'DUE_SOON') {
-    return (
-      <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
-        {t('sla.DUE_SOON')}
-      </span>
-    )
+    return <Badge tone="warning">{t('sla.DUE_SOON')}</Badge>
   }
   return null
 }
@@ -71,21 +65,20 @@ export function SlaBadge({ slaStatus }) {
 // indicator inside the SLA/payments panel, not a secondary badge next to
 // StatusBadge, so silently showing nothing for the "good" outcomes
 // (ON_TRACK/MET) would leave that panel looking broken.
-const SLA_RECORD_STYLES = {
-  ON_TRACK: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  DUE_SOON: 'bg-amber-50 text-amber-700 border-amber-200',
-  OVERDUE: 'bg-red-50 text-red-600 border-red-200',
-  MET: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-  BREACHED: 'bg-red-100 text-red-700 border-red-300',
+const SLA_RECORD_TONES = {
+  ON_TRACK: 'success',
+  DUE_SOON: 'warning',
+  OVERDUE: 'danger',
+  MET: 'success',
+  BREACHED: 'danger',
 }
 
 export function SlaRecordBadge({ slaStatus }) {
   const { t } = useLanguage()
   if (!slaStatus) return <span className="text-slate-300">—</span>
-  const style = SLA_RECORD_STYLES[slaStatus] || SLA_RECORD_STYLES.ON_TRACK
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${style}`}>
+    <Badge tone={SLA_RECORD_TONES[slaStatus] || 'success'}>
       {t(`sla.${slaStatus}`, slaStatus.replace('_', ' '))}
-    </span>
+    </Badge>
   )
 }

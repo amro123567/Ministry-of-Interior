@@ -5,22 +5,19 @@ import client from '../api/client.js'
 import { kindByTypeCode } from '../documentKinds.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
+import { Badge } from './ui/index.jsx'
 
 const DOC_STATUS_STYLES = {
-  DRAFT: 'bg-slate-50 text-slate-600 border-slate-200',
-  ISSUED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  REVOKED: 'bg-rose-50 text-rose-700 border-rose-200',
-  SUPERSEDED: 'bg-amber-50 text-amber-700 border-amber-200',
-  EXPIRED: 'bg-slate-100 text-slate-500 border-slate-300',
+  DRAFT: 'draft',
+  ISSUED: 'success',
+  REVOKED: 'danger',
+  SUPERSEDED: 'warning',
+  EXPIRED: 'draft',
 }
 
 function DocStatusBadge({ status, t }) {
   const style = DOC_STATUS_STYLES[status] || DOC_STATUS_STYLES.DRAFT
-  return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${style}`}>
-      {t(`documentRegistry.status.${status}`, status)}
-    </span>
-  )
+  return <Badge tone={style}>{t(`documentRegistry.status.${status}`, status)}</Badge>
 }
 
 // The generic Document supertype list (GET /api/citizens/{id}/documents)
@@ -55,13 +52,13 @@ export default function DocumentsSection({ citizenId, citizenLabel }) {
   useEffect(() => { load() }, [load])
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 mb-4">
+    <div className="card p-5 mb-4">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-bold text-slate-900">{t('documentRegistry.title')}</h2>
+        <h2 className="text-sm font-bold text-text-primary">{t('documentRegistry.title')}</h2>
         {hasPermission('CITIZEN_MANAGE') && (
           <Link
             to={`/documents/new?citizenId=${citizenId}&citizenLabel=${encodeURIComponent(citizenLabel || '')}`}
-            className="text-sm font-semibold text-indigo-600 hover:underline"
+            className="text-sm font-semibold text-primary hover:underline"
           >
             {t('documentRegistry.newDocument')}
           </Link>
@@ -69,14 +66,14 @@ export default function DocumentsSection({ citizenId, citizenLabel }) {
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600" role="alert">{error}</div>
+        <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg" role="alert">{error}</div>
       )}
 
-      {!error && loading && <p className="text-sm text-slate-400">{t('common.loading')}</p>}
+      {!error && loading && <p className="text-sm text-text-secondary">{t('common.loading')}</p>}
 
       {!error && !loading && (
         documents.length === 0 ? (
-          <p className="text-sm text-slate-400">{t('documentRegistry.empty')}</p>
+          <p className="text-sm text-text-secondary">{t('documentRegistry.empty')}</p>
         ) : (
           <ul className="divide-y divide-slate-100">
             {documents.map((d) => {
@@ -88,30 +85,30 @@ export default function DocumentsSection({ citizenId, citizenLabel }) {
                 <li key={d.id} className="py-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <span className="text-sm font-semibold text-slate-800">{d.documentTypeName}</span>
-                      {d.documentNumber && <span className="text-xs text-slate-400 ms-2">{d.documentNumber}</span>}
+                      <span className="text-sm font-semibold text-text-primary">{d.documentTypeName}</span>
+                      {d.documentNumber && <span className="text-xs text-text-secondary ms-2">{d.documentNumber}</span>}
                     </div>
                     <DocStatusBadge status={d.status} t={t} />
                   </div>
-                  <div className="text-xs text-slate-400 mt-0.5">
+                  <div className="text-xs text-text-secondary mt-0.5">
                     {d.issueDate ? format(new Date(d.issueDate), 'MMM d, yyyy') : '—'}
                     {d.issuingOfficeName && ` · ${d.issuingOfficeName}`}
                   </div>
                   {kind?.hasDetailRoute && (
-                    <Link to={`/documents/${kind.apiSegment}/${d.id}`} className="mt-1 inline-block text-xs font-semibold text-indigo-600 hover:underline">
+                    <Link to={`/documents/${kind.apiSegment}/${d.id}`} className="mt-1 inline-block text-xs font-semibold text-primary hover:underline">
                       {t('documentRegistry.viewDocument')}
                     </Link>
                   )}
                   {card && (
                     expandedCardId === d.id ? (
-                      <div className="mt-2 rounded-lg bg-slate-50 p-3 text-xs text-slate-600 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <div><span className="font-semibold text-slate-500">{t('documentRegistry.cardNumber')}:</span> {card.cardNumber}</div>
-                        <div><span className="font-semibold text-slate-500">{t('documentRegistry.cardStatus')}:</span> {card.status}</div>
-                        {card.chipSerialNumber && <div><span className="font-semibold text-slate-500">{t('documentRegistry.chipSerialNumber')}:</span> {card.chipSerialNumber}</div>}
-                        {d.expiryDate && <div><span className="font-semibold text-slate-500">{t('documentRegistry.expiryDate')}:</span> {format(new Date(d.expiryDate), 'MMM d, yyyy')}</div>}
+                      <div className="mt-2 rounded-lg bg-app p-3 text-xs text-text-secondary grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div><span className="font-semibold text-text-secondary">{t('documentRegistry.cardNumber')}:</span> {card.cardNumber}</div>
+                        <div><span className="font-semibold text-text-secondary">{t('documentRegistry.cardStatus')}:</span> {card.status}</div>
+                        {card.chipSerialNumber && <div><span className="font-semibold text-text-secondary">{t('documentRegistry.chipSerialNumber')}:</span> {card.chipSerialNumber}</div>}
+                        {d.expiryDate && <div><span className="font-semibold text-text-secondary">{t('documentRegistry.expiryDate')}:</span> {format(new Date(d.expiryDate), 'MMM d, yyyy')}</div>}
                       </div>
                     ) : (
-                      <button type="button" onClick={() => setExpandedCardId(d.id)} className="mt-1 block text-xs font-semibold text-indigo-600 hover:underline">
+                      <button type="button" onClick={() => setExpandedCardId(d.id)} className="mt-1 block text-xs font-semibold text-primary hover:underline">
                         {t('documentRegistry.viewDocument')}
                       </button>
                     )

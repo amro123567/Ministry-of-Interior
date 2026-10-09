@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { LayoutGrid, Mail, CirclePlus, IdCard, Workflow, Users, ScrollText, BarChart3, Search, Settings, ChevronDown, LogOut, Menu, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
@@ -16,6 +16,7 @@ export default function Navbar() {
   const { user, logout, hasPermission } = useAuth()
   const { t } = useLanguage()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -97,18 +98,28 @@ export default function Navbar() {
 
   const allLinks = [...links, ...adminLinks]
 
-  const navLinkCls = ({ isActive }) =>
-    `flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-      isActive ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+  // /requests/new is its own tab, so it must not also light up "Correspondence".
+  const linkCls = (to) => ({ isActive }) =>
+    navLinkCls({ isActive: isActive && !(to === '/requests' && pathname.startsWith('/requests/new')) })
+
+  // Items inside the white admin dropdown sit on a light surface, so they
+  // can't share the dark-bar link colours.
+  const dropLinkCls = ({ isActive }) =>
+    `flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+      isActive ? 'bg-primary-tint text-primary' : 'text-text-secondary hover:bg-row-hover hover:text-text-primary'
     }`
 
+  const navLinkCls = ({ isActive }) =>
+    `flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+      isActive ? 'bg-nav-active text-white' : 'text-slate-200 hover:bg-white/10 hover:text-white'
+    }`
+
+  // One control, one border: the magnifier is an absolutely-positioned icon
+  // inside the input's own box (no bordered wrapper around a second,
+  // outline-less input, which is what drew two nested outlines before).
   const SearchForm = ({ className = '', autoFocus = false }) => (
-    <form
-      onSubmit={handleSearchSubmit}
-      role="search"
-      className={`flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-slate-400 focus-within:ring-2 focus-within:ring-indigo-100 focus-within:border-indigo-400 ${className}`}
-    >
-      <Search size={16} className="flex-shrink-0" />
+    <form onSubmit={handleSearchSubmit} role="search" className={`relative ${className}`}>
+      <Search size={16} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-text-muted" aria-hidden="true" />
       <input
         type="search"
         value={searchValue}
@@ -116,19 +127,19 @@ export default function Navbar() {
         placeholder={t('nav.searchPlaceholder')}
         aria-label={t('nav.searchPlaceholder')}
         autoFocus={autoFocus}
-        className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+        className="field ps-9"
       />
     </form>
   )
 
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-200 bg-white">
+    <header className="sticky top-0 z-20 border-b border-white/10 bg-header shadow-md">
       <div className="h-[64px] max-w-[1400px] mx-auto px-5 sm:px-8 flex items-center gap-4">
         <NavLink to="/" className="flex items-center gap-2.5 flex-shrink-0">
           <img
             src="/moi-seal.png"
             alt=""
-            className="h-8 w-8 rounded-md bg-white ring-1 ring-slate-200 object-contain p-0.5"
+            className="h-8 w-8 rounded-md bg-white ring-1 ring-border-subtle object-contain p-0.5"
           />
           {/* Brand name/subtitle text is deliberately never shown here (not
               even at very wide viewports): the header's content column is
@@ -142,7 +153,7 @@ export default function Navbar() {
 
         <nav className="hidden xl:flex items-center gap-1 min-w-0">
           {links.map(({ to, end, label, icon: Icon }) => (
-            <NavLink key={to} to={to} end={end} className={navLinkCls}>
+            <NavLink key={to} to={to} end={end} className={linkCls(to)}>
               <Icon size={16} className="flex-shrink-0" />
               {label}
             </NavLink>
@@ -154,16 +165,16 @@ export default function Navbar() {
                 onClick={() => setAdminOpen((v) => !v)}
                 aria-haspopup="true"
                 aria-expanded={adminOpen}
-                className="flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                className="flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium text-slate-200 hover:bg-white/10 hover:text-white transition-colors"
               >
                 <Settings size={16} className="flex-shrink-0" />
                 {t('nav.admin')}
-                <ChevronDown size={14} className={`text-slate-400 transition-transform ${adminOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown size={14} className={`text-slate-300 transition-transform ${adminOpen ? 'rotate-180' : ''}`} />
               </button>
               {adminOpen && (
-                <div className="absolute start-0 top-[calc(100%+8px)] w-48 rounded-xl border border-slate-200 bg-white p-1 shadow-lg z-30">
+                <div className="absolute start-0 top-[calc(100%+8px)] w-48 rounded-lg border border-border-subtle bg-surface-card p-1 shadow-lg z-30">
                   {adminLinks.map(({ to, end, label, icon: Icon }) => (
-                    <NavLink key={to} to={to} end={end} onClick={() => setAdminOpen(false)} className={navLinkCls}>
+                    <NavLink key={to} to={to} end={end} onClick={() => setAdminOpen(false)} className={dropLinkCls}>
                       <Icon size={16} className="flex-shrink-0" />
                       {label}
                     </NavLink>
@@ -182,21 +193,21 @@ export default function Navbar() {
               aria-label={t('nav.searchPlaceholder')}
               aria-haspopup="true"
               aria-expanded={searchOpen}
-              className={`h-9 w-9 grid place-items-center rounded-lg transition-colors ${
-                searchOpen ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-100'
+              className={`h-9 w-9 grid place-items-center rounded-md transition-colors ${
+                searchOpen ? 'bg-white/15 text-white' : 'text-slate-200 hover:bg-white/10'
               }`}
             >
               <Search size={18} />
             </button>
             {searchOpen && (
-              <div className="absolute end-0 top-[calc(100%+8px)] w-72 z-30">
-                <SearchForm className="flex w-full shadow-lg" autoFocus />
+              <div className="absolute end-0 top-[calc(100%+8px)] w-72 z-30 rounded-md shadow-lg">
+                <SearchForm autoFocus />
               </div>
             )}
           </div>
-          <div className="w-px h-7 bg-slate-200 hidden sm:block" />
-          <LangToggle className="hidden sm:inline-flex" />
-          <div className="w-px h-7 bg-slate-200 hidden sm:block" />
+          <div className="w-px h-7 bg-white/20 hidden sm:block" />
+          <LangToggle tone="dark" className="hidden sm:inline-flex" />
+          <div className="w-px h-7 bg-white/20 hidden sm:block" />
           <div className="relative" ref={menuRef}>
             <button
               type="button"
@@ -205,25 +216,25 @@ export default function Navbar() {
               aria-expanded={menuOpen}
               className="flex items-center gap-2"
             >
-              <span className="h-9 w-9 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 grid place-items-center text-[13px] font-bold flex-shrink-0">
+              <span className="h-9 w-9 rounded-full bg-white/10 text-white border border-white/30 grid place-items-center text-[13px] font-bold flex-shrink-0">
                 {initials}
               </span>
               {/* Name/role text next to the avatar is deliberately dropped
                   for the same reason as the brand subtitle above -- it's
                   still shown in full inside the dropdown opened by this
                   button, one click away. */}
-              <ChevronDown size={14} className={`hidden sm:block text-slate-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown size={14} className={`hidden sm:block text-slate-300 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
             </button>
             {menuOpen && (
-              <div className="absolute end-0 top-[calc(100%+8px)] w-56 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden z-30">
-                <div className="px-4 py-3 border-b border-slate-100">
-                  <div className="text-sm font-bold text-slate-900">{user.fullName}</div>
-                  <div className="text-xs text-slate-400 mt-0.5">{user.roles?.join(', ')}</div>
+              <div className="absolute end-0 top-[calc(100%+8px)] w-56 rounded-lg border border-border-subtle bg-surface-card shadow-lg overflow-hidden z-30">
+                <div className="px-4 py-3 border-b border-row-divider">
+                  <div className="text-sm font-bold text-text-primary">{user.fullName}</div>
+                  <div className="text-xs text-slate-500 mt-0.5">{user.roles?.join(', ')}</div>
                 </div>
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-start text-sm font-semibold text-red-600 hover:bg-red-50"
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-start text-sm font-semibold text-badge-danger-fg hover:bg-red-50"
                 >
                   <LogOut size={15} /> {t('common.signOut')}
                 </button>
@@ -235,7 +246,7 @@ export default function Navbar() {
             onClick={() => setMobileOpen((v) => !v)}
             aria-label={t('common.menu')}
             aria-expanded={mobileOpen}
-            className="xl:hidden h-9 w-9 grid place-items-center rounded-lg text-slate-500 hover:bg-slate-100"
+            className="xl:hidden h-9 w-9 grid place-items-center rounded-md text-slate-200 hover:bg-white/10"
           >
             {mobileOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -243,18 +254,18 @@ export default function Navbar() {
       </div>
 
       {mobileOpen && (
-        <div className="xl:hidden border-t border-slate-200 bg-white px-5 sm:px-8 py-3">
+        <div className="xl:hidden border-t border-white/10 bg-header px-5 sm:px-8 py-3">
           <SearchForm className="md:hidden mb-3" />
           <nav className="flex flex-col gap-1">
             {allLinks.map(({ to, end, label, icon: Icon }) => (
-              <NavLink key={to} to={to} end={end} onClick={() => setMobileOpen(false)} className={navLinkCls}>
+              <NavLink key={to} to={to} end={end} onClick={() => setMobileOpen(false)} className={linkCls(to)}>
                 <Icon size={18} className="flex-shrink-0" />
                 {label}
               </NavLink>
             ))}
           </nav>
-          <div className="sm:hidden mt-3 pt-3 border-t border-slate-100">
-            <LangToggle />
+          <div className="sm:hidden mt-3 pt-3 border-t border-white/10">
+            <LangToggle tone="dark" />
           </div>
         </div>
       )}

@@ -4,9 +4,8 @@ import client from '../api/client.js'
 import DistrictScopedSelect from '../components/DistrictScopedSelect.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
+import { inputCls, labelCls } from '../ui.js'
 
-const inputCls = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
-const labelCls = 'block text-sm font-semibold text-slate-700 mb-1.5'
 
 // Tailwind restyle folded into frontend integration pass Step 8, the same
 // opportunistic cleanup RequestDetailPage got in Step 7 -- this was the
@@ -71,32 +70,32 @@ export default function AdminUsersPage() {
   return (
     <div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold text-slate-900">{t('adminUsers.title')}</h1>
+        <h1 className="text-xl font-bold text-text-primary">{t('adminUsers.title')}</h1>
         <button
           type="button"
           onClick={() => { setShowForm((v) => !v); setError(null) }}
           aria-expanded={showForm}
-          className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
+          className="btn-primary"
         >
           {showForm ? t('adminUsers.cancel') : t('adminUsers.newUser')}
         </button>
       </div>
 
       <div className={`grid grid-cols-1 gap-4 items-start ${showForm ? 'lg:grid-cols-[1fr_380px]' : ''}`}>
-        <div className="rounded-xl border border-slate-200 bg-white p-5">
-          <h2 className="text-sm font-bold text-slate-900 mb-4">{t('adminUsers.staffAccounts')}</h2>
+        <div className="card p-5">
+          <h2 className="text-sm font-bold text-text-primary mb-4">{t('adminUsers.staffAccounts')}</h2>
           {rowError && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-4" role="alert">{rowError}</div>
+            <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">{rowError}</div>
           )}
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
+            <table className="data-table">
               <thead>
-                <tr className="bg-slate-50">
-                  <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('adminUsers.colUsername')}</th>
-                  <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('adminUsers.colFullName')}</th>
-                  <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('adminUsers.colRoles')}</th>
-                  <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('adminUsers.colOffice')}</th>
-                  <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('adminUsers.colStatus')}</th>
+                <tr>
+                  <th className="th-cell">{t('adminUsers.colUsername')}</th>
+                  <th className="th-cell">{t('adminUsers.colFullName')}</th>
+                  <th className="th-cell">{t('adminUsers.colRoles')}</th>
+                  <th className="th-cell">{t('adminUsers.colOffice')}</th>
+                  <th className="th-cell">{t('adminUsers.colStatus')}</th>
                   {/* AUDIT_VIEW-gated, matching UserActivityPage's own
                       route gate in App.jsx (not USER_MANAGE, which is all
                       this page itself requires) -- an admin who somehow
@@ -104,31 +103,31 @@ export default function AdminUsersPage() {
                       column disappear rather than a link the API would
                       403 on. */}
                   {hasPermission('AUDIT_VIEW') && (
-                    <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('adminUsers.colActivity')}</th>
+                    <th className="th-cell">{t('adminUsers.colActivity')}</th>
                   )}
                 </tr>
               </thead>
               <tbody>
                 {users.map((u) => (
-                  <tr key={u.id} className="hover:bg-slate-50 border-b border-slate-100 last:border-0">
-                    <td className="px-4 py-3.5 text-sm font-semibold text-slate-800 whitespace-nowrap">{u.username}</td>
-                    <td className="px-4 py-3.5 text-sm text-slate-700">{u.fullName}</td>
-                    <td className="px-4 py-3.5 text-sm text-slate-700">{u.roles.join(', ')}</td>
-                    <td className="px-4 py-3.5 text-sm text-slate-700">{u.officeName ?? '—'}</td>
-                    <td className="px-4 py-3.5 text-sm whitespace-nowrap">
+                  <tr key={u.id} className="data-row">
+                    <td className="td-cell text-sm font-semibold text-text-primary whitespace-nowrap">{u.username}</td>
+                    <td className="td-cell text-sm text-slate-700">{u.fullName}</td>
+                    <td className="td-cell text-sm text-slate-700">{u.roles.join(', ')}</td>
+                    <td className="td-cell text-sm text-slate-700">{u.officeName ?? '—'}</td>
+                    <td className="td-cell text-sm whitespace-nowrap">
                       <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-                        u.enabled ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-300'
+                        u.enabled ? 'bg-badge-success-bg text-badge-success-fg border-badge-success-bd' : 'bg-badge-draft-bg text-badge-draft-fg border-badge-draft-bd'
                       }`}>
                         {u.enabled ? t('adminUsers.active') : t('adminUsers.inactive')}
                       </span>
                       {u.username === me?.username ? (
-                        <span className="ms-2 text-xs text-slate-400">{t('adminUsers.you')}</span>
+                        <span className="ms-2 text-xs text-text-secondary">{t('adminUsers.you')}</span>
                       ) : confirmId === u.id ? (
                         <span className="ms-2 inline-flex items-center gap-2">
-                          <button type="button" onClick={() => toggleEnabled(u)} className="text-xs font-bold text-red-600 hover:underline">
+                          <button type="button" onClick={() => toggleEnabled(u)} className="text-xs font-bold text-badge-danger-fg hover:underline">
                             {t('adminUsers.confirm')}
                           </button>
-                          <button type="button" onClick={() => setConfirmId(null)} className="text-xs text-slate-500 hover:underline">
+                          <button type="button" onClick={() => setConfirmId(null)} className="text-xs text-text-secondary hover:underline">
                             {t('adminUsers.cancel')}
                           </button>
                         </span>
@@ -136,18 +135,18 @@ export default function AdminUsersPage() {
                         <button
                           type="button"
                           onClick={() => (u.enabled ? setConfirmId(u.id) : toggleEnabled(u))}
-                          className="ms-2 text-xs font-semibold text-indigo-600 hover:underline"
+                          className="ms-2 text-xs font-semibold text-primary hover:underline"
                         >
                           {u.enabled ? t('adminUsers.deactivate') : t('adminUsers.activate')}
                         </button>
                       )}
                     </td>
                     {hasPermission('AUDIT_VIEW') && (
-                      <td className="px-4 py-3.5 text-sm whitespace-nowrap">
+                      <td className="td-cell text-sm whitespace-nowrap">
                         <Link
                           to={`/admin/users/${u.id}/activity`}
                           state={{ username: u.username, fullName: u.fullName }}
-                          className="font-semibold text-indigo-600 hover:underline"
+                          className="font-semibold text-primary hover:underline"
                         >
                           {t('adminUsers.viewActivity')}
                         </Link>
@@ -161,10 +160,10 @@ export default function AdminUsersPage() {
         </div>
 
         {showForm && (
-        <form className="rounded-xl border border-slate-200 bg-white p-5" onSubmit={handleSubmit}>
-          <h2 className="text-sm font-bold text-slate-900 mb-4">{t('adminUsers.createUser')}</h2>
+        <form className="card p-5" onSubmit={handleSubmit}>
+          <h2 className="text-sm font-bold text-text-primary mb-4">{t('adminUsers.createUser')}</h2>
           {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-4" role="alert">{error}</div>
+            <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">{error}</div>
           )}
           <div className="mb-4">
             <label className={labelCls} htmlFor="new-user-username">{t('adminUsers.username')}</label>
@@ -202,7 +201,7 @@ export default function AdminUsersPage() {
             />
           </div>
           <button
-            className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+            className="w-full btn-primary "
             disabled={busy}
           >
             {busy ? t('adminUsers.creating') : t('adminUsers.create')}

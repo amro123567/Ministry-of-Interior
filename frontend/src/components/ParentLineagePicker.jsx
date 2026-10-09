@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import client from '../api/client.js'
 import { useLanguage } from '../context/LanguageContext.jsx'
+import { inputCls } from '../ui.js'
 
-const inputCls = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
 
 // Shared by CitizenCreatePage (registering a brand-new citizen) and
 // CitizenDetailPage's lineage-edit form (correcting an existing one) --
@@ -42,11 +42,11 @@ export default function ParentLineagePicker({ label, value, onChange, excludeCit
 
   const modeBtnCls = (active) =>
     `rounded-lg px-3 py-1.5 text-xs font-semibold border transition-colors ${
-      active ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+      active ? 'bg-primary-tint border-primary/40 text-primary-hover' : 'border-border-subtle text-text-secondary hover:bg-row-hover'
     }`
 
   return (
-    <div className="rounded-lg border border-slate-200 p-3.5">
+    <div className="rounded-lg border border-border-subtle p-3.5">
       <div className="text-sm font-semibold text-slate-700 mb-2">{label}</div>
       <div className="flex flex-wrap gap-2 mb-3">
         <button type="button" className={modeBtnCls(mode === 'none')} onClick={() => setMode('none')}>
@@ -62,11 +62,11 @@ export default function ParentLineagePicker({ label, value, onChange, excludeCit
 
       {mode === 'registered' && (
         citizenId ? (
-          <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm">
-            <span className="text-slate-800">{citizenLabel}</span>
+          <div className="flex items-center justify-between gap-2 rounded-lg bg-app px-3 py-2 text-sm">
+            <span className="text-text-primary">{citizenLabel}</span>
             <button
               type="button"
-              className="text-xs font-semibold text-indigo-600 hover:underline flex-shrink-0"
+              className="text-xs font-semibold text-primary hover:underline flex-shrink-0"
               onClick={() => onChange({ mode: 'registered', citizenId: null, citizenLabel: null, unregisteredName: null })}
             >
               {t('lineagePicker.change')}
@@ -81,12 +81,12 @@ export default function ParentLineagePicker({ label, value, onChange, excludeCit
               onChange={(e) => setQuery(e.target.value)}
             />
             {results.length > 0 && (
-              <div className="mt-1.5 max-h-40 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+              <div className="mt-1.5 max-h-40 overflow-y-auto card shadow-sm">
                 {results.map((c) => (
                   <button
                     type="button"
                     key={c.id}
-                    className="block w-full text-start px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                    className="block w-full text-start px-3 py-2 text-sm text-slate-700 hover:bg-row-hover"
                     onClick={() => onChange({
                       mode: 'registered',
                       citizenId: c.id,

@@ -4,9 +4,8 @@ import client from '../api/client.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import WorkflowDiagram from '../components/WorkflowDiagram.jsx'
+import { inputCls, labelCls } from '../ui.js'
 
-const inputCls = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
-const labelCls = 'block text-sm font-semibold text-slate-700 mb-1.5'
 
 function StateChip({ state, lang }) {
   if (!state) return <span className="text-slate-300">—</span>
@@ -245,31 +244,31 @@ export default function WorkflowEnginePage() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-slate-900 mb-1">{t('workflowEngine.title')}</h1>
-      <p className="text-sm text-slate-500 mb-5">{t('workflowEngine.subtitle')}</p>
+      <h1 className="text-xl font-bold text-text-primary mb-1">{t('workflowEngine.title')}</h1>
+      <p className="text-sm text-text-secondary mb-5">{t('workflowEngine.subtitle')}</p>
 
       {loadError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-5" role="alert">{loadError}</div>
+        <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-5" role="alert">{loadError}</div>
       )}
 
       {/* ---- catalog: states ---- */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 mb-4">
+      <div className="card p-5 mb-4">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-bold text-slate-900">{t('workflowEngine.states')}</h2>
+          <h2 className="text-sm font-bold text-text-primary">{t('workflowEngine.states')}</h2>
           {!addingState && canManage && (
-            <button type="button" onClick={() => setAddingState(true)} className="text-sm font-semibold text-indigo-600 hover:underline">
+            <button type="button" onClick={() => setAddingState(true)} className="text-sm font-semibold text-primary hover:underline">
               {t('workflowEngine.addState')}
             </button>
           )}
         </div>
 
         {addingState && (
-          <form onSubmit={handleCreateState} className="rounded-lg border border-slate-200 p-4 mb-4">
-            {stateError && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-4" role="alert">{stateError}</div>}
+          <form onSubmit={handleCreateState} className="rounded-lg border border-border-subtle p-4 mb-4">
+            {stateError && <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">{stateError}</div>}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div>
                 <label className={labelCls} htmlFor="ws-code">
-                  {t('workflowEngine.code')} <span className="text-red-500">*</span>
+                  {t('workflowEngine.code')} <span className="text-required">*</span>
                 </label>
                 <input id="ws-code" className={inputCls} required value={stateForm.code} onChange={(e) => setStateForm({ ...stateForm, code: e.target.value })} />
               </div>
@@ -287,7 +286,7 @@ export default function WorkflowEnginePage() {
               </div>
               <div>
                 <label className={labelCls} htmlFor="ws-color">{t('workflowEngine.color')}</label>
-                <input id="ws-color" type="color" className="h-10 w-full rounded-lg border border-slate-300" value={stateForm.colorHex} onChange={(e) => setStateForm({ ...stateForm, colorHex: e.target.value })} />
+                <input id="ws-color" type="color" className="h-10 w-full rounded-lg border border-border-subtle" value={stateForm.colorHex} onChange={(e) => setStateForm({ ...stateForm, colorHex: e.target.value })} />
               </div>
               <div className="flex items-end gap-5 pb-2.5">
                 <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
@@ -300,12 +299,12 @@ export default function WorkflowEnginePage() {
                 </label>
               </div>
             </div>
-            <p className="text-xs text-slate-400 mb-4">{t('workflowEngine.initialHint')}</p>
+            <p className="text-xs text-text-secondary mb-4">{t('workflowEngine.initialHint')}</p>
             <div className="flex justify-end gap-2.5">
-              <button type="button" onClick={() => setAddingState(false)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              <button type="button" onClick={() => setAddingState(false)} className="btn-secondary">
                 {t('common.cancel')}
               </button>
-              <button type="submit" disabled={stateBusy} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
+              <button type="submit" disabled={stateBusy} className="btn-primary ">
                 {stateBusy ? t('workflowEngine.submitting') : t('workflowEngine.submit')}
               </button>
             </div>
@@ -313,14 +312,14 @@ export default function WorkflowEnginePage() {
         )}
 
         {!loading && states.length === 0 ? (
-          <p className="text-sm text-slate-400">{t('workflowEngine.noStates')}</p>
+          <p className="text-sm text-text-secondary">{t('workflowEngine.noStates')}</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {states.map((s) => (
               <div key={s.id} className="flex items-center gap-2">
                 <StateChip state={s} lang={lang} />
-                {s.isInitial && <span className="text-[10px] font-bold uppercase text-slate-400">{t('workflowEngine.initialTag')}</span>}
-                {s.isFinal && <span className="text-[10px] font-bold uppercase text-slate-400">{t('workflowEngine.finalTag')}</span>}
+                {s.isInitial && <span className="text-[10px] font-bold uppercase text-text-secondary">{t('workflowEngine.initialTag')}</span>}
+                {s.isFinal && <span className="text-[10px] font-bold uppercase text-text-secondary">{t('workflowEngine.finalTag')}</span>}
               </div>
             ))}
           </div>
@@ -328,25 +327,25 @@ export default function WorkflowEnginePage() {
       </div>
 
       {/* ---- catalog: transitions ---- */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 mb-4">
+      <div className="card p-5 mb-4">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-bold text-slate-900">{t('workflowEngine.transitions')}</h2>
+          <h2 className="text-sm font-bold text-text-primary">{t('workflowEngine.transitions')}</h2>
           <div className="flex items-center gap-3">
-          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 text-xs font-semibold" role="group" aria-label={t('workflowEngine.viewLabel')}>
+          <div className="inline-flex rounded-lg border border-border-subtle p-0.5 text-xs font-semibold" role="group" aria-label={t('workflowEngine.viewLabel')}>
             {['diagram', 'list'].map((v) => (
               <button
                 key={v}
                 type="button"
                 aria-pressed={view === v}
                 onClick={() => setView(v)}
-                className={`rounded-md px-2.5 py-1 ${view === v ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+                className={`rounded-md px-2.5 py-1 ${view === v ? 'bg-primary text-white' : 'text-text-secondary hover:bg-row-hover'}`}
               >
                 {t(`workflowEngine.view_${v}`)}
               </button>
             ))}
           </div>
           {!addingTransition && canManage && (
-            <button type="button" onClick={startAddingTransition} className="text-sm font-semibold text-indigo-600 hover:underline">
+            <button type="button" onClick={startAddingTransition} className="text-sm font-semibold text-primary hover:underline">
               {t('workflowEngine.addTransition')}
             </button>
           )}
@@ -354,12 +353,12 @@ export default function WorkflowEnginePage() {
         </div>
 
         {addingTransition && (
-          <form onSubmit={handleCreateTransition} className="rounded-lg border border-slate-200 p-4 mb-4">
-            {transitionError && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-4" role="alert">{transitionError}</div>}
+          <form onSubmit={handleCreateTransition} className="rounded-lg border border-border-subtle p-4 mb-4">
+            {transitionError && <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">{transitionError}</div>}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div>
                 <label className={labelCls} htmlFor="wt-from">
-                  {t('workflowEngine.fromState')} <span className="text-red-500">*</span>
+                  {t('workflowEngine.fromState')} <span className="text-required">*</span>
                 </label>
                 <select id="wt-from" className={inputCls} value={transitionForm.fromStateId} onChange={(e) => setTransitionForm({ ...transitionForm, fromStateId: e.target.value })}>
                   {states.map((s) => <option key={s.id} value={s.id}>{s.code}</option>)}
@@ -367,7 +366,7 @@ export default function WorkflowEnginePage() {
               </div>
               <div>
                 <label className={labelCls} htmlFor="wt-to">
-                  {t('workflowEngine.toState')} <span className="text-red-500">*</span>
+                  {t('workflowEngine.toState')} <span className="text-required">*</span>
                 </label>
                 <select id="wt-to" className={inputCls} value={transitionForm.toStateId} onChange={(e) => setTransitionForm({ ...transitionForm, toStateId: e.target.value })}>
                   {states.map((s) => <option key={s.id} value={s.id}>{s.code}</option>)}
@@ -375,10 +374,10 @@ export default function WorkflowEnginePage() {
               </div>
               <div>
                 <label className={labelCls} htmlFor="wt-action">
-                  {t('workflowEngine.actionCode')} <span className="text-red-500">*</span>
+                  {t('workflowEngine.actionCode')} <span className="text-required">*</span>
                 </label>
                 <input id="wt-action" className={inputCls} required value={transitionForm.actionCode} onChange={(e) => setTransitionForm({ ...transitionForm, actionCode: e.target.value })} />
-                <p className="text-xs text-slate-400 mt-1">{t('workflowEngine.actionCodeHint')}</p>
+                <p className="text-xs text-text-secondary mt-1">{t('workflowEngine.actionCodeHint')}</p>
               </div>
               <div>
                 <label className={labelCls} htmlFor="wt-label-en">{t('workflowEngine.labelEn')}</label>
@@ -399,11 +398,11 @@ export default function WorkflowEnginePage() {
                 </label>
               </div>
             </div>
-            <p className="text-xs text-slate-400 mb-2">{t('workflowEngine.requiresDocumentHint')}</p>
+            <p className="text-xs text-text-secondary mb-2">{t('workflowEngine.requiresDocumentHint')}</p>
 
             <label className={labelCls}>{t('workflowEngine.requiredPermissions')}</label>
-            <p className="text-xs text-slate-400 mb-2">{t('workflowEngine.requiredPermissionsHint')}</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4 max-h-48 overflow-y-auto rounded-lg border border-slate-200 p-3">
+            <p className="text-xs text-text-secondary mb-2">{t('workflowEngine.requiredPermissionsHint')}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4 max-h-48 overflow-y-auto rounded-lg border border-border-subtle p-3">
               {permissions.map((p) => (
                 <label key={p.id} className="flex items-center gap-2 text-sm text-slate-700">
                   <input type="checkbox" checked={transitionForm.requiredPermissionIds.includes(p.id)} onChange={() => togglePermission(p.id)} />
@@ -413,10 +412,10 @@ export default function WorkflowEnginePage() {
             </div>
 
             <div className="flex justify-end gap-2.5">
-              <button type="button" onClick={() => setAddingTransition(false)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              <button type="button" onClick={() => setAddingTransition(false)} className="btn-secondary">
                 {t('common.cancel')}
               </button>
-              <button type="submit" disabled={transitionBusy} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
+              <button type="submit" disabled={transitionBusy} className="btn-primary ">
                 {transitionBusy ? t('workflowEngine.submitting') : t('workflowEngine.submit')}
               </button>
             </div>
@@ -424,7 +423,7 @@ export default function WorkflowEnginePage() {
         )}
 
         {!loading && transitions.length === 0 ? (
-          <p className="text-sm text-slate-400">{t('workflowEngine.noTransitions')}</p>
+          <p className="text-sm text-text-secondary">{t('workflowEngine.noTransitions')}</p>
         ) : view === 'diagram' ? (
           <WorkflowDiagram
             states={states}
@@ -440,16 +439,16 @@ export default function WorkflowEnginePage() {
                 <StateChip state={stateByCode(tr.fromStateCode)} lang={lang} />
                 <span className="text-slate-300">→</span>
                 <StateChip state={stateByCode(tr.toStateCode)} lang={lang} />
-                <span className="text-sm font-semibold text-slate-800 ms-1">
+                <span className="text-sm font-semibold text-text-primary ms-1">
                   {(lang === 'ar' ? tr.labelAr : tr.labelEn) || tr.actionCode}
                 </span>
-                <span className="font-mono text-[11px] text-slate-400">({tr.actionCode})</span>
-                {tr.requiresComment && <span className="text-[10px] font-bold uppercase text-amber-600">{t('workflowEngine.requiresComment')}</span>}
-                {tr.requiresDocument && <span className="text-[10px] font-bold uppercase text-amber-600" title={t('workflowEngine.requiresDocumentHint')}>{t('workflowEngine.requiresDocument')}</span>}
+                <span className="font-mono text-[11px] text-text-secondary">({tr.actionCode})</span>
+                {tr.requiresComment && <span className="text-[10px] font-bold uppercase text-badge-warning-fg">{t('workflowEngine.requiresComment')}</span>}
+                {tr.requiresDocument && <span className="text-[10px] font-bold uppercase text-badge-warning-fg" title={t('workflowEngine.requiresDocumentHint')}>{t('workflowEngine.requiresDocument')}</span>}
                 {tr.requiredPermissionCodes.length > 0 && (
                   <span className="flex flex-wrap gap-1">
                     {tr.requiredPermissionCodes.map((code) => (
-                      <span key={code} className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[10px] text-slate-500">{code}</span>
+                      <span key={code} className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[10px] text-text-secondary">{code}</span>
                     ))}
                   </span>
                 )}
@@ -460,26 +459,26 @@ export default function WorkflowEnginePage() {
       </div>
 
       {/* ---- instance operator ---- */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5">
-        <h2 className="text-sm font-bold text-slate-900 mb-1">{t('workflowEngine.instances')}</h2>
-        <p className="text-xs text-slate-400 mb-4">{t('workflowEngine.instancesHint')}</p>
+      <div className="card p-5">
+        <h2 className="text-sm font-bold text-text-primary mb-1">{t('workflowEngine.instances')}</h2>
+        <p className="text-xs text-text-secondary mb-4">{t('workflowEngine.instancesHint')}</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-          <form onSubmit={handleLookup} className="rounded-lg border border-slate-200 p-4">
+          <form onSubmit={handleLookup} className="rounded-lg border border-border-subtle p-4">
             <label className={labelCls} htmlFor="wi-lookup">{t('workflowEngine.lookupById')}</label>
             <div className="flex gap-2">
               <input id="wi-lookup" type="number" className={inputCls} value={lookupId} onChange={(e) => setLookupId(e.target.value)} />
-              <button type="submit" disabled={instanceBusy} className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 whitespace-nowrap">
+              <button type="submit" disabled={instanceBusy} className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-border-subtle whitespace-nowrap">
                 {t('workflowEngine.lookup')}
               </button>
             </div>
           </form>
-          <form onSubmit={handleCreateInstance} className="rounded-lg border border-slate-200 p-4">
+          <form onSubmit={handleCreateInstance} className="rounded-lg border border-border-subtle p-4">
             <label className={labelCls}>{t('workflowEngine.startNew')}</label>
             <div className="flex gap-2">
               <input placeholder={t('workflowEngine.entityType')} className={inputCls} value={newEntityType} onChange={(e) => setNewEntityType(e.target.value)} />
               <input type="number" placeholder={t('workflowEngine.entityId')} className={inputCls} value={newEntityId} onChange={(e) => setNewEntityId(e.target.value)} />
-              <button type="submit" disabled={instanceBusy} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 whitespace-nowrap disabled:opacity-60">
+              <button type="submit" disabled={instanceBusy} className="btn-primary whitespace-nowrap ">
                 {t('workflowEngine.start')}
               </button>
             </div>
@@ -487,23 +486,23 @@ export default function WorkflowEnginePage() {
         </div>
 
         {instanceError && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-4" role="alert">{instanceError}</div>
+          <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">{instanceError}</div>
         )}
 
         {instance && (
-          <div className="rounded-lg border border-slate-200 p-4">
+          <div className="rounded-lg border border-border-subtle p-4">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <div>
-                <div className="text-sm font-bold text-slate-900">{instance.entityType} #{instance.entityId}</div>
-                <div className="text-xs text-slate-400">{t('workflowEngine.instanceId')} {instance.id}</div>
+                <div className="text-sm font-bold text-text-primary">{instance.entityType} #{instance.entityId}</div>
+                <div className="text-xs text-text-secondary">{t('workflowEngine.instanceId')} {instance.id}</div>
               </div>
               <StateChip state={stateByCode(instance.currentStateCode)} lang={lang} />
             </div>
 
             <div className="mb-4">
-              <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-2">{t('workflowEngine.availableTransitions')}</div>
+              <div className="text-[11px] font-bold uppercase tracking-wide text-text-secondary mb-2">{t('workflowEngine.availableTransitions')}</div>
               {availableTransitions.length === 0 ? (
-                <p className="text-sm text-slate-400">{t('workflowEngine.noAvailableTransitions')}</p>
+                <p className="text-sm text-text-secondary">{t('workflowEngine.noAvailableTransitions')}</p>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {availableTransitions.map((av) => (
@@ -512,7 +511,7 @@ export default function WorkflowEnginePage() {
                       type="button"
                       disabled={instanceBusy}
                       onClick={() => clickAvailableTransition(av)}
-                      className="rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                      className="btn-primary "
                       title={av.requiresDocument ? t('workflowEngine.requiresDocumentHint') : undefined}
                     >
                       {(lang === 'ar' ? av.labelAr : av.labelEn) || av.actionCode}
@@ -524,18 +523,18 @@ export default function WorkflowEnginePage() {
             </div>
 
             {pendingAction && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 mb-4">
+              <div className="rounded-lg border border-badge-warning-bd bg-badge-warning-bg p-3 mb-4">
                 <label className={labelCls} htmlFor="wi-comment">{t('workflowEngine.commentRequired')}</label>
                 <textarea id="wi-comment" rows={2} className={inputCls} value={comment} onChange={(e) => setComment(e.target.value)} />
                 <div className="flex justify-end gap-2 mt-2">
-                  <button type="button" onClick={() => setPendingAction(null)} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                  <button type="button" onClick={() => setPendingAction(null)} className="btn-secondary btn-sm">
                     {t('common.cancel')}
                   </button>
                   <button
                     type="button"
                     disabled={!comment.trim() || instanceBusy}
                     onClick={() => executeTransition(pendingAction, comment.trim())}
-                    className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                    className="btn-primary btn-sm "
                   >
                     {t('workflowEngine.confirmTransition')}
                   </button>
@@ -544,9 +543,9 @@ export default function WorkflowEnginePage() {
             )}
 
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-2">{t('workflowEngine.history')}</div>
+              <div className="text-[11px] font-bold uppercase tracking-wide text-text-secondary mb-2">{t('workflowEngine.history')}</div>
               {history.length === 0 ? (
-                <p className="text-sm text-slate-400">{t('workflowEngine.noHistory')}</p>
+                <p className="text-sm text-text-secondary">{t('workflowEngine.noHistory')}</p>
               ) : (
                 <ul className="divide-y divide-slate-100">
                   {history.map((h) => (
@@ -555,11 +554,11 @@ export default function WorkflowEnginePage() {
                         <StateChip state={stateByCode(h.fromStateCode)} lang={lang} />
                         <span className="text-slate-300">→</span>
                         <StateChip state={stateByCode(h.toStateCode)} lang={lang} />
-                        <span className="text-xs text-slate-400">
+                        <span className="text-xs text-text-secondary">
                           {h.actorName ?? t('workflowEngine.unknownActor')} · {format(new Date(h.occurredAt), 'MMM d, yyyy HH:mm')}
                         </span>
                       </div>
-                      {h.comment && <div className="text-xs text-slate-500 mt-1">{h.comment}</div>}
+                      {h.comment && <div className="text-xs text-text-secondary mt-1">{h.comment}</div>}
                     </li>
                   ))}
                 </ul>

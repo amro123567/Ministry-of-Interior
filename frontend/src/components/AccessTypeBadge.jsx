@@ -1,4 +1,5 @@
 import { useLanguage } from '../context/LanguageContext.jsx'
+import { Badge } from './ui/index.jsx'
 
 // Tints for entity.AccessType (VIEW_RECORD, VIEW_DOCUMENT, SEARCH_RESULT,
 // EXPORT) -- a small, closed enum (unlike the global audit log's free-form
@@ -9,18 +10,18 @@ import { useLanguage } from '../context/LanguageContext.jsx'
 // at") -- both consume RecordAccessLogDto from the same
 // CitizenAuditController endpoints, frontend integration pass Step 8.
 const ACCESS_TYPE_STYLES = {
-  VIEW_RECORD: 'bg-sky-50 text-sky-700 border-sky-200',
-  VIEW_DOCUMENT: 'bg-indigo-50 text-indigo-600 border-indigo-200',
-  SEARCH_RESULT: 'bg-slate-50 text-slate-600 border-slate-200',
-  EXPORT: 'bg-amber-50 text-amber-700 border-amber-200',
+  VIEW_RECORD: 'info',
+  VIEW_DOCUMENT: 'info',
+  SEARCH_RESULT: 'draft',
+  EXPORT: 'warning',
 }
 
 export default function AccessTypeBadge({ accessType }) {
   const { t } = useLanguage()
   const style = ACCESS_TYPE_STYLES[accessType] || ACCESS_TYPE_STYLES.VIEW_RECORD
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${style}`}>
+    <Badge tone={style}>
       {t(`accessType.${accessType}`, accessType?.replace('_', ' ') ?? '—')}
-    </span>
+    </Badge>
   )
 }

@@ -4,9 +4,8 @@ import client from '../api/client.js'
 import CitizenSearchPicker from '../components/CitizenSearchPicker.jsx'
 import DistrictScopedSelect from '../components/DistrictScopedSelect.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
+import { inputCls, labelCls } from '../ui.js'
 
-const inputCls = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
-const labelCls = 'block text-sm font-semibold text-slate-700 mb-1.5'
 
 // POST /api/family-records -- gated CITIZEN_MANAGE both at the route
 // (App.jsx) and on the backend (SecurityConfig), same pattern as
@@ -62,16 +61,16 @@ export default function FamilyRecordCreatePage() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-slate-900 mb-5">{t('familyRecord.createTitle')}</h1>
-      <form onSubmit={handleSubmit} className="rounded-xl border border-slate-200 bg-white p-7 max-w-xl">
+      <h1 className="text-xl font-bold text-text-primary mb-5">{t('familyRecord.createTitle')}</h1>
+      <form onSubmit={handleSubmit} className="card p-7 max-w-xl">
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-5" role="alert">{error}</div>
+          <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-5" role="alert">{error}</div>
         )}
-        <p className="text-xs text-slate-400 mb-5"><span className="text-red-500">*</span> {t('common.required')}</p>
+        <p className="text-xs text-text-secondary mb-5"><span className="text-required">*</span> {t('common.required')}</p>
 
         <div className="mb-5">
           <label className={labelCls} htmlFor="book-number">
-            {t('familyRecord.bookNumber')} <span className="text-red-500">*</span>
+            {t('familyRecord.bookNumber')} <span className="text-required">*</span>
           </label>
           <input id="book-number" className={inputCls} required value={bookNumber} onChange={(e) => setBookNumber(e.target.value)} />
         </div>
@@ -95,11 +94,11 @@ export default function FamilyRecordCreatePage() {
           />
         </div>
 
-        <div className="flex justify-end gap-2.5 pt-5 border-t border-slate-100">
-          <button type="button" onClick={() => navigate(-1)} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+        <div className="flex justify-end gap-2.5 pt-5 border-t border-row-divider">
+          <button type="button" onClick={() => navigate(-1)} className="btn-secondary">
             {t('common.cancel')}
           </button>
-          <button type="submit" disabled={busy} className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
+          <button type="submit" disabled={busy} className="btn-primary ">
             {busy ? t('familyRecord.submitting') : t('familyRecord.submit')}
           </button>
         </div>

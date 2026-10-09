@@ -3,33 +3,30 @@ import { format } from 'date-fns'
 import client from '../api/client.js'
 import { SkeletonTableRows } from '../components/Skeleton.jsx'
 import LoginAttemptBadge from '../components/LoginAttemptBadge.jsx'
+import { Badge } from '../components/ui/index.jsx'
 import { downloadCsv } from '../api/download.js'
 import { useLanguage } from '../context/LanguageContext.jsx'
+import { inputCls } from '../ui.js'
 
-const inputCls = 'rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
 
 // Soft-pill tints keyed by keyword rather than an exact action list, since
 // the backend is free to log new action strings (e.g. "REASSIGN",
 // "LOGIN_FAILED") without this page needing a matching update every time.
 const ACTION_TINT_RULES = [
-  { test: /CREATE|REGISTER|SUBMIT/i, style: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  { test: /DELETE|REJECT|FAIL|LOCK/i, style: 'bg-red-50 text-red-600 border-red-200' },
-  { test: /UPDATE|ASSIGN|EDIT/i, style: 'bg-sky-50 text-sky-700 border-sky-200' },
-  { test: /LOGIN|LOGOUT|AUTH/i, style: 'bg-indigo-50 text-indigo-600 border-indigo-200' },
-  { test: /APPROVE|ARCHIVE/i, style: 'bg-amber-50 text-amber-700 border-amber-200' },
+  { test: /CREATE|REGISTER|SUBMIT/i, style: 'success' },
+  { test: /DELETE|REJECT|FAIL|LOCK/i, style: 'danger' },
+  { test: /UPDATE|ASSIGN|EDIT/i, style: 'info' },
+  { test: /LOGIN|LOGOUT|AUTH/i, style: 'info' },
+  { test: /APPROVE|ARCHIVE/i, style: 'warning' },
 ]
-const DEFAULT_ACTION_TINT = 'bg-slate-50 text-slate-600 border-slate-200'
+const DEFAULT_ACTION_TINT = 'draft'
 
 function actionTint(action) {
   return ACTION_TINT_RULES.find(({ test }) => test.test(action))?.style ?? DEFAULT_ACTION_TINT
 }
 
 function ActionBadge({ action }) {
-  return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${actionTint(action)}`}>
-      {action}
-    </span>
-  )
+  return <Badge tone={actionTint(action)}>{action}</Badge>
 }
 
 // The session/login half of Item 7's session-hardening work (SessionSecurityController)
@@ -55,43 +52,43 @@ function LoginAttemptsTab() {
 
   if (error) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600" role="alert">{error}</div>
+      <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg" role="alert">{error}</div>
     )
   }
 
   if (!loading && attempts.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-300 bg-white py-12 text-center text-slate-400">
+      <div className="rounded-lg border border-dashed border-border-subtle bg-surface-card py-12 text-center text-text-secondary">
         <p>{t('auditLog.loginNoMatch')}</p>
       </div>
     )
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+    <div className="card overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
+        <table className="data-table">
           <thead>
-            <tr className="bg-slate-50">
-              <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.loginColTime')}</th>
-              <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.loginColUsername')}</th>
-              <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.loginColOutcome')}</th>
-              <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.loginColIp')}</th>
-              <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.loginColUserAgent')}</th>
+            <tr>
+              <th className="th-cell">{t('auditLog.loginColTime')}</th>
+              <th className="th-cell">{t('auditLog.loginColUsername')}</th>
+              <th className="th-cell">{t('auditLog.loginColOutcome')}</th>
+              <th className="th-cell">{t('auditLog.loginColIp')}</th>
+              <th className="th-cell">{t('auditLog.loginColUserAgent')}</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <SkeletonTableRows rows={8} cols={5} />
             ) : attempts.map((a) => (
-              <tr key={a.id} className="hover:bg-slate-50 border-b border-slate-100 last:border-0">
-                <td className="px-4 py-3.5 text-slate-500 whitespace-nowrap">
+              <tr key={a.id} className="data-row">
+                <td className="td-cell whitespace-nowrap">
                   {format(new Date(a.attemptedAt), 'MMM d, yyyy HH:mm:ss')}
                 </td>
-                <td className="px-4 py-3.5 text-slate-700 whitespace-nowrap">{a.usernameAttempted}</td>
-                <td className="px-4 py-3.5"><LoginAttemptBadge wasSuccessful={a.wasSuccessful} failureReason={a.failureReason} /></td>
-                <td className="px-4 py-3.5 text-slate-500 whitespace-nowrap">{a.ipAddress || '—'}</td>
-                <td className="px-4 py-3.5 text-slate-500 max-w-[280px] truncate" title={a.userAgent ?? ''}>{a.userAgent || '—'}</td>
+                <td className="td-cell text-text-primary whitespace-nowrap">{a.usernameAttempted}</td>
+                <td className="td-cell"><LoginAttemptBadge wasSuccessful={a.wasSuccessful} failureReason={a.failureReason} /></td>
+                <td className="td-cell whitespace-nowrap">{a.ipAddress || '—'}</td>
+                <td className="td-cell max-w-[280px] truncate" title={a.userAgent ?? ''}>{a.userAgent || '—'}</td>
               </tr>
             ))}
           </tbody>
@@ -159,14 +156,14 @@ export default function AuditLogPage() {
   return (
     <div>
       <div className="mb-5">
-        <h1 className="text-xl font-bold text-slate-900">{t('auditLog.title')}</h1>
-        <p className="text-sm text-slate-500 mt-1">{t('auditLog.subtitle')}</p>
+        <h1 className="text-xl font-bold text-text-primary">{t('auditLog.title')}</h1>
+        <p className="text-sm text-text-secondary mt-1">{t('auditLog.subtitle')}</p>
       </div>
 
       {/* Two tabs on one AUDIT_VIEW-gated route/nav link rather than a
           second top-level Navbar entry -- see the LoginAttemptsTab
           comment above for why. */}
-      <div className="flex gap-1 mb-5 border-b border-slate-200">
+      <div className="flex gap-1 mb-5 border-b border-border-subtle">
         {[
           { key: 'entity', label: t('auditLog.tabEntity') },
           { key: 'logins', label: t('auditLog.tabLogins') },
@@ -176,7 +173,7 @@ export default function AuditLogPage() {
             type="button"
             onClick={() => setTab(key)}
             className={`px-3.5 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors ${
-              tab === key ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'
+              tab === key ? 'border-primary text-primary' : 'border-transparent text-text-secondary hover:text-text-primary'
             }`}
           >
             {label}
@@ -186,82 +183,86 @@ export default function AuditLogPage() {
 
       {tab === 'entity' && (
         <>
-          <div className="flex flex-wrap gap-2.5 mb-5">
+          {/* 4-column filter grid: row 1 search (2 cols) + action + entity;
+              row 2 date range (from / to) ; row 3 reset (left of) export. */}
+          <div className="card p-4 mb-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <input
               placeholder={t('auditLog.searchPlaceholder')}
+              aria-label={t('auditLog.searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className={`${inputCls} flex-1 min-w-[220px]`}
+              className="field sm:col-span-2"
             />
-            <select value={action} onChange={(e) => setAction(e.target.value)} className={`${inputCls} w-[180px]`}>
+            <select value={action} onChange={(e) => setAction(e.target.value)} className="field" aria-label={t('auditLog.allActions')}>
               <option value="">{t('auditLog.allActions')}</option>
               {actionOptions.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
-            <select value={entityType} onChange={(e) => setEntityType(e.target.value)} className={`${inputCls} w-[180px]`}>
+            <select value={entityType} onChange={(e) => setEntityType(e.target.value)} className="field" aria-label={t('auditLog.allEntities')}>
               <option value="">{t('auditLog.allEntities')}</option>
               {entityTypeOptions.map((et) => <option key={et} value={et}>{et}</option>)}
             </select>
+
             <input
               type="date"
               aria-label={t('auditLog.dateFrom')}
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className={`${inputCls} w-[160px]`}
+              className="field"
             />
             <input
               type="date"
               aria-label={t('auditLog.dateTo')}
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className={`${inputCls} w-[160px]`}
+              className="field"
             />
-            {anyFilter && (
-              <button type="button" onClick={clearFilters}
-                className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                {t('requests.clearFilters')}
+            <div className="sm:col-span-2 flex flex-wrap items-center justify-end gap-2.5">
+              {anyFilter && (
+                <button type="button" onClick={clearFilters} className="btn-secondary">
+                  {t('requests.clearFilters')}
+                </button>
+              )}
+              <button type="button" onClick={() => downloadCsv('/audit/export', params, 'audit_log.csv')} className="btn-secondary">
+                {t('requests.exportCsv')}
               </button>
-            )}
-            <button type="button" onClick={() => downloadCsv('/audit/export', params, 'audit_log.csv')}
-              className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 ms-auto">
-              {t('requests.exportCsv')}
-            </button>
+            </div>
           </div>
 
           {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-4" role="alert">
+            <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">
               {error}
             </div>
           )}
 
           {showEmpty ? (
-            <div className="rounded-xl border border-dashed border-slate-300 bg-white py-12 text-center text-slate-400">
+            <div className="rounded-lg border border-dashed border-border-subtle bg-surface-card py-12 text-center text-text-secondary">
               <p>{t('auditLog.noMatch')}</p>
             </div>
           ) : !error && (
-            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+            <div className="card overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
+                <table className="data-table">
                   <thead>
-                    <tr className="bg-slate-50">
-                      <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.colTimestamp')}</th>
-                      <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.colAction')}</th>
-                      <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.colEntity')}</th>
-                      <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.colActor')}</th>
-                      <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('auditLog.colDetails')}</th>
+                    <tr>
+                      <th className="th-cell">{t('auditLog.colTimestamp')}</th>
+                      <th className="th-cell">{t('auditLog.colAction')}</th>
+                      <th className="th-cell">{t('auditLog.colEntity')}</th>
+                      <th className="th-cell">{t('auditLog.colActor')}</th>
+                      <th className="th-cell">{t('auditLog.colDetails')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {loading ? (
                       <SkeletonTableRows rows={8} cols={5} />
                     ) : filtered.map((e) => (
-                      <tr key={e.id} className="hover:bg-slate-50 border-b border-slate-100 last:border-0">
-                        <td className="px-4 py-3.5 text-slate-500 whitespace-nowrap">
+                      <tr key={e.id} className="data-row">
+                        <td className="td-cell whitespace-nowrap">
                           {format(new Date(e.occurredAt), 'MMM d, yyyy HH:mm:ss')}
                         </td>
-                        <td className="px-4 py-3.5"><ActionBadge action={e.action} /></td>
-                        <td className="px-4 py-3.5 text-slate-700 whitespace-nowrap">{e.entityType} #{e.entityId}</td>
-                        <td className="px-4 py-3.5 text-slate-700">{e.actorName}</td>
-                        <td className="px-4 py-3.5 text-slate-500 max-w-[420px] truncate" title={e.details ?? ''}>
+                        <td className="td-cell"><ActionBadge action={e.action} /></td>
+                        <td className="td-cell text-text-primary whitespace-nowrap">{e.entityType} #{e.entityId}</td>
+                        <td className="td-cell text-text-primary">{e.actorName}</td>
+                        <td className="td-cell max-w-[420px] truncate" title={e.details ?? ''}>
                           {e.details || <span className="text-slate-300">{t('auditLog.noDetails')}</span>}
                         </td>
                       </tr>

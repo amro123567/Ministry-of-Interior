@@ -103,10 +103,10 @@ export default function DocumentCreatePage() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-slate-900 mb-5">{t('documentRegistry.createTitle')}</h1>
-      <form onSubmit={handleSubmit} className="rounded-xl border border-slate-200 bg-white p-7 max-w-3xl">
+      <h1 className="text-xl font-bold text-text-primary mb-5">{t('documentRegistry.createTitle')}</h1>
+      <form onSubmit={handleSubmit} className="card p-7 max-w-3xl">
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-5" role="alert">{error}</div>
+          <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-5" role="alert">{error}</div>
         )}
 
         <div className="mb-6">
@@ -124,8 +124,8 @@ export default function DocumentCreatePage() {
 
         <Fields values={values} set={set} ctx={ctx} />
 
-        <details open className="mt-7 pt-5 border-t border-slate-100">
-          <summary className="cursor-pointer text-sm font-bold text-slate-900 mb-4">{t('documentRegistry.sectionCommon')}</summary>
+        <details open className="mt-7 pt-5 border-t border-row-divider">
+          <summary className="cursor-pointer text-sm font-bold text-text-primary mb-4">{t('documentRegistry.sectionCommon')}</summary>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <Field id="doc-number" label={t('documentRegistry.documentNumber')} name="documentNumber" values={common} set={setCommonField} />
             <Field id="doc-issue-date" label={t('documentRegistry.issueDate')} name="issueDate" type="date" values={common} set={setCommonField} />
@@ -146,18 +146,18 @@ export default function DocumentCreatePage() {
           </div>
         </details>
 
-        <div className="flex justify-end gap-2.5 mt-7 pt-5 border-t border-slate-100">
+        <div className="flex justify-end gap-2.5 mt-7 pt-5 border-t border-row-divider">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            className="btn-secondary"
           >
             {t('common.cancel')}
           </button>
           <button
             type="submit"
             disabled={busy}
-            className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+            className="btn-primary "
           >
             {busy ? t('documentRegistry.submitting') : t('documentRegistry.submit')}
           </button>

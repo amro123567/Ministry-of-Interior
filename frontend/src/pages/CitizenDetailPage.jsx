@@ -24,16 +24,16 @@ function parentToPickerValue(id, name, unregisteredName) {
 function Field({ label, value }) {
   return (
     <div>
-      <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1">{label}</div>
-      <div className="text-sm text-slate-800">{value ?? <span className="text-slate-300">—</span>}</div>
+      <div className="text-[11px] font-bold uppercase tracking-wide text-text-secondary mb-1">{label}</div>
+      <div className="text-sm text-text-primary">{value ?? <span className="text-slate-300">—</span>}</div>
     </div>
   )
 }
 
 function Section({ title, children }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 mb-4">
-      <h2 className="text-sm font-bold text-slate-900 mb-4">{title}</h2>
+    <div className="card p-5 mb-4">
+      <h2 className="text-sm font-bold text-text-primary mb-4">{title}</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{children}</div>
     </div>
   )
@@ -115,7 +115,7 @@ export default function CitizenDetailPage() {
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-5">
+      <div className="card p-5">
         <SkeletonLine width="40%" height={22} className="mb-3" />
         <SkeletonLine width="60%" height={14} />
       </div>
@@ -124,7 +124,7 @@ export default function CitizenDetailPage() {
 
   if (error || !citizen) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600" role="alert">
+      <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg" role="alert">
         {error ?? t('citizenDetail.couldNotLoad')}
       </div>
     )
@@ -145,24 +145,24 @@ export default function CitizenDetailPage() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">{nameEn || nameAr}</h1>
-          <p className="text-sm text-slate-500 mt-1">{c.registryNumber}</p>
+          <h1 className="text-xl font-bold text-text-primary">{nameEn || nameAr}</h1>
+          <p className="text-sm text-text-secondary mt-1">{c.registryNumber}</p>
         </div>
         {c.deceased && (
-          <span className="inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
+          <span className="inline-flex items-center rounded-full border border-badge-draft-bd bg-badge-draft-bg px-3 py-1 text-xs font-semibold text-text-secondary">
             {t('citizens.deceased')}
           </span>
         )}
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 mb-4 grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="card p-5 mb-4 grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Field label={t('citizenDetail.registryNumber')} value={c.registryNumber} />
         <Field label={t('citizenDetail.dateOfBirth')} value={c.dateOfBirth ? format(new Date(c.dateOfBirth), 'MMM d, yyyy') : null} />
         <Field label={t('citizenDetail.registeredOffice')} value={c.officeName} />
         <Field label={t('citizenDetail.maritalStatus')} value={c.maritalStatus ? t(`citizens.maritalStatus.${c.maritalStatus}`, c.maritalStatus) : null} />
       </div>
 
-      <div role="tablist" aria-label={t('citizenDetail.sections')} className="flex gap-1 border-b border-slate-200 mb-4 overflow-x-auto">
+      <div role="tablist" aria-label={t('citizenDetail.sections')} className="flex gap-1 border-b border-border-subtle mb-4 overflow-x-auto">
         {tabs.map(([key, label]) => (
           <button
             key={key}
@@ -171,7 +171,7 @@ export default function CitizenDetailPage() {
             aria-selected={tab === key}
             onClick={() => setTab(key)}
             className={`whitespace-nowrap px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
-              tab === key ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'
+              tab === key ? 'border-primary text-primary' : 'border-transparent text-text-secondary hover:text-text-primary'
             }`}
           >
             {label}
@@ -205,9 +205,9 @@ export default function CitizenDetailPage() {
         <Field label={t('citizenDetail.registeredOffice')} value={c.officeName} />
       </Section>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 mb-4">
+      <div className="card p-5 mb-4">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-bold text-slate-900">{t('citizenDetail.lineage')}</h2>
+          <h2 className="text-sm font-bold text-text-primary">{t('citizenDetail.lineage')}</h2>
           {/* CITIZEN_MANAGE-gated, matching the backend's own gate on
               PATCH /api/citizens/{id}/lineage (SecurityConfig) -- a user
               without it never sees an edit affordance the API would just
@@ -216,7 +216,7 @@ export default function CitizenDetailPage() {
             <button
               type="button"
               onClick={startEditingLineage}
-              className="text-sm font-semibold text-indigo-600 hover:underline"
+              className="text-sm font-semibold text-primary hover:underline"
             >
               {t('citizenDetail.editLineage')}
             </button>
@@ -226,7 +226,7 @@ export default function CitizenDetailPage() {
         {editingLineage ? (
           <form onSubmit={handleSaveLineage}>
             {lineageError && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-4" role="alert">
+              <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">
                 {lineageError}
               </div>
             )}
@@ -238,14 +238,14 @@ export default function CitizenDetailPage() {
               <button
                 type="button"
                 onClick={() => setEditingLineage(false)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="btn-secondary"
               >
                 {t('common.cancel')}
               </button>
               <button
                 type="submit"
                 disabled={savingLineage}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                className="btn-primary "
               >
                 {savingLineage ? t('citizenDetail.savingLineage') : t('citizenDetail.saveLineage')}
               </button>
@@ -254,28 +254,28 @@ export default function CitizenDetailPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1">{t('citizenDetail.father')}</div>
+              <div className="text-[11px] font-bold uppercase tracking-wide text-text-secondary mb-1">{t('citizenDetail.father')}</div>
               <div className="text-sm">
                 {c.fatherId ? (
-                  <Link to={`/citizens/${c.fatherId}`} className="font-semibold text-indigo-600 hover:underline">
+                  <Link to={`/citizens/${c.fatherId}`} className="font-semibold text-primary hover:underline">
                     {c.fatherName}
                   </Link>
                 ) : c.fatherNameUnregistered ? (
-                  <span className="text-slate-800">{c.fatherNameUnregistered} <span className="text-slate-400">({t('citizenDetail.unregistered')})</span></span>
+                  <span className="text-text-primary">{c.fatherNameUnregistered} <span className="text-text-secondary">({t('citizenDetail.unregistered')})</span></span>
                 ) : (
                   <span className="text-slate-300">—</span>
                 )}
               </div>
             </div>
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1">{t('citizenDetail.mother')}</div>
+              <div className="text-[11px] font-bold uppercase tracking-wide text-text-secondary mb-1">{t('citizenDetail.mother')}</div>
               <div className="text-sm">
                 {c.motherId ? (
-                  <Link to={`/citizens/${c.motherId}`} className="font-semibold text-indigo-600 hover:underline">
+                  <Link to={`/citizens/${c.motherId}`} className="font-semibold text-primary hover:underline">
                     {c.motherName}
                   </Link>
                 ) : c.motherNameUnregistered ? (
-                  <span className="text-slate-800">{c.motherNameUnregistered} <span className="text-slate-400">({t('citizenDetail.unregistered')})</span></span>
+                  <span className="text-text-primary">{c.motherNameUnregistered} <span className="text-text-secondary">({t('citizenDetail.unregistered')})</span></span>
                 ) : (
                   <span className="text-slate-300">—</span>
                 )}

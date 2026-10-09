@@ -7,9 +7,8 @@ import StatusBadge, { SlaBadge, SlaRecordBadge } from '../components/StatusBadge
 import PaymentStatusBadge from '../components/PaymentStatusBadge.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
+import { inputCls, labelCls } from '../ui.js'
 
-const inputCls = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
-const labelCls = 'block text-sm font-semibold text-slate-700 mb-1.5'
 
 // The status changes offered on this page come from the backend (GET /requests/{id}/transitions),
 // which reads the workflow catalog and filters it by the signed-in user's permissions.
@@ -19,8 +18,8 @@ const PAYMENT_METHODS = ['CASH', 'BANK_TRANSFER', 'CHEQUE', 'WAIVED']
 function Field({ label, children }) {
   return (
     <div>
-      <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1">{label}</div>
-      <div className="text-sm text-slate-900">{children}</div>
+      <div className="text-[11px] font-bold uppercase tracking-wide text-text-secondary mb-1">{label}</div>
+      <div className="text-sm text-text-primary">{children}</div>
     </div>
   )
 }
@@ -38,16 +37,16 @@ function Stepper({ status, t }) {
         const active = i === current
         const rejected = step === 'DECISION' && status === 'REJECTED'
         const label = step === 'DECISION' ? t(`status.${status === 'REJECTED' ? 'REJECTED' : 'APPROVED'}`) : t(`status.${step}`, step)
-        const dot = rejected && active ? 'bg-rose-600 text-white'
-          : active ? 'bg-indigo-600 text-white'
-          : done ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'
+        const dot = rejected && active ? 'bg-badge-danger-fg text-white'
+          : active ? 'bg-primary text-white'
+          : done ? 'bg-badge-success-fg text-white' : 'bg-border-subtle text-text-secondary'
         return (
           <li key={step} className={`flex items-center ${i < LIFECYCLE.length - 1 ? 'flex-1' : ''}`} aria-current={active ? 'step' : undefined}>
             <div className="flex flex-col items-center gap-1.5 min-w-[64px]">
               <span className={`h-7 w-7 rounded-full grid place-items-center text-xs font-bold ${dot}`}>{done ? '✓' : i + 1}</span>
-              <span className={`text-[11px] text-center leading-tight ${active ? 'font-bold text-slate-900' : 'text-slate-500'}`}>{label}</span>
+              <span className={`text-[11px] text-center leading-tight ${active ? 'font-bold text-text-primary' : 'text-text-secondary'}`}>{label}</span>
             </div>
-            {i < LIFECYCLE.length - 1 && <div className={`h-0.5 flex-1 mx-1 mb-5 ${done ? 'bg-emerald-400' : 'bg-slate-200'}`} />}
+            {i < LIFECYCLE.length - 1 && <div className={`h-0.5 flex-1 mx-1 mb-5 ${done ? 'bg-badge-success-fg' : 'bg-border-subtle'}`} />}
           </li>
         )
       })}
@@ -230,7 +229,7 @@ export default function RequestDetailPage() {
     }
   }
 
-  if (!request) return <p className="text-sm text-slate-400">{t('common.loading')}</p>
+  if (!request) return <p className="text-sm text-text-secondary">{t('common.loading')}</p>
 
   const available = nextTransitions.map((tr) => ({
     to: tr.toStatus,
@@ -242,7 +241,7 @@ export default function RequestDetailPage() {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-        <h1 className="text-xl font-bold text-slate-900">{request.referenceNumber}</h1>
+        <h1 className="text-xl font-bold text-text-primary">{request.referenceNumber}</h1>
         <div className="flex items-center gap-2">
           <StatusBadge status={request.status} />
           <SlaBadge slaStatus={request.slaStatus} />
@@ -250,34 +249,34 @@ export default function RequestDetailPage() {
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-4" role="alert">{error}</div>
+        <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">{error}</div>
       )}
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 mb-4">
+      <div className="card p-5 mb-4">
         <Stepper status={request.status} t={t} />
-        <div className={available.length > 0 || pendingReject ? 'mt-4 pt-4 border-t border-slate-100' : 'hidden'}>
+        <div className={available.length > 0 || pendingReject ? 'mt-4 pt-4 border-t border-row-divider' : 'hidden'}>
         {available.length > 0 && (
           <div className="flex flex-wrap gap-2.5 mb-0">
             {available.map((tr) =>
               tr.needsReason ? (
                 <button key={tr.to} type="button" disabled={busy} onClick={() => { setPendingTo(tr.to); setPendingReject(true) }}
-                        className={`rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 ${tr.destructive ? 'bg-rose-600 hover:bg-rose-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+                        className={`${tr.destructive ? 'btn-danger' : 'btn-primary'}`}>
                   {t(`workflow.${tr.label}`, tr.label)}
                 </button>
               ) : (
                 <button key={tr.to} type="button" disabled={busy} onClick={() => doTransition(tr.to)}
-                        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
+                        className="btn-primary ">
                   {t(`workflow.${tr.label}`, tr.label)}
                 </button>
               ))}
           </div>
         )}
         {pendingReject && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 mb-0">
+          <div className="rounded-lg border border-badge-warning-bd bg-badge-warning-bg p-3 mb-0">
             <label className={labelCls} htmlFor="rd-reject-reason">{t('requestDetail.rejectionReason')}</label>
             <input id="rd-reject-reason" className={inputCls} value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} />
             <div className="flex justify-end mt-2">
-              <button type="button" className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
+              <button type="button" className="btn-danger "
                       disabled={!rejectionReason || busy} onClick={() => doTransition(pendingTo ?? 'REJECTED', rejectionReason)}>
                 {t('requestDetail.confirmRejection')}
               </button>
@@ -287,7 +286,7 @@ export default function RequestDetailPage() {
         </div>
       </div>
 
-      <div role="tablist" aria-label={t('requestDetail.sections')} className="flex gap-1 border-b border-slate-200 mb-4 overflow-x-auto">
+      <div role="tablist" aria-label={t('requestDetail.sections')} className="flex gap-1 border-b border-border-subtle mb-4 overflow-x-auto">
         {[
           ['details', t('requestDetail.tabDetails')],
           ['finance', t('requestFinance.title')],
@@ -301,7 +300,7 @@ export default function RequestDetailPage() {
             aria-selected={tab === key}
             onClick={() => setTab(key)}
             className={`whitespace-nowrap px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
-              tab === key ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'
+              tab === key ? 'border-primary text-primary' : 'border-transparent text-text-secondary hover:text-text-primary'
             }`}
           >
             {label}
@@ -310,8 +309,8 @@ export default function RequestDetailPage() {
       </div>
 
       {tab === 'details' && (
-      <div className="rounded-xl border border-slate-200 bg-white p-5 mb-4">
-        <h2 className="text-sm font-bold text-slate-900 mb-4">{t('requestDetail.details')}</h2>
+      <div className="card p-5 mb-4">
+        <h2 className="text-sm font-bold text-text-primary mb-4">{t('requestDetail.details')}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
           <Field label={t('requestDetail.citizen')}>{request.citizen.firstNameEn} {request.citizen.lastNameEn} ({request.citizen.registryNumber})</Field>
           <Field label={t('requestDetail.documentType')}>{request.documentType.nameEn}</Field>
@@ -331,7 +330,7 @@ export default function RequestDetailPage() {
 
 
         {hasPermission('USER_VIEW') && !CLOSED_STATUSES.includes(request.status) && (
-          <div className="rounded-lg border border-slate-200 p-4 mt-2">
+          <div className="rounded-lg border border-border-subtle p-4 mt-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
               <div>
                 <label className={labelCls} htmlFor="rd-reassign">{t('requestDetail.reassignTo')}</label>
@@ -345,7 +344,7 @@ export default function RequestDetailPage() {
                 <input id="rd-assign-note" className={inputCls} value={assignNote} onChange={(e) => setAssignNote(e.target.value)} />
               </div>
             </div>
-            <button type="button" className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 disabled:opacity-60"
+            <button type="button" className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-border-subtle "
                     disabled={!assigneeId || busy} onClick={doAssign}>
               {t('requestDetail.assign')}
             </button>
@@ -356,20 +355,20 @@ export default function RequestDetailPage() {
 
       {/* ---- SLA & payments (Step 7) ---- */}
       {tab === 'finance' && (
-      <div className="rounded-xl border border-slate-200 bg-white p-5 mb-4">
+      <div className="card p-5 mb-4">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-sm font-bold text-slate-900">{t('requestFinance.title')}</h2>
-            <p className="text-xs text-slate-400 mt-0.5">{t('requestFinance.subtitle')}</p>
+            <h2 className="text-sm font-bold text-text-primary">{t('requestFinance.title')}</h2>
+            <p className="text-xs text-text-secondary mt-0.5">{t('requestFinance.subtitle')}</p>
           </div>
           <button type="button" onClick={refreshSla} disabled={slaBusy}
-                  className="rounded-lg bg-slate-100 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 disabled:opacity-60 whitespace-nowrap">
+                  className="rounded-lg bg-slate-100 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-border-subtle  whitespace-nowrap">
             {slaBusy ? t('requestFinance.refreshing') : t('requestFinance.refresh')}
           </button>
         </div>
 
         {financeError && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-4" role="alert">{financeError}</div>
+          <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">{financeError}</div>
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
@@ -381,32 +380,32 @@ export default function RequestDetailPage() {
           <Field label={t('requestFinance.overdueByDays')}>{slaRecord?.overdueByDays ?? '—'}</Field>
         </div>
 
-        <div className="border-t border-slate-100 pt-4">
+        <div className="border-t border-row-divider pt-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{t('requestFinance.paymentsTitle')}</h3>
+            <h3 className="text-[11px] font-bold uppercase tracking-wide text-text-secondary">{t('requestFinance.paymentsTitle')}</h3>
             {!addingPayment && hasPermission('PAYMENT_RECORD') && (
-              <button type="button" onClick={startAddingPayment} className="text-sm font-semibold text-indigo-600 hover:underline">
+              <button type="button" onClick={startAddingPayment} className="text-sm font-semibold text-primary hover:underline">
                 {t('requestFinance.recordPayment')}
               </button>
             )}
           </div>
 
           {addingPayment && (
-            <form onSubmit={handleRecordPayment} className="rounded-lg border border-slate-200 p-4 mb-4">
+            <form onSubmit={handleRecordPayment} className="rounded-lg border border-border-subtle p-4 mb-4">
               {paymentFormError && (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-4" role="alert">{paymentFormError}</div>
+                <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">{paymentFormError}</div>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className={labelCls} htmlFor="pf-amount">
-                    {t('requestFinance.amount')} <span className="text-red-500">*</span>
+                    {t('requestFinance.amount')} <span className="text-required">*</span>
                   </label>
                   <input id="pf-amount" type="number" step="0.01" min="0.01" className={inputCls}
                          value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} />
                 </div>
                 <div>
                   <label className={labelCls} htmlFor="pf-currency">
-                    {t('requestFinance.currency')} <span className="text-red-500">*</span>
+                    {t('requestFinance.currency')} <span className="text-required">*</span>
                   </label>
                   <input id="pf-currency" className={inputCls} maxLength={3}
                          value={paymentForm.currency} onChange={(e) => setPaymentForm({ ...paymentForm, currency: e.target.value })} />
@@ -425,10 +424,10 @@ export default function RequestDetailPage() {
                 </div>
               </div>
               <div className="flex justify-end gap-2.5">
-                <button type="button" onClick={() => setAddingPayment(false)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                <button type="button" onClick={() => setAddingPayment(false)} className="btn-secondary">
                   {t('common.cancel')}
                 </button>
-                <button type="submit" disabled={paymentBusy} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
+                <button type="submit" disabled={paymentBusy} className="btn-primary ">
                   {paymentBusy ? t('requestFinance.submitting') : t('requestFinance.submit')}
                 </button>
               </div>
@@ -436,45 +435,45 @@ export default function RequestDetailPage() {
           )}
 
           {payments.length === 0 ? (
-            <p className="text-sm text-slate-400">{t('requestFinance.noPayments')}</p>
+            <p className="text-sm text-text-secondary">{t('requestFinance.noPayments')}</p>
           ) : (
             <ul className="divide-y divide-slate-100">
               {payments.map((p) => (
                 <li key={p.id} className="py-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-semibold text-slate-900">{p.amount} {p.currency}</span>
-                      <span className="text-xs font-mono text-slate-400">{t(`paymentMethod.${p.method}`, p.method)}</span>
+                      <span className="text-sm font-semibold text-text-primary">{p.amount} {p.currency}</span>
+                      <span className="text-xs font-mono text-text-secondary">{t(`paymentMethod.${p.method}`, p.method)}</span>
                       <PaymentStatusBadge status={p.status} />
                     </div>
                     {p.status === 'PAID' && hasPermission('PAYMENT_REVERSE') && (
                       <button type="button" onClick={() => startReversing(p.id)}
-                              className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-60">
+                              className="btn-danger btn-sm ">
                         {t('requestFinance.reverse')}
                       </button>
                     )}
                   </div>
-                  <div className="text-xs text-slate-400 mt-1">
+                  <div className="text-xs text-text-secondary mt-1">
                     {p.receiptNumber && <>{t('requestFinance.receiptNumber')}: {p.receiptNumber} · </>}
                     {p.collectedByName && <>{t('requestFinance.collectedBy')} {p.collectedByName} · </>}
                     {format(new Date(p.paidAt), 'MMM d, yyyy p')}
                   </div>
                   {p.status === 'REVERSED' && (
-                    <div className="text-xs text-rose-600 mt-1">
+                    <div className="text-xs text-badge-danger-fg mt-1">
                       {t('requestFinance.reversedBy')} {p.reversedByName} · {format(new Date(p.reversedAt), 'MMM d, yyyy p')}
                       {p.reversalReason && ` — ${p.reversalReason}`}
                     </div>
                   )}
                   {reversingPaymentId === p.id && (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 mt-2">
+                    <div className="rounded-lg border border-badge-warning-bd bg-badge-warning-bg p-3 mt-2">
                       <label className={labelCls} htmlFor={`pf-reverse-reason-${p.id}`}>{t('requestFinance.reversalReason')}</label>
                       <input id={`pf-reverse-reason-${p.id}`} className={inputCls} value={reversalReason} onChange={(e) => setReversalReason(e.target.value)} />
                       <div className="flex justify-end gap-2 mt-2">
-                        <button type="button" onClick={() => setReversingPaymentId(null)} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                        <button type="button" onClick={() => setReversingPaymentId(null)} className="btn-secondary btn-sm">
                           {t('common.cancel')}
                         </button>
                         <button type="button" disabled={!reversalReason.trim() || reverseBusy} onClick={() => doReversePayment(p.id)}
-                                className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-60">
+                                className="btn-danger btn-sm ">
                           {t('requestFinance.confirmReversal')}
                         </button>
                       </div>
@@ -489,20 +488,20 @@ export default function RequestDetailPage() {
       )}
 
       {tab === 'attachments' && (
-      <div className="rounded-xl border border-slate-200 bg-white p-5 mb-4">
-        <h2 className="text-sm font-bold text-slate-900 mb-4">{t('requestDetail.documents')}</h2>
+      <div className="card p-5 mb-4">
+        <h2 className="text-sm font-bold text-text-primary mb-4">{t('requestDetail.documents')}</h2>
         {hasPermission('REQUEST_TRANSITION_SUBMIT', 'REQUEST_TRANSITION_REVIEW', 'REQUEST_TRANSITION_DECIDE', 'REQUEST_TRANSITION_ARCHIVE') && (
-          <label className="inline-flex cursor-pointer items-center rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 mb-4">
+          <label className="inline-flex cursor-pointer items-center rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-border-subtle mb-4">
             {t('requestDetail.uploadDocument')}
             <input type="file" onChange={handleUpload} className="hidden" />
           </label>
         )}
-        {attachments.length === 0 ? <p className="text-sm text-slate-400">{t('requestDetail.noDocuments')}</p> : (
+        {attachments.length === 0 ? <p className="text-sm text-text-secondary">{t('requestDetail.noDocuments')}</p> : (
           <ul className="divide-y divide-slate-100">
             {attachments.map((a) => (
               <li key={a.id} className="py-3">
-                <button type="button" className="text-sm font-semibold text-indigo-600 hover:underline" onClick={() => download(a.id, a.fileName)}>{a.fileName}</button>
-                <div className="text-xs text-slate-400 mt-0.5">{(a.sizeBytes / 1024).toFixed(1)} KB · SHA-256 {a.sha256.slice(0, 12)}… · {a.uploadedByName}</div>
+                <button type="button" className="text-sm font-semibold text-primary hover:underline" onClick={() => download(a.id, a.fileName)}>{a.fileName}</button>
+                <div className="text-xs text-text-secondary mt-0.5">{(a.sizeBytes / 1024).toFixed(1)} KB · SHA-256 {a.sha256.slice(0, 12)}… · {a.uploadedByName}</div>
               </li>
             ))}
           </ul>
@@ -512,44 +511,44 @@ export default function RequestDetailPage() {
 
       {tab === 'history' && (
         <>
-      <div className="rounded-xl border border-slate-200 bg-white p-5 mb-4">
-        <h2 className="text-sm font-bold text-slate-900 mb-4">{t('requestDetail.assignmentHistory')}</h2>
-        {assignments.length === 0 ? <p className="text-sm text-slate-400">{t('requestDetail.neverAssigned')}</p> : (
+      <div className="card p-5 mb-4">
+        <h2 className="text-sm font-bold text-text-primary mb-4">{t('requestDetail.assignmentHistory')}</h2>
+        {assignments.length === 0 ? <p className="text-sm text-text-secondary">{t('requestDetail.neverAssigned')}</p> : (
           <ul className="divide-y divide-slate-100">
             {assignments.map((a) => (
               <li key={a.id} className="py-3">
-                <div className="text-sm font-semibold text-slate-900">{t('requestDetail.assignedToLabel')} {a.assignedToName}</div>
-                <div className="text-xs text-slate-400 mt-0.5">{a.assignedByName} · {format(new Date(a.assignedAt), 'MMM d, yyyy p')}</div>
-                {a.note && <div className="text-sm text-slate-600 mt-1">{a.note}</div>}
+                <div className="text-sm font-semibold text-text-primary">{t('requestDetail.assignedToLabel')} {a.assignedToName}</div>
+                <div className="text-xs text-text-secondary mt-0.5">{a.assignedByName} · {format(new Date(a.assignedAt), 'MMM d, yyyy p')}</div>
+                {a.note && <div className="text-sm text-text-secondary mt-1">{a.note}</div>}
               </li>
             ))}
           </ul>
         )}
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5">
-        <h2 className="text-sm font-bold text-slate-900 mb-4">{t('requestDetail.auditTrail')}</h2>
+      <div className="card p-5">
+        <h2 className="text-sm font-bold text-text-primary mb-4">{t('requestDetail.auditTrail')}</h2>
         <ul className="divide-y divide-slate-100">
           {history.map((h) => (
             <li key={h.id} className="py-3">
-              <div className="text-sm font-semibold text-slate-900">
+              <div className="text-sm font-semibold text-text-primary">
                 {h.fromStatus ? `${t(`status.${h.fromStatus}`, h.fromStatus)} → ${t(`status.${h.toStatus}`, h.toStatus)}` : `${t('requestDetail.created')} (${t(`status.${h.toStatus}`, h.toStatus)})`}
               </div>
-              <div className="text-xs text-slate-400 mt-0.5">{h.changedByName} · {format(new Date(h.changedAt), 'MMM d, yyyy p')}</div>
-              {h.note && <div className="text-sm text-slate-600 mt-1">{h.note}</div>}
+              <div className="text-xs text-text-secondary mt-0.5">{h.changedByName} · {format(new Date(h.changedAt), 'MMM d, yyyy p')}</div>
+              {h.note && <div className="text-sm text-text-secondary mt-1">{h.note}</div>}
             </li>
           ))}
         </ul>
-        <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 mt-6 mb-2">{t('requestDetail.activityLog')}</h3>
+        <h3 className="text-xs font-bold uppercase tracking-wide text-text-secondary mt-6 mb-2">{t('requestDetail.activityLog')}</h3>
         {auditEntries.length === 0 ? (
-          <p className="text-sm text-slate-400">{t('requestDetail.noActivity')}</p>
+          <p className="text-sm text-text-secondary">{t('requestDetail.noActivity')}</p>
         ) : (
           <ul className="divide-y divide-slate-100">
             {auditEntries.map((a) => (
               <li key={a.id} className="py-3">
-                <div className="text-sm font-semibold text-slate-900">{a.action}</div>
-                <div className="text-xs text-slate-400 mt-0.5">{a.actorName} · {format(new Date(a.occurredAt), 'MMM d, yyyy p')}</div>
-                {a.details && <div className="text-sm text-slate-600 mt-1">{a.details}</div>}
+                <div className="text-sm font-semibold text-text-primary">{a.action}</div>
+                <div className="text-xs text-text-secondary mt-0.5">{a.actorName} · {format(new Date(a.occurredAt), 'MMM d, yyyy p')}</div>
+                {a.details && <div className="text-sm text-text-secondary mt-1">{a.details}</div>}
               </li>
             ))}
           </ul>

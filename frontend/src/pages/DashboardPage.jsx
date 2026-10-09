@@ -9,11 +9,11 @@ import { SkeletonKpiRow, SkeletonLine } from '../components/Skeleton.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 
 const KPI_TINTS = {
-  indigo: 'bg-indigo-50 text-indigo-600',
-  red: 'bg-red-50 text-red-600',
-  amber: 'bg-amber-50 text-amber-700',
-  emerald: 'bg-emerald-50 text-emerald-600',
-  sky: 'bg-sky-50 text-sky-700',
+  indigo: 'bg-primary-tint text-primary',
+  red: 'bg-badge-danger-bg text-danger-solid',
+  amber: 'bg-badge-warning-bg text-warning-solid',
+  emerald: 'bg-badge-success-bg text-success-solid',
+  sky: 'bg-badge-info-bg text-badge-info-fg',
 }
 
 const OPEN = ['SUBMITTED', 'UNDER_REVIEW']
@@ -45,23 +45,23 @@ function WorkQueue({ queue, t }) {
   }, [queue])
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-6 mb-6">
+    <div className="card p-6 mb-6">
       <div className="flex items-start justify-between gap-3 mb-1">
-        <h2 className="text-base font-bold text-slate-900">{t(`dashboard.queue.${queue.key}.title`)}</h2>
-        <Link to={queue.more} className="text-sm font-semibold text-indigo-600 hover:underline whitespace-nowrap">{t('dashboard.queue.seeAll')}</Link>
+        <h2 className="text-base font-bold text-text-primary">{t(`dashboard.queue.${queue.key}.title`)}</h2>
+        <Link to={queue.more} className="text-sm font-semibold text-primary hover:underline whitespace-nowrap">{t('dashboard.queue.seeAll')}</Link>
       </div>
-      <p className="text-sm text-slate-500 mb-4">{t(`dashboard.queue.${queue.key}.hint`)}</p>
+      <p className="text-sm text-text-secondary mb-4">{t(`dashboard.queue.${queue.key}.hint`)}</p>
       {rows === null ? (
         <SkeletonLine height={120} />
       ) : rows.length === 0 ? (
-        <p className="text-sm text-slate-400 py-4">{t(`dashboard.queue.${queue.key}.empty`)}</p>
+        <p className="text-sm text-text-secondary py-4">{t(`dashboard.queue.${queue.key}.empty`)}</p>
       ) : (
         <ul className="divide-y divide-slate-100" aria-label={t(`dashboard.queue.${queue.key}.title`)}>
           {rows.map((r) => (
             <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
               <div className="min-w-0">
-                <Link to={`/requests/${r.id}`} className="font-semibold text-indigo-600 hover:underline">{r.referenceNumber}</Link>
-                <div className="text-xs text-slate-500 truncate max-w-[22rem]">{r.subject || r.citizenName}</div>
+                <Link to={`/requests/${r.id}`} className="font-semibold text-primary hover:underline">{r.referenceNumber}</Link>
+                <div className="text-xs text-text-secondary truncate max-w-[22rem]">{r.subject || r.citizenName}</div>
               </div>
               <div className="flex items-center gap-1.5">
                 <StatusBadge status={r.status} /> <SlaBadge slaStatus={r.slaStatus} />
@@ -74,13 +74,13 @@ function WorkQueue({ queue, t }) {
   )
 }
 
-function KpiCard({ icon: Icon, value, label, tint, valueClassName = 'text-slate-900', to }) {
+function KpiCard({ icon: Icon, value, label, tint, valueClassName = 'text-text-primary', to }) {
   const Wrapper = to ? Link : 'div'
   return (
     <Wrapper
       {...(to ? { to } : {})}
-      className={`rounded-xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col gap-3.5 ${
-        to ? 'transition-colors hover:border-indigo-300 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300' : ''
+      className={`card p-5 shadow-sm flex flex-col gap-3.5 ${
+        to ? 'transition-colors hover:border-primary/40 hover:shadow-md ' : ''
       }`}
     >
       <div className={`h-10 w-10 rounded-[10px] grid place-items-center ${KPI_TINTS[tint]}`}>
@@ -88,7 +88,7 @@ function KpiCard({ icon: Icon, value, label, tint, valueClassName = 'text-slate-
       </div>
       <div>
         <div className={`text-2xl font-extrabold ${valueClassName}`}>{value}</div>
-        <div className="text-sm text-slate-500 mt-0.5">{label}</div>
+        <div className="text-sm text-text-secondary mt-0.5">{label}</div>
       </div>
     </Wrapper>
   )
@@ -108,7 +108,7 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600" role="alert">
+      <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg" role="alert">
         {error}
       </div>
     )
@@ -117,10 +117,10 @@ export default function DashboardPage() {
   if (!summary) {
     return (
       <div>
-        <h1 className="text-xl font-bold text-slate-900 mb-5">{t('dashboard.title')}</h1>
+        <h1 className="text-xl font-bold text-text-primary mb-5">{t('dashboard.title')}</h1>
         <SkeletonKpiRow count={5} />
-        <div className="rounded-xl border border-slate-200 bg-white p-6">
-          <h2 className="text-base font-bold text-slate-900 mb-4">{t('dashboard.requestsByStatus')}</h2>
+        <div className="card p-6">
+          <h2 className="text-base font-bold text-text-primary mb-4">{t('dashboard.requestsByStatus')}</h2>
           <SkeletonLine height={240} />
         </div>
       </div>
@@ -135,25 +135,25 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-slate-900 mb-5">{t('dashboard.title')}</h1>
+      <h1 className="text-xl font-bold text-text-primary mb-5">{t('dashboard.title')}</h1>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 max-sm:[&>:last-child:nth-child(odd)]:col-span-2 mb-6">
         <KpiCard icon={FileText} value={summary.total} label={t('dashboard.totalRequests')} tint="indigo" to="/requests" />
-        <KpiCard icon={AlertTriangle} value={summary.overdueCount} label={t('dashboard.overdue')} tint="red" valueClassName="text-red-600" to="/requests?sla=OVERDUE" />
-        <KpiCard icon={Clock} value={summary.dueSoonCount} label={t('dashboard.dueSoon')} tint="amber" valueClassName="text-amber-600" to="/requests?sla=DUE_SOON" />
+        <KpiCard icon={AlertTriangle} value={summary.overdueCount} label={t('dashboard.overdue')} tint="red" valueClassName="text-danger-solid" to="/requests?sla=OVERDUE" />
+        <KpiCard icon={Clock} value={summary.dueSoonCount} label={t('dashboard.dueSoon')} tint="amber" valueClassName="text-warning-solid" to="/requests?sla=DUE_SOON" />
         <KpiCard icon={CheckCircle2} value={summary.closedThisWeek} label={t('dashboard.closedThisWeek')} tint="emerald" />
         <KpiCard icon={Gauge} value={`${summary.avgResolutionHours}h`} label={t('dashboard.avgResolution')} tint="sky" />
       </div>
 
       <WorkQueue queue={queue} t={t} />
 
-      <div className="rounded-xl border border-slate-200 bg-white p-6">
-        <h2 className="text-base font-bold text-slate-900 mb-4">{t('dashboard.requestsByStatus')}</h2>
+      <div className="card p-6">
+        <h2 className="text-base font-bold text-text-primary mb-4">{t('dashboard.requestsByStatus')}</h2>
         <div style={{ width: '100%', height: 280 }}>
           <ResponsiveContainer>
             <BarChart data={chartData} layout="vertical" margin={{ left: 24, right: 32 }} barCategoryGap="30%">
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-              <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12, fill: '#475569' }} axisLine={false} tickLine={false} />
               <YAxis type="category" dataKey="label" width={110} tick={{ fontSize: 13, fill: '#475569' }} axisLine={false} tickLine={false} />
               <Tooltip formatter={(value) => [value, t('dashboard.totalRequests')]} cursor={{ fill: '#f8fafc' }} />
               <Bar dataKey="count" radius={[6, 6, 6, 6]} maxBarSize={22} cursor="pointer" onClick={(d) => d?.status && navigate(`/requests?status=${d.status}`)}>
@@ -169,7 +169,7 @@ export default function DashboardPage() {
 
       <p className="mt-5">
         <Link
-          className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
+          className="inline-flex items-center btn-primary"
           to="/requests"
         >
           {t('dashboard.viewAll')}

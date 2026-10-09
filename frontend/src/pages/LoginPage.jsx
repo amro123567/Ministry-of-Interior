@@ -78,9 +78,10 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit} noValidate>
               <div className="login-field">
-                <label className="login-field-label" htmlFor="login-username">{t('login.username')}</label>
+                <label className="field-label" htmlFor="login-username">{t('login.username')}</label>
                 <input
                   id="login-username"
+                  className="field"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder={t('login.usernamePlaceholder')}
@@ -91,10 +92,11 @@ export default function LoginPage() {
               </div>
 
               <div className="login-field">
-                <label className="login-field-label" htmlFor="login-password">{t('login.password')}</label>
+                <label className="field-label" htmlFor="login-password">{t('login.password')}</label>
                 <div className="login-password-wrap">
                   <input
                     id="login-password"
+                    className="field"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -124,7 +126,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <button className="btn login-submit" type="submit" disabled={busy}>
+              <button className="btn-primary login-submit" type="submit" disabled={busy}>
                 {busy ? t('login.signingIn') : t('login.signIn')}
               </button>
             </form>

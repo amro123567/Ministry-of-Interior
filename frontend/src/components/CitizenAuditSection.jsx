@@ -4,9 +4,8 @@ import client from '../api/client.js'
 import AccessTypeBadge from './AccessTypeBadge.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
+import { tdCls, thCls } from '../ui.js'
 
-const thCls = 'text-start text-[11px] font-bold uppercase tracking-wide text-slate-400 px-3 py-2'
-const tdCls = 'px-3 py-2.5 text-sm text-slate-700'
 
 // Frontend for the two citizen-scoped tiers of Item 6's audit domain
 // (CitizenAuditController) -- GET /api/audit/citizen/{id} (tier 2:
@@ -52,25 +51,25 @@ export default function CitizenAuditSection({ citizenId }) {
   if (!canView) return null
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 mb-4">
-      <h2 className="text-sm font-bold text-slate-900 mb-4">{t('citizenAudit.title')}</h2>
+    <div className="card p-5 mb-4">
+      <h2 className="text-sm font-bold text-text-primary mb-4">{t('citizenAudit.title')}</h2>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-4" role="alert">{error}</div>
+        <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">{error}</div>
       )}
 
-      {!error && loading && <p className="text-sm text-slate-400">{t('common.loading')}</p>}
+      {!error && loading && <p className="text-sm text-text-secondary">{t('common.loading')}</p>}
 
       {!error && !loading && (
         <>
-          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400 mb-2">{t('citizenAudit.changeHistory')}</h3>
+          <h3 className="text-xs font-bold uppercase tracking-wide text-text-secondary mb-2">{t('citizenAudit.changeHistory')}</h3>
           {changes.length === 0 ? (
-            <p className="text-sm text-slate-400 mb-5">{t('citizenAudit.changeHistoryEmpty')}</p>
+            <p className="text-sm text-text-secondary mb-5">{t('citizenAudit.changeHistoryEmpty')}</p>
           ) : (
             <div className="overflow-x-auto mb-5">
-              <table className="w-full border-collapse">
+              <table className="data-table">
                 <thead>
-                  <tr className="border-b border-slate-200">
+                  <tr className="border-b border-border-subtle">
                     <th className={thCls}>{t('citizenAudit.colField')}</th>
                     <th className={thCls}>{t('citizenAudit.colChange')}</th>
                     <th className={thCls}>{t('citizenAudit.colChangedBy')}</th>
@@ -81,15 +80,15 @@ export default function CitizenAuditSection({ citizenId }) {
                 <tbody className="divide-y divide-slate-100">
                   {changes.map((c) => (
                     <tr key={c.id}>
-                      <td className={`${tdCls} font-semibold text-slate-800 whitespace-nowrap`}>{c.fieldName}</td>
+                      <td className={`${tdCls} font-semibold text-text-primary whitespace-nowrap`}>{c.fieldName}</td>
                       <td className={tdCls}>
-                        <span className="text-slate-400">{c.oldValue || '—'}</span>
+                        <span className="text-text-secondary">{c.oldValue || '—'}</span>
                         <span className="mx-1.5 text-slate-300">→</span>
-                        <span className="text-slate-800">{c.newValue || '—'}</span>
+                        <span className="text-text-primary">{c.newValue || '—'}</span>
                       </td>
                       <td className={`${tdCls} whitespace-nowrap`}>{c.changedByName}</td>
-                      <td className={`${tdCls} text-slate-500 whitespace-nowrap`}>{format(new Date(c.changedAt), 'MMM d, yyyy HH:mm')}</td>
-                      <td className={`${tdCls} text-slate-500 max-w-[220px] truncate`} title={c.reason ?? ''}>{c.reason || '—'}</td>
+                      <td className={`${tdCls} text-text-secondary whitespace-nowrap`}>{format(new Date(c.changedAt), 'MMM d, yyyy HH:mm')}</td>
+                      <td className={`${tdCls} text-text-secondary max-w-[220px] truncate`} title={c.reason ?? ''}>{c.reason || '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -97,14 +96,14 @@ export default function CitizenAuditSection({ citizenId }) {
             </div>
           )}
 
-          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400 mb-2 pt-4 border-t border-slate-100">{t('citizenAudit.accessHistory')}</h3>
+          <h3 className="text-xs font-bold uppercase tracking-wide text-text-secondary mb-2 pt-4 border-t border-row-divider">{t('citizenAudit.accessHistory')}</h3>
           {access.length === 0 ? (
-            <p className="text-sm text-slate-400">{t('citizenAudit.accessHistoryEmpty')}</p>
+            <p className="text-sm text-text-secondary">{t('citizenAudit.accessHistoryEmpty')}</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
+              <table className="data-table">
                 <thead>
-                  <tr className="border-b border-slate-200">
+                  <tr className="border-b border-border-subtle">
                     <th className={thCls}>{t('citizenAudit.colAccessedBy')}</th>
                     <th className={thCls}>{t('citizenAudit.colAccessType')}</th>
                     <th className={thCls}>{t('citizenAudit.colWhen')}</th>
@@ -114,10 +113,10 @@ export default function CitizenAuditSection({ citizenId }) {
                 <tbody className="divide-y divide-slate-100">
                   {access.map((a) => (
                     <tr key={a.id}>
-                      <td className={`${tdCls} font-semibold text-slate-800 whitespace-nowrap`}>{a.accessedByName}</td>
+                      <td className={`${tdCls} font-semibold text-text-primary whitespace-nowrap`}>{a.accessedByName}</td>
                       <td className={tdCls}><AccessTypeBadge accessType={a.accessType} /></td>
-                      <td className={`${tdCls} text-slate-500 whitespace-nowrap`}>{format(new Date(a.accessedAt), 'MMM d, yyyy HH:mm')}</td>
-                      <td className={`${tdCls} text-slate-500 max-w-[220px] truncate`} title={a.reason ?? ''}>{a.reason || '—'}</td>
+                      <td className={`${tdCls} text-text-secondary whitespace-nowrap`}>{format(new Date(a.accessedAt), 'MMM d, yyyy HH:mm')}</td>
+                      <td className={`${tdCls} text-text-secondary max-w-[220px] truncate`} title={a.reason ?? ''}>{a.reason || '—'}</td>
                     </tr>
                   ))}
                 </tbody>

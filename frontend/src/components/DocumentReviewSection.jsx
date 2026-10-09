@@ -8,9 +8,9 @@ import { useLanguage } from '../context/LanguageContext.jsx'
 const CUSTODY_EVENTS = ['RECEIVED', 'TRANSFERRED', 'STORED', 'RELEASED', 'RETURNED']
 
 const STATUS_STYLE = {
-  PENDING: 'border-slate-200 bg-slate-50 text-slate-600',
-  APPROVED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  REJECTED: 'border-red-200 bg-red-50 text-red-700',
+  PENDING: 'border-badge-draft-bd bg-badge-draft-bg text-badge-draft-fg',
+  APPROVED: 'border-badge-success-bd bg-badge-success-bg text-badge-success-fg',
+  REJECTED: 'border-badge-danger-bd bg-badge-danger-bg text-badge-danger-fg',
 }
 
 function when(d) { return d ? format(new Date(d), 'MMM d, yyyy HH:mm') : '' }
@@ -62,46 +62,45 @@ export default function DocumentReviewSection({ documentId, documentTypeId }) {
   }
 
   if (error) {
-    return <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mt-4" role="alert">{error}</div>
+    return <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mt-4" role="alert">{error}</div>
   }
   if (!review) return null
 
-  const inputCls = 'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm'
-  const btnCls = 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50'
+  const btnCls = 'btn-primary'
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
       {authorities.length > 0 && (
-        <p className="lg:col-span-2 text-sm text-slate-600">
-          <span className="font-semibold text-slate-800">{t('documentReview.authorisedBy')}: </span>
+        <p className="lg:col-span-2 text-sm text-text-secondary">
+          <span className="font-semibold text-text-primary">{t('documentReview.authorisedBy')}: </span>
           {authorities.map((a) => t(`documentReview.authority.${a}`, a)).join(' · ')}
         </p>
       )}
-      <section className="rounded-xl border border-slate-200 bg-white p-5">
+      <section className="card p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-bold text-slate-900">{t('documentReview.validationTitle')}</h2>
+          <h2 className="text-sm font-bold text-text-primary">{t('documentReview.validationTitle')}</h2>
           <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${STATUS_STYLE[review.validationStatus]}`}>
             {t(`documentReview.status.${review.validationStatus}`, review.validationStatus)}
           </span>
         </div>
         {review.validations.length === 0 ? (
-          <p className="text-sm text-slate-400">{t('documentReview.noValidations')}</p>
+          <p className="text-sm text-text-secondary">{t('documentReview.noValidations')}</p>
         ) : (
           <ul className="space-y-3">
             {review.validations.map((v) => (
-              <li key={v.id} className="text-sm border-s-2 border-slate-200 ps-3">
-                <div className="font-semibold text-slate-800">
+              <li key={v.id} className="text-sm border-s-2 border-border-subtle ps-3">
+                <div className="font-semibold text-text-primary">
                   {t(`documentReview.status.${v.decision}`, v.decision)} — {v.validatorName}
                 </div>
-                {v.comment && <div className="text-slate-600">{v.comment}</div>}
-                <div className="text-xs text-slate-400">{when(v.validatedAt)}</div>
+                {v.comment && <div className="text-text-secondary">{v.comment}</div>}
+                <div className="text-xs text-text-secondary">{when(v.validatedAt)}</div>
               </li>
             ))}
           </ul>
         )}
         {hasPermission('CITIZEN_REGISTRY_DECIDE') && (
           <form
-            className="mt-4 space-y-2 border-t border-slate-100 pt-4"
+            className="mt-4 space-y-2 border-t border-row-divider pt-4"
             onSubmit={(e) => {
               e.preventDefault()
               submit('validations', { decision, comment: comment.trim() || null }, () => setComment(''))
@@ -118,26 +117,26 @@ export default function DocumentReviewSection({ documentId, documentTypeId }) {
         )}
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5">
-        <h2 className="text-sm font-bold text-slate-900 mb-4">{t('documentReview.custodyTitle')}</h2>
+      <section className="card p-5">
+        <h2 className="text-sm font-bold text-text-primary mb-4">{t('documentReview.custodyTitle')}</h2>
         {review.custody.length === 0 ? (
-          <p className="text-sm text-slate-400">{t('documentReview.noCustody')}</p>
+          <p className="text-sm text-text-secondary">{t('documentReview.noCustody')}</p>
         ) : (
           <ol className="space-y-3">
             {review.custody.map((c) => (
-              <li key={c.id} className="text-sm border-s-2 border-indigo-200 ps-3">
-                <div className="font-semibold text-slate-800">
+              <li key={c.id} className="text-sm border-s-2 border-primary/30 ps-3">
+                <div className="font-semibold text-text-primary">
                   {t(`documentReview.event.${c.eventType}`, c.eventType)} — {c.location}
                 </div>
-                {c.note && <div className="text-slate-600">{c.note}</div>}
-                <div className="text-xs text-slate-400">{c.handledByName} ({c.handledByRole}) · {when(c.handledAt)}</div>
+                {c.note && <div className="text-text-secondary">{c.note}</div>}
+                <div className="text-xs text-text-secondary">{c.handledByName} ({c.handledByRole}) · {when(c.handledAt)}</div>
               </li>
             ))}
           </ol>
         )}
         {hasPermission('CITIZEN_MANAGE') && (
           <form
-            className="mt-4 space-y-2 border-t border-slate-100 pt-4"
+            className="mt-4 space-y-2 border-t border-row-divider pt-4"
             onSubmit={(e) => {
               e.preventDefault()
               submit('custody', { eventType, location: location.trim(), note: note.trim() || null },
@@ -157,7 +156,7 @@ export default function DocumentReviewSection({ documentId, documentTypeId }) {
       </section>
 
       {formError && (
-        <div className="lg:col-span-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600" role="alert">{formError}</div>
+        <div className="lg:col-span-2 rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg" role="alert">{formError}</div>
       )}
     </div>
   )

@@ -1,111 +1,19 @@
-:root {
-  --navy: #0f2c4c;
-  --navy-dark: #081a2e;
-  --gold: #c9a227;
-  --gold-light: #e2c463;
-  --teal: #0f6e6e;
-  --bg: #f4f6f8;
-  --card: #ffffff;
-  --border: #e2e5e9;
-  --text: #1c2530;
-  --muted: #6b7280;
-  --danger: #dc2626;
-  --success: #16a34a;
-  --warning: #b45309;
-  --info: #1d4ed8;
-  --radius: 12px;
-  --radius-lg: 20px;
-  --shadow-sm: 0 1px 3px rgba(15,44,76,0.06);
-  --shadow-md: 0 8px 24px rgba(15,44,76,0.10);
-  --shadow-lg: 0 20px 60px rgba(15,44,76,0.18);
-}
+/* ==========================================================================
+   Legacy / bespoke styles -- the login screen only.
+   --------------------------------------------------------------------------
+   Everything else in the app is styled from the design tokens and shared
+   component classes in tailwind.css. The login page keeps its own two-panel
+   layout, but now draws every colour from the same tokens (indigo brand,
+   slate neutrals) so it matches the rest of the system. The old global
+   element rules (input/label/h1/.btn/.card) were removed: they were
+   unlayered, so they overrode Tailwind utilities and caused the double
+   focus border on form controls.
+   ========================================================================== */
 
-* { box-sizing: border-box; }
-html, body, #root { height: 100%; }
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-}
-html[dir='rtl'] body { font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif; }
-
-.sr-only {
-  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
-}
-
-a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible,
-textarea:focus-visible, [tabindex]:focus-visible {
-  outline: 2px solid var(--gold);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
+html, body, #root { min-height: 100%; }
 
 .app-shell { display: flex; flex-direction: column; min-height: 100vh; }
-
-/* ---------- Breadcrumb ---------- */
-
-.breadcrumb {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
-  font-size: 0.8rem; color: var(--muted); margin-bottom: 14px;
-}
-
-/* ---------- Lang toggle & user menu ---------- */
-
-.lang-toggle {
-  display: inline-flex; align-items: center; gap: 4px;
-  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.3);
-  color: white; border-radius: 999px; padding: 5px 10px; cursor: pointer; font-size: 0.8rem;
-}
-.lang-toggle:hover { background: rgba(255,255,255,0.16); }
-.lang-toggle .lang-option { opacity: 0.55; padding: 0 2px; }
-.lang-toggle .lang-option.lang-active { opacity: 1; font-weight: 700; color: var(--gold-light); }
-.lang-toggle .lang-sep { opacity: 0.4; }
-
-/* ---------- Page layout ---------- */
-
-.page { max-width: 1100px; margin: 0 auto; padding: 24px; flex: 1; width: 100%; }
 .page-full { flex: 1; width: 100%; padding: 0; margin: 0; max-width: none; }
-
-h1 { font-size: 1.5rem; margin-bottom: 16px; }
-h2 { font-size: 1.05rem; margin: 0 0 12px; color: var(--navy); }
-
-.card {
-  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow-sm);
-}
-
-/* ---------- Forms ---------- */
-
-label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 12px; }
-input, select, textarea {
-  display: block; width: 100%; margin-top: 4px; padding: 9px 11px;
-  border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; color: var(--text);
-  background: white;
-}
-input:focus, select:focus, textarea:focus {
-  outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,162,39,0.15);
-}
-
-.form-card { max-width: 640px; }
-
-/* ---------- Buttons ---------- */
-
-.btn {
-  display: inline-block; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--border);
-  background: white; color: var(--text); cursor: pointer; font-size: 0.9rem; text-decoration: none;
-  position: relative; transition: filter 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.05s ease;
-}
-.btn:hover { filter: brightness(0.97); }
-.btn:active { transform: translateY(1px); }
-.btn:disabled, .btn[disabled] { opacity: 0.6; cursor: not-allowed; filter: none; transform: none; }
-@keyframes btn-spin { to { transform: rotate(360deg); } }
-
-.alert { padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; font-size: 0.9rem; }
-.alert-error { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
-.small { font-size: 0.8rem; }
-@keyframes skeleton-shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
 
 /* ---------- Login page ---------- */
 
@@ -115,7 +23,7 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at top, #eef2f6 0%, var(--bg) 60%);
+  background: var(--color-app);
   padding: 32px 16px;
   position: relative;
 }
@@ -124,35 +32,30 @@ input:focus, select:focus, textarea:focus {
   position: absolute;
   top: 20px;
   inset-inline-end: 20px;
-  background: rgba(15,44,76,0.06);
-  border-color: rgba(15,44,76,0.2);
-  color: var(--navy);
 }
-.login-lang-toggle .lang-option.lang-active { color: var(--navy); }
-.login-lang-toggle:hover { background: rgba(15,44,76,0.12); }
 
 .login-card-shell {
   width: 100%;
   max-width: 920px;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
   overflow: hidden;
-  box-shadow: var(--shadow-lg);
-  background: white;
+  border: 1px solid var(--color-border-subtle);
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
+  background: var(--color-surface-card);
 }
 @media (max-width: 780px) {
-  .login-card-shell { grid-template-columns: 1fr; max-width: 440px; border-radius: 18px; }
+  .login-card-shell { grid-template-columns: 1fr; max-width: 440px; }
   .login-brand { padding-bottom: 16px; }
   .login-brand-body { padding: 28px 24px; }
 }
 @media (max-width: 420px) {
   .login-page { padding: 16px 10px; }
-  .login-card-shell { border-radius: 14px; }
 }
 
 .login-brand {
-  background: linear-gradient(160deg, var(--navy) 0%, var(--navy-dark) 100%);
+  background: linear-gradient(160deg, var(--color-primary) 0%, #312E81 100%);
   color: white;
   display: flex;
   flex-direction: column;
@@ -169,35 +72,35 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 36px 36px;
+  padding: 36px;
   gap: 20px;
 }
 
 .login-seal-plate {
   background: white;
-  border-radius: 16px;
+  border-radius: var(--radius-card);
   padding: 12px 18px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.25);
 }
 .login-seal-plate img { display: block; height: 58px; width: auto; }
 
 .login-brand-titles { max-width: 360px; }
-.login-eyebrow { margin: 0 0 4px; font-size: 0.85rem; color: var(--gold-light); letter-spacing: 0.4px; }
+.login-eyebrow { margin: 0 0 4px; font-size: 0.85rem; color: #E0E7FF; letter-spacing: 0.4px; }
 .login-ministry { margin: 0; font-size: 1.3rem; font-weight: 700; line-height: 1.3; }
-.login-brand-divider { width: 52px; height: 2px; background: var(--gold); margin: 16px auto; border-radius: 2px; }
+.login-brand-divider { width: 52px; height: 2px; background: #C7D2FE; margin: 16px auto; border-radius: 2px; }
 .login-dept { margin: 0 0 6px; font-size: 0.95rem; }
-.login-system { margin: 0; font-size: 0.85rem; color: var(--gold-light); }
+.login-system { margin: 0; font-size: 0.85rem; color: #E0E7FF; }
 
 .login-brand-footer {
   text-align: center;
   padding: 14px 28px 22px;
-  border-top: 1px solid rgba(255,255,255,0.12);
+  border-top: 1px solid rgba(255,255,255,0.18);
   margin: 0 28px;
 }
-.login-brand-footer p { margin: 0; font-size: 0.72rem; color: rgba(255,255,255,0.55); }
+.login-brand-footer p { margin: 0; font-size: 0.75rem; color: #E0E7FF; }
 
 .login-form-panel {
-  background: var(--card);
+  background: var(--color-surface-card);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -206,76 +109,49 @@ input:focus, select:focus, textarea:focus {
 
 .login-form-card { width: 100%; max-width: 360px; }
 
-.login-form-title { margin: 0; font-size: 1.4rem; color: var(--text); }
-.login-form-hint { margin: 8px 0 20px; font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+.login-form-title { margin: 0; font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary); }
+.login-form-hint { margin: 8px 0 20px; font-size: 0.82rem; color: var(--color-text-secondary); line-height: 1.5; }
 
 .login-info-banner {
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  color: #1d4ed8;
+  background: var(--color-badge-info-bg);
+  border: 1px solid var(--color-badge-info-bd);
+  color: var(--color-badge-info-fg);
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
+  font-size: 0.85rem;
+  margin-bottom: 14px;
+}
+
+.alert-error {
+  background: var(--color-badge-danger-bg);
+  border: 1px solid var(--color-badge-danger-bd);
+  color: var(--color-badge-danger-fg);
+  padding: 10px 14px;
+  border-radius: var(--radius-control);
   font-size: 0.85rem;
   margin-bottom: 14px;
 }
 
 .login-field { margin-bottom: 16px; }
-.login-field-label { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 4px; }
-.login-field input { margin-top: 0; padding: 10px 12px; font-size: 1rem; border-radius: 10px; }
 
 .login-password-wrap { position: relative; }
 .login-password-wrap input { padding-inline-end: 40px; }
 .login-eye-toggle {
-  position: absolute; inset-inline-end: 8px; top: 50%; transform: translateY(-50%);
-  background: none; border: none; padding: 4px; cursor: pointer; color: var(--muted);
-  display: flex; align-items: center;
+  position: absolute; inset-inline-end: 6px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; padding: 4px; cursor: pointer; color: var(--color-text-secondary);
+  display: flex; align-items: center; border-radius: var(--radius-control);
 }
-.login-eye-toggle:hover { color: var(--navy); }
+.login-eye-toggle:hover { color: var(--color-primary); }
 
-.login-submit {
-  width: 100%;
-  margin-top: 8px;
-  padding: 12px 16px;
-  background: linear-gradient(180deg, var(--navy) 0%, var(--navy-dark) 100%);
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-size: 1rem;
-  font-weight: 600;
-}
-.login-submit:hover { filter: brightness(1.12); }
-.login-submit:disabled { opacity: 0.7; cursor: default; }
+.login-submit { width: 100%; margin-top: 8px; height: 42px; }
 
 .login-audit-footer {
   margin-top: 20px;
   padding-top: 14px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--color-border-subtle);
   text-align: center;
 }
-.login-audit-footer p { margin: 0; font-size: 0.72rem; color: var(--muted); }
-.table { width: 100%; border-collapse: collapse; background: var(--card); }
-.table th, .table td { text-align: start; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
-.table th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; background: var(--bg); }
-.table tbody tr:nth-child(even) { background: rgba(15,44,76,0.015); }
-.table tbody tr:hover { background: rgba(15,44,76,0.04); }
-.table tbody tr:last-child td { border-bottom: none; }
+.login-audit-footer p { margin: 0; font-size: 0.75rem; color: var(--color-text-secondary); }
 
-.badge {
-  display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.75rem;
-  font-weight: 600; border: 1px solid; margin-inline-end: 4px;
-}
-
-.detail-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 16px; align-items: start; }
-@media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; } }
 html[dir='rtl'] .login-form-title,
-html[dir='rtl'] .login-form-hint,
-html[dir='rtl'] .login-field-label { text-align: right; }
-
-/* ---------- Light-header override for the shared LangToggle ----------
-   LangToggle's default ".lang-toggle" styling assumes a dark navy
-   background (the old top navbar, still used as-is here for the login
-   page's dark brand panel). The new light Tailwind TopHeader passes
-   this extra class instead of touching the shared component. */
-.header-lang-toggle { background: #f1f5f9; border-color: #e2e8f0; color: #334155; }
-.header-lang-toggle .lang-option.lang-active { color: #4f46e5; }
-.header-lang-toggle:hover { background: #e2e8f0; }
+html[dir='rtl'] .login-form-hint { text-align: right; }

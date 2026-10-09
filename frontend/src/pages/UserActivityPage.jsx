@@ -6,14 +6,13 @@ import AccessTypeBadge from '../components/AccessTypeBadge.jsx'
 import LoginAttemptBadge from '../components/LoginAttemptBadge.jsx'
 import { SkeletonLine } from '../components/Skeleton.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
+import { tdCls, thCls } from '../ui.js'
 
-const thCls = 'text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200'
-const tdCls = 'px-4 py-3.5 text-sm text-slate-700'
 
 function Card({ title, children }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 mb-4">
-      <h2 className="text-sm font-bold text-slate-900 mb-4">{title}</h2>
+    <div className="card p-5 mb-4">
+      <h2 className="text-sm font-bold text-text-primary mb-4">{title}</h2>
       {children}
     </div>
   )
@@ -89,7 +88,7 @@ export default function UserActivityPage() {
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-5">
+      <div className="card p-5">
         <SkeletonLine width="40%" height={22} className="mb-3" />
         <SkeletonLine width="60%" height={14} />
       </div>
@@ -98,25 +97,25 @@ export default function UserActivityPage() {
 
   if (error) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600" role="alert">{error}</div>
+      <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg" role="alert">{error}</div>
     )
   }
 
   return (
     <div>
       <div className="mb-5">
-        <h1 className="text-xl font-bold text-slate-900">{identity?.fullName || identity?.username || `#${id}`}</h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <h1 className="text-xl font-bold text-text-primary">{identity?.fullName || identity?.username || `#${id}`}</h1>
+        <p className="text-sm text-text-secondary mt-1">
           {identity?.username ? `@${identity.username}` : ''} · {t('userActivity.subtitle')}
         </p>
       </div>
 
       <Card title={t('userActivity.loginAttempts')}>
         {attempts.length === 0 ? (
-          <p className="text-sm text-slate-400">{t('userActivity.loginAttemptsEmpty')}</p>
+          <p className="text-sm text-text-secondary">{t('userActivity.loginAttemptsEmpty')}</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
+            <table className="data-table">
               <thead>
                 <tr>
                   <th className={thCls}>{t('auditLog.loginColTime')}</th>
@@ -126,7 +125,7 @@ export default function UserActivityPage() {
               </thead>
               <tbody>
                 {attempts.map((a) => (
-                  <tr key={a.id} className="border-b border-slate-100 last:border-0">
+                  <tr key={a.id} className="border-b border-row-divider last:border-0">
                     <td className={`${tdCls} whitespace-nowrap`}>{format(new Date(a.attemptedAt), 'MMM d, yyyy HH:mm:ss')}</td>
                     <td className={tdCls}><LoginAttemptBadge wasSuccessful={a.wasSuccessful} failureReason={a.failureReason} /></td>
                     <td className={`${tdCls} whitespace-nowrap`}>{a.ipAddress || '—'}</td>
@@ -140,10 +139,10 @@ export default function UserActivityPage() {
 
       <Card title={t('userActivity.sessions')}>
         {sessions.length === 0 ? (
-          <p className="text-sm text-slate-400">{t('userActivity.sessionsEmpty')}</p>
+          <p className="text-sm text-text-secondary">{t('userActivity.sessionsEmpty')}</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
+            <table className="data-table">
               <thead>
                 <tr>
                   <th className={thCls}>{t('userActivity.colLoginAt')}</th>
@@ -154,16 +153,16 @@ export default function UserActivityPage() {
               </thead>
               <tbody>
                 {sessions.map((s) => (
-                  <tr key={s.id} className="border-b border-slate-100 last:border-0">
+                  <tr key={s.id} className="border-b border-row-divider last:border-0">
                     <td className={`${tdCls} whitespace-nowrap`}>{format(new Date(s.loginAt), 'MMM d, yyyy HH:mm:ss')}</td>
                     <td className={`${tdCls} whitespace-nowrap`}>
                       {s.logoutAt ? format(new Date(s.logoutAt), 'MMM d, yyyy HH:mm:ss') : (
-                        <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                        <span className="inline-flex items-center rounded-full border border-badge-success-bd bg-badge-success-bg px-2.5 py-0.5 text-xs font-semibold text-badge-success-fg">
                           {t('userActivity.stillActive')}
                         </span>
                       )}
                     </td>
-                    <td className={`${tdCls} text-slate-500 whitespace-nowrap`}>{format(new Date(s.expiresAt), 'MMM d, yyyy HH:mm:ss')}</td>
+                    <td className={`${tdCls} text-text-secondary whitespace-nowrap`}>{format(new Date(s.expiresAt), 'MMM d, yyyy HH:mm:ss')}</td>
                     <td className={`${tdCls} whitespace-nowrap`}>{s.ipAddress || '—'}</td>
                   </tr>
                 ))}
@@ -175,10 +174,10 @@ export default function UserActivityPage() {
 
       <Card title={t('userActivity.accessHistory')}>
         {access.length === 0 ? (
-          <p className="text-sm text-slate-400">{t('userActivity.accessHistoryEmpty')}</p>
+          <p className="text-sm text-text-secondary">{t('userActivity.accessHistoryEmpty')}</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
+            <table className="data-table">
               <thead>
                 <tr>
                   <th className={thCls}>{t('userActivity.colCitizen')}</th>
@@ -189,15 +188,15 @@ export default function UserActivityPage() {
               </thead>
               <tbody>
                 {access.map((a) => (
-                  <tr key={a.id} className="border-b border-slate-100 last:border-0">
+                  <tr key={a.id} className="border-b border-row-divider last:border-0">
                     <td className={`${tdCls} whitespace-nowrap`}>
-                      <Link to={`/citizens/${a.citizenId}`} className="font-semibold text-indigo-600 hover:underline">
+                      <Link to={`/citizens/${a.citizenId}`} className="font-semibold text-primary hover:underline">
                         {a.citizenRegistryNumber}
                       </Link>
                     </td>
                     <td className={tdCls}><AccessTypeBadge accessType={a.accessType} /></td>
-                    <td className={`${tdCls} text-slate-500 whitespace-nowrap`}>{format(new Date(a.accessedAt), 'MMM d, yyyy HH:mm')}</td>
-                    <td className={`${tdCls} text-slate-500 max-w-[240px] truncate`} title={a.reason ?? ''}>{a.reason || '—'}</td>
+                    <td className={`${tdCls} text-text-secondary whitespace-nowrap`}>{format(new Date(a.accessedAt), 'MMM d, yyyy HH:mm')}</td>
+                    <td className={`${tdCls} text-text-secondary max-w-[240px] truncate`} title={a.reason ?? ''}>{a.reason || '—'}</td>
                   </tr>
                 ))}
               </tbody>

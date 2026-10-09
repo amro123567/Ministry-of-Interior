@@ -4,9 +4,8 @@ import client from '../api/client.js'
 import ParentLineagePicker from '../components/ParentLineagePicker.jsx'
 import DistrictScopedSelect from '../components/DistrictScopedSelect.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
+import { inputCls, labelCls } from '../ui.js'
 
-const inputCls = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
-const labelCls = 'block text-sm font-semibold text-slate-700 mb-1.5'
 const emptyParent = { mode: 'none', citizenId: null, citizenLabel: null, unregisteredName: null }
 
 // POST /api/citizens -- gated on the CITIZEN_MANAGE permission both here
@@ -88,25 +87,25 @@ export default function CitizenCreatePage() {
     }
   }
 
-  const Err = ({ id, text }) => (text ? <p id={id} className="mt-1 text-xs text-red-600">{text}</p> : null)
-  const summaryCls = 'cursor-pointer select-none text-sm font-bold text-slate-900 py-1'
+  const Err = ({ id, text }) => (text ? <p id={id} className="mt-1 text-xs text-badge-danger-fg">{text}</p> : null)
+  const summaryCls = 'cursor-pointer select-none text-sm font-bold text-text-primary py-1'
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-slate-900 mb-5">{t('citizenCreate.title')}</h1>
-      <form onSubmit={handleSubmit} noValidate className="rounded-xl border border-slate-200 bg-white p-7 max-w-3xl">
+      <h1 className="text-xl font-bold text-text-primary mb-5">{t('citizenCreate.title')}</h1>
+      <form onSubmit={handleSubmit} noValidate className="card p-7 max-w-3xl">
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-5" role="alert">
+          <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-5" role="alert">
             {error}
           </div>
         )}
-        <p className="text-xs text-slate-400 mb-5"><span className="text-red-500">*</span> {t('common.required')}</p>
+        <p className="text-xs text-text-secondary mb-5"><span className="text-required">*</span> {t('common.required')}</p>
 
-        <h2 className="text-sm font-bold text-slate-900 mb-4">{t('citizenCreate.sectionEssentials')}</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pb-6 mb-5 border-b border-slate-100">
+        <h2 className="text-sm font-bold text-text-primary mb-4">{t('citizenCreate.sectionEssentials')}</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pb-6 mb-5 border-b border-row-divider">
           <div>
             <label className={labelCls} htmlFor="registry-number">
-              {t('citizenCreate.registryNumber')} <span className="text-red-500">*</span>
+              {t('citizenCreate.registryNumber')} <span className="text-required">*</span>
             </label>
             <input id="registry-number" className={inputCls} required aria-required="true"
               aria-invalid={Boolean(errors.registryNumber)} aria-describedby={errors.registryNumber ? 'err-registry' : undefined}
@@ -115,7 +114,7 @@ export default function CitizenCreatePage() {
           </div>
           <div>
             <label className={labelCls} htmlFor="first-en">
-              {t('citizenCreate.firstNameEn')} <span className="text-red-500">*</span>
+              {t('citizenCreate.firstNameEn')} <span className="text-required">*</span>
             </label>
             <input id="first-en" className={inputCls} required aria-required="true"
               aria-invalid={Boolean(errors.firstNameEn)} aria-describedby={errors.firstNameEn ? 'err-first' : undefined}
@@ -139,7 +138,7 @@ export default function CitizenCreatePage() {
               <option value="F">{t('citizenCreate.genderFemale')}</option>
             </select>
           </div>
-          <div>
+          <div className="sm:col-span-2">
             <DistrictScopedSelect
               id="office"
               label={t('citizenCreate.registeredOffice')}
@@ -155,7 +154,7 @@ export default function CitizenCreatePage() {
           </div>
         </div>
 
-        <details className="pb-4 mb-4 border-b border-slate-100">
+        <details className="pb-4 mb-4 border-b border-row-divider">
           <summary className={summaryCls}>{t('citizenCreate.sectionNames')}</summary>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-4">
             <div>
@@ -181,7 +180,7 @@ export default function CitizenCreatePage() {
           </div>
         </details>
 
-        <details className="pb-4 mb-4 border-b border-slate-100">
+        <details className="pb-4 mb-4 border-b border-row-divider">
           <summary className={summaryCls}>{t('citizenCreate.sectionCivilStatus')}</summary>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-4">
             <div>
@@ -230,18 +229,18 @@ export default function CitizenCreatePage() {
           </div>
         </details>
 
-        <div className="flex justify-end gap-2.5 mt-7 pt-5 border-t border-slate-100">
+        <div className="flex justify-end gap-2.5 mt-7 pt-5 border-t border-row-divider">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            className="btn-secondary"
           >
             {t('common.cancel')}
           </button>
           <button
             type="submit"
             disabled={busy}
-            className="relative rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+            className="relative btn-primary "
           >
             {busy && (
               <span className="absolute inset-0 grid place-items-center">

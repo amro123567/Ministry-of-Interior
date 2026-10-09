@@ -77,7 +77,7 @@ export default function WorkflowDiagram({ states, transitions, lang, label, curr
   const { pos, width, height, baseline } = model
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-slate-50/60">
+    <div className="overflow-x-auto rounded-lg border border-border-subtle bg-app/60">
       <svg role="img" aria-label={label} width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="block mx-auto">
         <defs>
           <marker id="wf-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">

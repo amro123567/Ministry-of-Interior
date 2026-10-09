@@ -40,11 +40,11 @@ export default function Breadcrumb() {
   }
 
   return (
-    <nav className="flex items-center flex-wrap gap-1.5 text-sm text-slate-400 mb-4" aria-label="Breadcrumb">
+    <nav className="flex items-center flex-wrap gap-1.5 text-sm text-text-secondary mb-4" aria-label="Breadcrumb">
       {trail.map((crumb, i) => (
         <span key={i} className="flex items-center gap-1.5">
           {crumb.to ? (
-            <Link to={crumb.to} className="hover:text-indigo-600 hover:underline">{crumb.label}</Link>
+            <Link to={crumb.to} className="hover:text-primary hover:underline">{crumb.label}</Link>
           ) : (
             <span aria-current="page" className="font-semibold text-slate-700">{crumb.label}</span>
           )}
