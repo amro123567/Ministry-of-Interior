@@ -47,19 +47,19 @@ With Docker, none of this is needed; see the root `README.md`.
 mvn test
 ```
 
-95 tests, all on in-memory H2:
+110 tests, all on in-memory H2 (no MySQL needed):
 
-- 70 end-to-end workflow tests over the real REST API: login, refresh,
+- End-to-end workflow tests over the real REST API: login, refresh,
   logout, lockout, the full request lifecycle, illegal-transition and
   wrong-permission rejection, role-based 403 checks (including a viewer being
   unable to create, upload or assign), direction/subject/department,
   attachments with SHA-256 verified against the downloaded bytes, dashboard,
   reports, CSV export and audit trails.
-- 5 JWT unit tests.
-- 14 seed-data invariant checks.
-- 6 focused tests: audit-table immutability, seeded assignment history, and the
-  workflow catalog driving request transitions (changed inside a rolled-back
-  transaction).
+- JWT unit tests and seed-data invariant checks.
+- Focused tests: audit-table immutability, seeded assignment history and audit
+  rows, the workflow catalog driving request transitions (changed inside a
+  rolled-back transaction), CSV export honouring list filters, reference-number
+  migration failing safely, and upload file-type validation.
 
 ## Demo accounts (seeded on first boot)
 
@@ -122,13 +122,14 @@ signed-in user. The six audit and history tables are append-only: Hibernate
 `BEFORE UPDATE` / `BEFORE DELETE` triggers created at startup.
 
 **Documents.** Files are stored on disk (`DOCUMENTS_DIR`), metadata and a
-SHA-256 hash in the database, 15 MB limit.
+SHA-256 hash in the database, 15 MB limit. Only pdf, png, jpg, jpeg, gif,
+txt, csv, doc, docx, xls and xlsx are accepted (checked on the last file
+extension); anything else is refused with HTTP 400.
 
 ## Known limitations
 
 - Single service and single MySQL instance (no replica, no scheduled backups).
 - The workflow catalog drives the six built-in request statuses; a state added
   only in the catalog cannot be reached by a request.
-- The CSV export does not yet apply the list filters.
 - Audit triggers are created on MySQL/MariaDB only; H2 (tests) relies on the
   code-level protection.
