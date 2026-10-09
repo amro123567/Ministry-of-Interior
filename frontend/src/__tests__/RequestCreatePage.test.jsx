@@ -32,46 +32,72 @@ function renderForm() {
   )
 }
 
+const nextButton = () => screen.getByRole('button', { name: en.requestCreate.next })
 const submitButton = () => screen.getByRole('button', { name: en.requestCreate.submit })
+
+// Walks the wizard: step 1 (citizen + direction), step 2 (type + subject), then lands on step 3.
+async function fillToLastStep(user, { direction, subject } = {}) {
+  await screen.findByRole('option', { name: /Layla/ })
+  await user.selectOptions(screen.getByDisplayValue(en.requestCreate.selectCitizen), '1')
+  if (direction) await user.selectOptions(screen.getByLabelText(en.requestCreate.direction), direction)
+  await user.click(nextButton())
+  await user.selectOptions(screen.getByLabelText(new RegExp(en.requestCreate.documentType)), '2')
+  if (subject) await user.type(screen.getByLabelText(en.requestCreate.subject), subject)
+  await user.click(nextButton())
+  await screen.findByText(en.requestCreate.reviewTitle)
+}
 
 describe('RequestCreatePage', () => {
   beforeEach(() => {
     client.get.mockImplementation((url) => Promise.resolve({ data: REFERENCE[url] ?? [] }))
+    client.post.mockReset()
   })
 
-  it('marks citizen and document type as required so the browser blocks an incomplete form', async () => {
+  it('will not leave step 1 without a citizen and says why next to the field', async () => {
     renderForm()
     await screen.findByRole('option', { name: /Layla/ })
-
     expect(screen.getByDisplayValue(en.requestCreate.selectCitizen)).toBeRequired()
-    expect(screen.getByLabelText(new RegExp(en.requestCreate.documentType))).toBeRequired()
 
-    // a real click on "Create request" with nothing chosen must not reach the API
-    await userEvent.setup().click(submitButton())
+    await userEvent.setup().click(nextButton())
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(en.requestCreate.errCitizen)
+    // still on step 1: the citizen picker is still there, the review step is not
+    expect(screen.getByDisplayValue(en.requestCreate.selectCitizen)).toBeInTheDocument()
+    expect(screen.queryByText(en.requestCreate.reviewTitle)).not.toBeInTheDocument()
     expect(client.post).not.toHaveBeenCalled()
   })
 
-  it('still refuses to post when the form is submitted without a citizen or document type', async () => {
-    const { container } = renderForm()
+  it('will not leave step 2 without a document type', async () => {
+    renderForm()
+    const user = userEvent.setup()
     await screen.findByRole('option', { name: /Layla/ })
+    await user.selectOptions(screen.getByDisplayValue(en.requestCreate.selectCitizen), '1')
+    await user.click(nextButton())
 
-    // bypasses the browser's own validation to exercise the page's own guard
-    fireEvent.submit(container.querySelector('form'))
+    expect(screen.getByLabelText(new RegExp(en.requestCreate.documentType))).toBeRequired()
+    await user.click(nextButton())
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(en.requestCreate.errorSelect)
-    expect(client.post).not.toHaveBeenCalled()
+    expect(await screen.findByRole('alert')).toHaveTextContent(en.requestCreate.errDocType)
+    expect(screen.queryByText(en.requestCreate.reviewTitle)).not.toBeInTheDocument()
+  })
+
+  it('keeps earlier answers when going back', async () => {
+    renderForm()
+    const user = userEvent.setup()
+    await fillToLastStep(user, { direction: 'OUTGOING' })
+
+    await user.click(screen.getByRole('button', { name: en.requestCreate.back }))
+    await user.click(screen.getByRole('button', { name: en.requestCreate.back }))
+
+    expect(screen.getByLabelText(en.requestCreate.direction)).toHaveValue('OUTGOING')
+    expect(screen.getByDisplayValue(/Layla/)).toBeInTheDocument()
   })
 
   it('creates the request with numeric ids and opens it', async () => {
     client.post.mockResolvedValue({ data: { id: 55 } })
     renderForm()
     const user = userEvent.setup()
-    await screen.findByRole('option', { name: /Layla/ })
-
-    await user.selectOptions(screen.getByDisplayValue(en.requestCreate.selectCitizen), '1')
-    await user.selectOptions(screen.getByLabelText(new RegExp(en.requestCreate.documentType)), '2')
-    await user.selectOptions(screen.getByLabelText(en.requestCreate.direction), 'OUTGOING')
-    await user.type(screen.getByLabelText(en.requestCreate.subject), '  Reply to the Governorate  ')
+    await fillToLastStep(user, { direction: 'OUTGOING', subject: '  Reply to the Governorate  ' })
     await user.click(submitButton())
 
     await waitFor(() => expect(client.post).toHaveBeenCalledTimes(1))
@@ -88,14 +114,62 @@ describe('RequestCreatePage', () => {
     expect(await screen.findByText('request detail page')).toBeInTheDocument()
   })
 
+  it('uploads the chosen files to the new request, then opens it', async () => {
+    client.post.mockResolvedValue({ data: { id: 55 } })
+    renderForm()
+    const user = userEvent.setup()
+    await fillToLastStep(user)
+    await user.upload(
+      screen.getByLabelText(en.requestCreate.addFiles),
+      new File(['hello'], 'letter.pdf', { type: 'application/pdf' }),
+    )
+    expect(screen.getByText(/letter\.pdf/)).toBeInTheDocument()
+    await user.click(submitButton())
+
+    await waitFor(() => expect(client.post).toHaveBeenCalledTimes(2))
+    expect(client.post.mock.calls[0][0]).toBe('/requests')
+    expect(client.post.mock.calls[1][0]).toBe('/requests/55/documents')
+    expect(client.post.mock.calls[1][1]).toBeInstanceOf(FormData)
+    expect(await screen.findByText('request detail page')).toBeInTheDocument()
+  })
+
+  it('refuses a disallowed file type before anything is sent', async () => {
+    renderForm()
+    const user = userEvent.setup({ applyAccept: false })
+    await fillToLastStep(user)
+    await user.upload(
+      screen.getByLabelText(en.requestCreate.addFiles),
+      new File(['MZ'], 'malware.exe', { type: 'application/octet-stream' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(en.requestCreate.fileTypeBad)
+    expect(screen.queryByText(/malware\.exe \(/)).not.toBeInTheDocument()
+    expect(client.post).not.toHaveBeenCalled()
+  })
+
+  it('keeps the user on the page, naming the file, when an upload fails after the request was created', async () => {
+    client.post.mockImplementation((url) =>
+      url === '/requests' ? Promise.resolve({ data: { id: 55 } }) : Promise.reject({ response: { status: 500 } }))
+    renderForm()
+    const user = userEvent.setup()
+    await fillToLastStep(user)
+    await user.upload(
+      screen.getByLabelText(en.requestCreate.addFiles),
+      new File(['hello'], 'scan.png', { type: 'image/png' }),
+    )
+    await user.click(submitButton())
+
+    expect(await screen.findByText('scan.png')).toBeInTheDocument()
+    expect(screen.getByText(en.requestCreate.createdWithFailures)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: en.requestCreate.openRequest })).toHaveAttribute('href', '/requests/55')
+    expect(screen.queryByText('request detail page')).not.toBeInTheDocument()
+  })
+
   it('tells a user without permission so, instead of a generic failure', async () => {
     client.post.mockRejectedValue({ response: { status: 403 } })
     renderForm()
     const user = userEvent.setup()
-    await screen.findByRole('option', { name: /Layla/ })
-
-    await user.selectOptions(screen.getByDisplayValue(en.requestCreate.selectCitizen), '1')
-    await user.selectOptions(screen.getByLabelText(new RegExp(en.requestCreate.documentType)), '2')
+    await fillToLastStep(user)
     await user.click(submitButton())
 
     expect(await screen.findByRole('alert')).toHaveTextContent(en.common.noPermission)
