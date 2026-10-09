@@ -13,4 +13,12 @@ export default defineConfig({
       },
     },
   },
+  // Component tests: `npm test` (vitest + React Testing Library on jsdom).
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: './src/test/setup.js',
+    css: false,
+    include: ['src/**/*.test.{js,jsx}'],
+  },
 })
