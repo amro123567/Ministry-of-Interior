@@ -135,27 +135,6 @@
               }
             }
           ]
-        },
-        {
-          "name": "Logout",
-          "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/auth/logout",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
-            },
-            "description": "Revokes the refresh token. 204 No Content on success. Now also writes an audit-log entry (see PROJECT_STATE.md 'AOP audit logging')."
-          }
         }
       ]
     },
@@ -229,7 +208,41 @@
               ]
             },
             "description": "Returns RequestSummaryDto[]: id, referenceNumber, citizenName, documentTypeName, status, priority, assignedToName, dueAt, overdue, slaStatus, createdAt, direction, subject. search matches reference number, subject, citizen name or registry number. Optional filters (disabled by default, enable the ones you need): officeId, priority, direction, sla, from, to (UTC days on the created date). Reference numbers look like CTS-2026-000123."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "pm.test('returns an array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List requests (all filters)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/requests?status=DRAFT&priority=NORMAL&direction=INCOMING&sla=ON_TRACK&from=2020-01-01&to=2099-12-31&assignedToMe=false",
+            "description": "Every list filter at once: status, priority, direction, sla, from/to (created date, inclusive), officeId, search, assignedToMe. Filters combine with AND."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "const rows = pm.response.json();",
+                  "pm.test('every row matches the filters', () => rows.forEach(r => { pm.expect(r.status).to.eql('DRAFT'); pm.expect(r.priority).to.eql('NORMAL'); pm.expect(r.direction).to.eql('INCOMING'); }));",
+                  "pm.collectionVariables.set('filteredCount', rows.length);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get request detail",
@@ -237,14 +250,36 @@
             "method": "GET",
             "url": "{{baseUrl}}/requests/{{requestId}}",
             "description": "Includes direction, subject, departmentId and departmentName."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get workflow history",
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/requests/{{requestId}}/history"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get assignment history",
@@ -252,7 +287,18 @@
             "method": "GET",
             "url": "{{baseUrl}}/requests/{{requestId}}/assignments",
             "description": "New: reassignment log for this request (assignedToName, assignedByName, note, assignedAt)."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get available transitions",
@@ -260,7 +306,18 @@
             "method": "GET",
             "url": "{{baseUrl}}/requests/{{requestId}}/transitions",
             "description": "Status changes the signed-in user may make on this request right now. Read from the workflow catalog and filtered by the caller's permissions (a VIEWER gets an empty list)."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get activity log",
@@ -268,7 +325,18 @@
             "method": "GET",
             "url": "{{baseUrl}}/requests/{{requestId}}/audit",
             "description": "Logged actions on this request (CREATE, ASSIGN, TRANSITION, DOCUMENT_UPLOAD...). Readable by any signed-in user."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Create request",
@@ -319,7 +387,55 @@
             },
             "description": "Requires one of the request-workflow permissions (REQUEST_TRANSITION_SUBMIT/REVIEW/DECIDE/ARCHIVE), i.e. OFFICER, MANAGER or ADMIN; a VIEWER gets 403. direction is INCOMING (default) or OUTGOING; any other value returns 400. subject (max 255) and departmentId are optional. Created as DRAFT with a generated referenceNumber; dueAt is set from the document type's SLA days."
           },
-          "event": []
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as viewer",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"viewer\",\n  \"password\": \"Viewer1234!\"\n}"
+            },
+            "description": "Demo accounts (seeded by DataSeeder): admin/Admin1234!, manager/Manager1234!, officer/Officer1234!, viewer/Viewer1234!."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', body.accessToken);",
+                  "pm.collectionVariables.set('refreshToken', body.refreshToken);",
+                  "pm.test('login returned tokens', () => {",
+                  "  pm.expect(body.accessToken).to.be.a('string');",
+                  "  pm.expect(body.refreshToken).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Create request as VIEWER (expect 403)",
@@ -351,6 +467,44 @@
           ]
         },
         {
+          "name": "Login as admin again",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"Admin1234!\"\n}"
+            },
+            "description": "Demo accounts (seeded by DataSeeder): admin/Admin1234!, manager/Manager1234!, officer/Officer1234!, viewer/Viewer1234!."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', body.accessToken);",
+                  "pm.collectionVariables.set('refreshToken', body.refreshToken);",
+                  "pm.test('login returned tokens', () => {",
+                  "  pm.expect(body.accessToken).to.be.a('string');",
+                  "  pm.expect(body.refreshToken).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Assign / reassign request",
           "request": {
             "method": "PATCH",
@@ -366,7 +520,18 @@
               "raw": "{\n  \"userId\": {{userId}},\n  \"note\": \"Reassigned from Postman\"\n}"
             },
             "description": "Independent of workflow status. Records an entry in assignment history and sends the assignee a notification. 'note' is optional. Requires a request-workflow permission (viewer gets 403)."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Transition status",
@@ -384,7 +549,18 @@
               "raw": "{\n  \"toStatus\": \"SUBMITTED\",\n  \"note\": \"Submitting for review\",\n  \"rejectionReason\": null\n}"
             },
             "description": "Legal transitions (see WorkflowTransitionRule, seeded by DataSeeder): DRAFT->SUBMITTED (REQUEST_TRANSITION_SUBMIT), SUBMITTED->UNDER_REVIEW (REVIEW/DECIDE permission), UNDER_REVIEW->APPROVED (REVIEW/DECIDE permission), UNDER_REVIEW->REJECTED (MANAGER, rejectionReason required), APPROVED->ARCHIVED (REQUEST_TRANSITION_SUBMIT), REJECTED->ARCHIVED (REQUEST_TRANSITION_SUBMIT). ADMIN can perform any transition. Anything else returns 400."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('moved to SUBMITTED', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.eql('SUBMITTED'); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Export requests as CSV",
@@ -392,7 +568,40 @@
             "method": "GET",
             "url": "{{baseUrl}}/requests/export",
             "description": "Returns text/csv, Content-Disposition: attachment; filename=correspondence_requests.csv."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "pm.test('is csv', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('text/csv'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Export requests as CSV (filtered)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/requests/export?status=DRAFT&priority=NORMAL&direction=INCOMING&sla=ON_TRACK&from=2020-01-01&to=2099-12-31&assignedToMe=false",
+            "description": "Same filters as the list; the CSV contains exactly the rows the filtered list returns."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "const lines = pm.response.text().split(/\\r?\\n/).filter(l => l.startsWith('\"CTS-'));",
+                  "pm.test('CSV rows equal filtered list rows', () => pm.expect(lines.length).to.eql(parseInt(pm.collectionVariables.get('filteredCount'), 10)));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -405,7 +614,18 @@
             "method": "GET",
             "url": "{{baseUrl}}/sla/overdue",
             "description": "New: RequestSummaryDto[] filtered to slaStatus == OVERDUE (past due, not yet closed/archived/rejected)."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Due-soon requests",
@@ -413,7 +633,18 @@
             "method": "GET",
             "url": "{{baseUrl}}/sla/due-soon",
             "description": "New: RequestSummaryDto[] filtered to slaStatus == DUE_SOON (due within 48h, still open)."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -431,19 +662,44 @@
                 {
                   "key": "file",
                   "type": "file",
-                  "src": []
+                  "src": "sample-upload.txt"
                 }
               ]
             },
             "description": "multipart/form-data, field name 'file'. Computes SHA-256 server-side and returns AttachmentDto. Requires a request-workflow permission (viewer gets 403). The upload is recorded in the audit log as DOCUMENT_UPLOAD."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "const b = pm.response.json();",
+                  "if (b.id) pm.collectionVariables.set('attachmentId', b.id);",
+                  "pm.test('sha256 returned', () => pm.expect(b.sha256).to.be.a('string').with.length.above(10));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "List documents for a request",
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/requests/{{requestId}}/documents"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Download document",
@@ -451,7 +707,18 @@
             "method": "GET",
             "url": "{{baseUrl}}/documents/{{attachmentId}}/download",
             "description": "Returns the raw file bytes with the original content type. Downloads are now audit-logged (see PROJECT_STATE.md 'AOP audit logging')."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -478,14 +745,36 @@
                 }
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get citizen",
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/citizens/{{citizenId}}"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Register citizen",
@@ -500,9 +789,29 @@
             "url": "{{baseUrl}}/citizens",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"registryNumber\": \"REG-999999\",\n  \"firstNameEn\": \"Test\",\n  \"lastNameEn\": \"Person\",\n  \"firstNameAr\": null,\n  \"lastNameAr\": null,\n  \"dateOfBirth\": \"1995-01-01\",\n  \"gender\": \"M\",\n  \"officeId\": {{officeId}}\n}"
+              "raw": "{\n  \"registryNumber\": \"REG-{{uniq}}\",\n  \"firstNameEn\": \"Test\",\n  \"lastNameEn\": \"Person\",\n  \"firstNameAr\": null,\n  \"lastNameAr\": null,\n  \"dateOfBirth\": \"1995-01-01\",\n  \"gender\": \"M\",\n  \"officeId\": {{officeId}}\n}"
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('uniq', Date.now().toString().slice(-7));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -515,7 +824,18 @@
             "method": "GET",
             "url": "{{baseUrl}}/dashboard/summary",
             "description": "total, byStatus (per RequestStatus), overdueCount, dueSoonCount, closedThisWeek, avgResolutionHours -- all derived from the same slaStatus computation the /requests and /sla endpoints use."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -527,7 +847,20 @@
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/notifications"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "const b = pm.response.json();",
+                  "if (Array.isArray(b) && b.length) pm.collectionVariables.set('notificationId', b[0].id);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Mark notification read",
@@ -535,7 +868,18 @@
             "method": "PATCH",
             "url": "{{baseUrl}}/notifications/{{notificationId}}/read",
             "description": "Now audit-logged (see PROJECT_STATE.md 'AOP audit logging')."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -547,21 +891,54 @@
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/offices"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Document types",
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/document-types"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Roles",
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/roles"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Departments",
@@ -569,7 +946,18 @@
             "method": "GET",
             "url": "{{baseUrl}}/departments",
             "description": "Departments a request can be routed to (departmentId)."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Permissions",
@@ -577,7 +965,18 @@
             "method": "GET",
             "url": "{{baseUrl}}/permissions",
             "description": "The 12 permission codes."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Governorates",
@@ -585,7 +984,18 @@
             "method": "GET",
             "url": "{{baseUrl}}/governorates",
             "description": ""
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Districts",
@@ -593,7 +1003,18 @@
             "method": "GET",
             "url": "{{baseUrl}}/districts",
             "description": ""
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Courts",
@@ -601,7 +1022,18 @@
             "method": "GET",
             "url": "{{baseUrl}}/courts",
             "description": ""
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Religious authorities",
@@ -609,7 +1041,18 @@
             "method": "GET",
             "url": "{{baseUrl}}/religious-authorities",
             "description": ""
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Mukhtars",
@@ -617,7 +1060,18 @@
             "method": "GET",
             "url": "{{baseUrl}}/mukhtars",
             "description": ""
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -630,7 +1084,18 @@
             "method": "GET",
             "url": "{{baseUrl}}/users",
             "description": "Requires ADMIN or MANAGER (see SecurityConfig)."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Create user",
@@ -645,10 +1110,30 @@
             "url": "{{baseUrl}}/users",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"newofficer\",\n  \"password\": \"ChangeMe1234!\",\n  \"fullName\": \"New Officer\",\n  \"email\": \"newofficer@moi.gov.lb\",\n  \"roleName\": \"OFFICER\",\n  \"officeId\": {{officeId}}\n}"
+              "raw": "{\n  \"username\": \"pm{{uniq}}\",\n  \"password\": \"ChangeMe1234!\",\n  \"fullName\": \"New Officer\",\n  \"email\": \"pm{{uniq}}@moi.gov.lb\",\n  \"roleName\": \"OFFICER\",\n  \"officeId\": {{officeId}}\n}"
             },
             "description": "Requires ADMIN (see SecurityConfig). Now audit-logged (see PROJECT_STATE.md 'AOP audit logging')."
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('uniq', Date.now().toString().slice(-7));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -660,7 +1145,18 @@
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/audit"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Audit entries for an entity",
@@ -685,7 +1181,55 @@
                 }
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sign out",
+      "item": [
+        {
+          "name": "Logout",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/logout",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "description": "Revokes the refresh token. 204 No Content on success. Now also writes an audit-log entry (see PROJECT_STATE.md 'AOP audit logging')."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
