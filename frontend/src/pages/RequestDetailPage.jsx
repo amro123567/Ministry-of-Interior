@@ -32,6 +32,9 @@ function Field({ label, children }) {
 // snapshot and the request's payment history (RequestFinanceController,
 // frontend integration pass Step 7). Every other section's behavior is
 // unchanged from before this restyle.
+// The backend refuses to assign a closed request, so the form is not offered for one.
+const CLOSED_STATUSES = ['APPROVED', 'REJECTED', 'ARCHIVED']
+
 export default function RequestDetailPage() {
   const { id } = useParams()
   const { hasPermission } = useAuth()
@@ -267,7 +270,7 @@ export default function RequestDetailPage() {
           </div>
         )}
 
-        {hasPermission('USER_VIEW') && (
+        {hasPermission('USER_VIEW') && !CLOSED_STATUSES.includes(request.status) && (
           <div className="rounded-lg border border-slate-200 p-4 mt-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
               <div>

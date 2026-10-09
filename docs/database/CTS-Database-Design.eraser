@@ -1,6 +1,27 @@
-// Correspondence Tracking System (CTS) 
-// Entity Relationship Diagram - 
+// ============================================================================
+// CORRESPONDENCE TRACKING SYSTEM (CTS)
+// Directorate of Civil Status - Lebanese Ministry of Interior and Municipalities
+// CSC599 Capstone Project - LAU
+//
+// DATABASE DESIGN - REVISION 2.0 (CORRECTED)
+// Supersedes Revision 1.0 and the earlier Flask-era diagram.
+// Aligned with Software Design Document Rev 1.0.
+//
+// IMPLEMENTATION NOTE: this is the design target. The implemented Spring Boot
+// schema (Hibernate, ddl-auto=update) keeps a surrogate id on citizens instead
+// of civil_registry_number as the primary key, and its workflow catalog drives
+// the six built-in request statuses. See the deviations section of the README.
+//
+// ENGINE:    MySQL 8.0 / InnoDB
+// CHARSET:   utf8mb4        COLLATION: utf8mb4_unicode_ci     (fixes D-14)
+// TIMEZONE:  all timestamps stored in UTC, rendered in Asia/Beirut
+// ============================================================================
 
+title CTS Entity Relationship Diagram - Revision 2.0
+
+// ===========================================================================
+// 1. REFERENCE / ORGANISATION
+// ===========================================================================
 
 governorates [color: purple] {
   id bigint pk
@@ -102,7 +123,9 @@ mukhtars [color: purple] {
   INDEX (term_start, term_end)
 }
 
-// ---- Identity and access control ----
+// ===========================================================================
+// 2. IDENTITY AND ACCESS CONTROL
+// ===========================================================================
 
 permissions [color: yellow] {
   id bigint pk
@@ -213,6 +236,10 @@ token_denylist [color: yellow] {
   INDEX (expires_at)
 }
 
+// ===========================================================================
+// 3. WORKFLOW CONFIGURATION   (closes D-17, CPP objective O3)
+// ===========================================================================
+
 workflow_states [color: orange] {
   id bigint pk
   code varchar(40)
@@ -252,7 +279,9 @@ workflow_transition_permissions [color: orange] {
   INDEX (permission_id)
 }
 
-// ---- Document type configuration ----
+// ===========================================================================
+// 4. DOCUMENT TYPE CONFIGURATION
+// ===========================================================================
 
 document_types [color: blue, textColor: white] {
   id bigint pk
@@ -286,7 +315,9 @@ document_type_authorities [color: blue, textColor: white] {
   INDEX (document_type_id)
 }
 
-// ---- Citizen registry ----
+// ===========================================================================
+// 5. CITIZEN REGISTRY
+// ===========================================================================
 
 citizens [color: pink] {
   civil_registry_number varchar(20) pk
@@ -408,6 +439,10 @@ civil_status_amendments [color: pink] {
   INDEX (court_id)
   INDEX (status)
 }
+
+// ===========================================================================
+// 6. DOCUMENTS  (generic supertype + specialised subtypes)
+// ===========================================================================
 
 documents [color: blue, textColor: white] {
   id bigint pk
@@ -586,7 +621,9 @@ physical_document_handling [color: blue, textColor: white] {
   INDEX (location)
 }
 
-// ---- Service requests / workflow ----
+// ===========================================================================
+// 7. SERVICE REQUESTS / WORKFLOW
+// ===========================================================================
 
 service_requests [color: red, textColor: white] {
   id bigint pk
@@ -699,7 +736,9 @@ internal_notifications [color: red, textColor: white] {
   INDEX (recipient_user_id, created_at DESC)
 }
 
-// ---- Audit and access logging ----
+// ===========================================================================
+// 8. AUDIT AND ACCESS LOGGING
+// ===========================================================================
 
 audit_logs [color: gray, textColor: white] {
   id bigint pk
@@ -750,8 +789,11 @@ record_access_log [color: gray, textColor: white] {
   INDEX (accessed_by, accessed_at DESC)
 }
 
-// ---- Relationships:  parent.pk < child.fk  (one-to-many, parent on the left)
-//                     a - b  one-to-one     a <> b  many-to-many
+// ===========================================================================
+// RELATIONSHIPS
+// Notation: parent.pk < child.fk  (one-to-many, parent on the LEFT)
+//           a - b   one-to-one       a <> b   many-to-many
+// ===========================================================================
 
 // --- Reference / organisation hierarchy ---
 governorates.id < districts.governorate_id
@@ -894,42 +936,80 @@ users.id < citizen_audit_log.changed_by
 citizens.civil_registry_number < record_access_log.citizen_id
 users.id < record_access_log.accessed_by
 
+// ===========================================================================
+// ENUMERATED TYPES  (MySQL 8 native ENUM - replaces unconstrained strings)
+// ===========================================================================
+// enum_office_type        CENTRAL, REGIONAL, DISTRICT, MOBILE
+// enum_court_type         CIVIL, SHARIA, JAAFARI, DRUZE, ECCLESIASTICAL
+// enum_gender             MALE, FEMALE
+// enum_marital_status     SINGLE, MARRIED, DIVORCED, WIDOWED
+// enum_relationship       HEAD, SPOUSE, SON, DAUGHTER, FATHER, MOTHER, OTHER
+// enum_guardianship_type  NATURAL, TESTAMENTARY, COURT_APPOINTED
+// enum_record_status      ACTIVE, INACTIVE, SUPERSEDED, CANCELLED
+// enum_approval_status    PENDING, APPROVED, REJECTED
+// enum_document_category  CIVIL_STATUS, IDENTITY, FAMILY, JUDICIAL
+// enum_document_status    DRAFT, ACTIVE, SUPERSEDED, EXPIRED, CANCELLED
+// enum_validation_type    AUTHENTICITY, COMPLETENESS, LEGAL_SUFFICIENCY
+// enum_validation_status  PENDING, APPROVED, REJECTED
+// enum_custody_action     RECEIVED, ARCHIVED, RETRIEVED, TRANSFERRED,
+//                         ISSUED_TO_CITIZEN, RETURNED, DESTROYED
+// enum_union_status       ACTIVE, DISSOLVED, ANNULLED
+// enum_divorce_type       TALAQ, KHULA, JUDICIAL, MUTUAL_CONSENT, ANNULMENT
+// enum_card_status        ACTIVE, EXPIRED, LOST, STOLEN, REPLACED, CANCELLED
+// enum_direction          INCOMING, OUTGOING
+// enum_priority           LOW, NORMAL, HIGH, URGENT
+// enum_sla_status         ON_TRACK, DUE_SOON, OVERDUE, MET, BREACHED
+// enum_payment_method     CASH, BANK_TRANSFER, CHEQUE, WAIVED
+// enum_payment_status     PAID, REVERSED, VOIDED
+// enum_notification_type  ASSIGNMENT, TRANSITION, SLA_WARNING, SLA_BREACH,
+//                         VALIDATION_REQUIRED, APPROVAL_REQUIRED
+// enum_access_type        VIEW_RECORD, VIEW_DOCUMENT, SEARCH_RESULT, EXPORT
+// enum_authority_kind     OFFICE, COURT, RELIGIOUS_AUTHORITY
+// enum_login_failure      UNKNOWN_USER, BAD_PASSWORD, ACCOUNT_LOCKED,
+//                         ACCOUNT_INACTIVE
+// enum_revoke_reason      LOGOUT, PASSWORD_CHANGE, ROLE_CHANGE,
+//                         ADMIN_REVOKE, SUSPECTED_COMPROMISE
+// enum_audit_action       USER_LOGIN, USER_LOGOUT, LOGIN_FAILED,
+//                         ROLE_GRANTED, ROLE_REVOKED, PERMISSION_CHANGED,
+//                         USER_CREATED, USER_DISABLED, PASSWORD_CHANGED,
+//                         CITIZEN_CREATED, CITIZEN_UPDATED,
+//                         REQUEST_CREATED, REQUEST_ASSIGNED,
+//                         WORKFLOW_TRANSITION, REQUEST_APPROVED,
+//                         REQUEST_REJECTED,
+//                         DOCUMENT_UPLOADED, DOCUMENT_DOWNLOADED,
+//                         DOCUMENT_VALIDATED, DOCUMENT_DELETED,
+//                         PAYMENT_RECORDED, PAYMENT_REVERSED,
+//                         REPORT_EXPORTED, AMENDMENT_APPROVED,
+//                         TRANSFER_APPROVED
+//
+// NOTE: decimal above denotes DECIMAL(12,2). The underscore avoids a
+//       comma inside the Eraser type token; use DECIMAL(12,2) in the DDL.
 
-// ---- Enumerated types (MySQL 8 native ENUM) ----
-// enum_office_type         CENTRAL, REGIONAL, DISTRICT, MOBILE
-// enum_court_type          CIVIL, SHARIA, JAAFARI, DRUZE, ECCLESIASTICAL
-// enum_gender              MALE, FEMALE
-// enum_marital_status      SINGLE, MARRIED, DIVORCED, WIDOWED
-// enum_relationship        HEAD, SPOUSE, SON, DAUGHTER, FATHER, MOTHER, OTHER
-// enum_guardianship_type   NATURAL, TESTAMENTARY, COURT_APPOINTED
-// enum_record_status       ACTIVE, INACTIVE, SUPERSEDED, CANCELLED
-// enum_approval_status     PENDING, APPROVED, REJECTED
-// enum_document_category   CIVIL_STATUS, IDENTITY, FAMILY, JUDICIAL
-// enum_document_status     DRAFT, ACTIVE, SUPERSEDED, EXPIRED, CANCELLED
-// enum_validation_type     AUTHENTICITY, COMPLETENESS, LEGAL_SUFFICIENCY
-// enum_validation_status   PENDING, APPROVED, REJECTED
-// enum_custody_action      RECEIVED, ARCHIVED, RETRIEVED, TRANSFERRED, ISSUED_TO_CITIZEN, RETURNED, DESTROYED
-// enum_union_status        ACTIVE, DISSOLVED, ANNULLED
-// enum_divorce_type        TALAQ, KHULA, JUDICIAL, MUTUAL_CONSENT, ANNULMENT
-// enum_card_status         ACTIVE, EXPIRED, LOST, STOLEN, REPLACED, CANCELLED
-// enum_direction           INCOMING, OUTGOING
-// enum_priority            LOW, NORMAL, HIGH, URGENT
-// enum_sla_status          ON_TRACK, DUE_SOON, OVERDUE, MET, BREACHED
-// enum_payment_method      CASH, BANK_TRANSFER, CHEQUE, WAIVED
-// enum_payment_status      PAID, REVERSED, VOIDED
-// enum_notification_type   ASSIGNMENT, TRANSITION, SLA_WARNING, SLA_BREACH, VALIDATION_REQUIRED, APPROVAL_REQUIRED
-// enum_access_type         VIEW_RECORD, VIEW_DOCUMENT, SEARCH_RESULT, EXPORT
-// enum_authority_kind      OFFICE, COURT, RELIGIOUS_AUTHORITY
-// enum_login_failure       UNKNOWN_USER, BAD_PASSWORD, ACCOUNT_LOCKED, ACCOUNT_INACTIVE
-// enum_revoke_reason       LOGOUT, PASSWORD_CHANGE, ROLE_CHANGE, ADMIN_REVOKE, SUSPECTED_COMPROMISE
-// enum_audit_action        USER_LOGIN, USER_LOGOUT, LOGIN_FAILED, ROLE_GRANTED, ROLE_REVOKED, PERMISSION_CHANGED, USER_CREATED, USER_DISABLED, PASSWORD_CHANGED, CITIZEN_CREATED, CITIZEN_UPDATED, REQUEST_CREATED, REQUEST_ASSIGNED, WORKFLOW_TRANSITION, REQUEST_APPROVED, REQUEST_REJECTED, DOCUMENT_UPLOADED, DOCUMENT_DOWNLOADED, DOCUMENT_VALIDATED, DOCUMENT_DELETED, PAYMENT_RECORDED, PAYMENT_REVERSED, REPORT_EXPORTED, AMENDMENT_APPROVED, TRANSFER_APPROVED
-
-// ---- Referential actions ----
+// ===========================================================================
+// REFERENTIAL ACTIONS
+// ===========================================================================
 // citizens.civil_registry_number  ->  ON UPDATE CASCADE, ON DELETE RESTRICT
-// documents.id -> subtype tables  ->  ON DELETE CASCADE
-// any FK -> users.id              ->  ON DELETE RESTRICT
-// audit/access logs -> subject    ->  ON DELETE RESTRICT
-// citizens.father_id / mother_id  ->  ON DELETE SET NULL
-// reference tables -> children    ->  ON DELETE RESTRICT
+// documents.id -> subtype tables    ON DELETE CASCADE
+// any FK -> users.id                ON DELETE RESTRICT
+// audit_logs / citizen_audit_log / record_access_log -> any subject
+//                                   ON DELETE RESTRICT
+// citizens.father_id / mother_id    ON DELETE SET NULL
+// reference tables -> children      ON DELETE RESTRICT
 
-
+// ===========================================================================
+// SERVICE-LAYER INVARIANTS  (rules the database cannot express)
+// ===========================================================================
+// SI-1  No cycle in citizens.father_id / mother_id lineage
+// SI-2  No cycle in users.supervisor_id chain
+// SI-3  A parent's date_of_birth precedes the child's
+// SI-4  father_id XOR father_name_unregistered  (same for mother)
+// SI-5  Mukhtar attestation date within [term_start, term_end]
+// SI-6  Subtype row matches document_types.subtype_table
+// SI-7  citizens.is_deceased set iff a death certificate exists
+// SI-8  citizens.marital_status derived from marriage/divorce certs
+// SI-9  Polygamy permitted only where religious_authorities.sect allows
+// SI-10 A transition is legal only if a matching workflow_transitions row
+//       exists AND the actor holds a linked permission
+// SI-11 Amendment requires non-empty legal_basis before approval
+// SI-12 Approver of a transfer/amendment must differ from the requester
+// ===========================================================================
