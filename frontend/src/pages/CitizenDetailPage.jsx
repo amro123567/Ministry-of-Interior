@@ -66,6 +66,7 @@ export default function CitizenDetailPage() {
   const [mother, setMother] = useState(emptyParent)
   const [lineageError, setLineageError] = useState(null)
   const [savingLineage, setSavingLineage] = useState(false)
+  const [tab, setTab] = useState('overview')
 
   // Extracted (rather than left inline in the effect below) so a registry
   // transfer's or civil-status amendment's decide action -- both of which
@@ -132,6 +133,13 @@ export default function CitizenDetailPage() {
   const c = citizen
   const nameEn = [c.firstNameEn, c.middleNameEn, c.lastNameEn].filter(Boolean).join(' ')
   const nameAr = [c.firstNameAr, c.middleNameAr, c.lastNameAr].filter(Boolean).join(' ')
+  const tabs = [
+    ['overview', t('citizenDetail.tabOverview')],
+    ['documents', t('citizenDetail.tabDocuments')],
+    ['family', t('citizenDetail.tabFamily')],
+    ['changes', t('citizenDetail.tabChanges')],
+    ...(hasPermission('AUDIT_VIEW') ? [['audit', t('citizenDetail.tabAudit')]] : []),
+  ]
 
   return (
     <div>
@@ -147,6 +155,32 @@ export default function CitizenDetailPage() {
         )}
       </div>
 
+      <div className="rounded-xl border border-slate-200 bg-white p-5 mb-4 grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Field label={t('citizenDetail.registryNumber')} value={c.registryNumber} />
+        <Field label={t('citizenDetail.dateOfBirth')} value={c.dateOfBirth ? format(new Date(c.dateOfBirth), 'MMM d, yyyy') : null} />
+        <Field label={t('citizenDetail.registeredOffice')} value={c.officeName} />
+        <Field label={t('citizenDetail.maritalStatus')} value={c.maritalStatus ? t(`citizens.maritalStatus.${c.maritalStatus}`, c.maritalStatus) : null} />
+      </div>
+
+      <div role="tablist" aria-label={t('citizenDetail.sections')} className="flex gap-1 border-b border-slate-200 mb-4 overflow-x-auto">
+        {tabs.map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={tab === key}
+            onClick={() => setTab(key)}
+            className={`whitespace-nowrap px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+              tab === key ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'overview' && (
+      <>
       <Section title={t('citizenDetail.identity')}>
         <Field label={t('citizenDetail.nameEn')} value={nameEn} />
         <Field label={t('citizenDetail.nameAr')} value={nameAr} />
@@ -251,12 +285,23 @@ export default function CitizenDetailPage() {
         )}
       </div>
 
-      <DocumentsSection citizenId={c.id} citizenLabel={nameEn || nameAr} />
-      <FamilyHistorySection citizenId={c.id} citizenLabel={nameEn || nameAr} />
-      <GuardianshipSection citizenId={c.id} />
-      <RegistryTransferSection citizenId={c.id} currentOfficeName={c.officeName} onDecided={loadCitizen} />
-      <CivilStatusAmendmentSection citizenId={c.id} citizen={c} onDecided={loadCitizen} />
-      <CitizenAuditSection citizenId={c.id} />
+      </>
+      )}
+
+      {tab === 'documents' && <DocumentsSection citizenId={c.id} citizenLabel={nameEn || nameAr} />}
+      {tab === 'family' && (
+        <>
+          <FamilyHistorySection citizenId={c.id} citizenLabel={nameEn || nameAr} />
+          <GuardianshipSection citizenId={c.id} />
+        </>
+      )}
+      {tab === 'changes' && (
+        <>
+          <RegistryTransferSection citizenId={c.id} currentOfficeName={c.officeName} onDecided={loadCitizen} />
+          <CivilStatusAmendmentSection citizenId={c.id} citizen={c} onDecided={loadCitizen} />
+        </>
+      )}
+      {tab === 'audit' && hasPermission('AUDIT_VIEW') && <CitizenAuditSection citizenId={c.id} />}
     </div>
   )
 }
