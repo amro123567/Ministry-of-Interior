@@ -24,13 +24,16 @@ public class UserService {
     private final RoleRepository roleRepository;
     private final OfficeRepository officeRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditService auditService;
 
     public UserService(AppUserRepository userRepository, RoleRepository roleRepository,
-                        OfficeRepository officeRepository, PasswordEncoder passwordEncoder) {
+                        OfficeRepository officeRepository, PasswordEncoder passwordEncoder,
+                        AuditService auditService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.officeRepository = officeRepository;
         this.passwordEncoder = passwordEncoder;
+        this.auditService = auditService;
     }
 
     public List<UserDto> all() {
@@ -63,6 +66,40 @@ public class UserService {
             user.setOffice(office);
         }
         return toDto(userRepository.save(user));
+    }
+
+    /**
+     * Activates or deactivates an account. Deactivated users cannot log in, refresh
+     * a session, or use a token they already hold (see JwtAuthFilter). Two guards keep
+     * the system administrable: you cannot deactivate yourself, and the last active
+     * administrator cannot be deactivated.
+     */
+    @Transactional
+    public UserDto setEnabled(Long id, boolean enabled, AppUser actor) {
+        AppUser user = userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("User not found: " + id));
+        if (user.isEnabled() == enabled) {
+            return toDto(user);
+        }
+        if (!enabled) {
+            if (actor != null && actor.getId().equals(user.getId())) {
+                throw new BadRequestException("You cannot deactivate your own account.");
+            }
+            boolean isAdmin = user.getRoles().stream().anyMatch(r -> r.getName() == RoleName.ADMIN);
+            if (isAdmin) {
+                long activeAdmins = userRepository.findAll().stream()
+                        .filter(AppUser::isEnabled)
+                        .filter(u -> u.getRoles().stream().anyMatch(r -> r.getName() == RoleName.ADMIN))
+                        .count();
+                if (activeAdmins <= 1) {
+                    throw new BadRequestException("At least one active administrator is required.");
+                }
+            }
+        }
+        user.setEnabled(enabled);
+        userRepository.save(user);
+        auditService.log("AppUser", user.getId(), enabled ? "USER_ENABLED" : "USER_DISABLED", actor, user.getUsername());
+        return toDto(user);
     }
 
     private UserDto toDto(AppUser u) {

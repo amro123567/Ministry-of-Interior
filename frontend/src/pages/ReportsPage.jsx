@@ -6,6 +6,7 @@ import {
 import { Gauge, ListChecks } from 'lucide-react'
 import client from '../api/client.js'
 import { SkeletonLine } from '../components/Skeleton.jsx'
+import { downloadCsv } from '../api/download.js'
 import { useLanguage } from '../context/LanguageContext.jsx'
 
 // The backend labels each weekly window "Oct 2" (English). Re-render it with
@@ -55,11 +56,15 @@ export default function ReportsPage() {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
 
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const range = { from: from || undefined, to: to || undefined }
+
   useEffect(() => {
-    client.get('/reports/summary')
-      .then((r) => setData(r.data))
+    client.get('/reports/summary', { params: { from: from || undefined, to: to || undefined } })
+      .then((r) => { setData(r.data); setError(null) })
       .catch(() => setError(t('reports.couldNotLoad')))
-  }, [t])
+  }, [t, from, to])
 
   if (error) {
     return (
@@ -87,9 +92,33 @@ export default function ReportsPage() {
 
   return (
     <div>
-      <div className="mb-5">
-        <h1 className="text-xl font-bold text-slate-900">{t('reports.title')}</h1>
-        <p className="text-sm text-slate-500 mt-1">{t('reports.subtitle')}</p>
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">{t('reports.title')}</h1>
+          <p className="text-sm text-slate-500 mt-1">{t('reports.subtitle')}</p>
+        </div>
+        <div className="flex flex-wrap items-end gap-2.5">
+          <label className="flex flex-col text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            {t('reports.dateFrom')}
+            <input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)}
+              className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal normal-case text-slate-900" />
+          </label>
+          <label className="flex flex-col text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            {t('reports.dateTo')}
+            <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)}
+              className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal normal-case text-slate-900" />
+          </label>
+          {(from || to) && (
+            <button type="button" onClick={() => { setFrom(''); setTo('') }}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              {t('reports.clearRange')}
+            </button>
+          )}
+          <button type="button" onClick={() => downloadCsv('/reports/export', range, 'reports_summary.csv')}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+            {t('reports.exportCsv')}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">

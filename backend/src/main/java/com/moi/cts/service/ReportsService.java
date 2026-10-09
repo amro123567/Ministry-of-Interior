@@ -47,13 +47,58 @@ public class ReportsService {
     }
 
     public ReportsSummaryDto summary() {
+        return summary(null, null);
+    }
+
+    /**
+     * Report for requests created between {@code from} and {@code to} (inclusive days,
+     * both optional). The throughput chart always shows the last
+     * {@value #THROUGHPUT_WEEKS} weeks, ending at {@code to} when one is given.
+     */
+    public ReportsSummaryDto summary(LocalDate from, LocalDate to) {
         List<CorrespondenceRequest> all = requestRepository.findAll();
+        Instant start = from == null ? null : from.atStartOfDay().toInstant(ZoneOffset.UTC);
+        Instant end = to == null ? null : to.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC);
+        List<CorrespondenceRequest> scoped = all.stream()
+                .filter(r -> start == null || (r.getCreatedAt() != null && !r.getCreatedAt().isBefore(start)))
+                .filter(r -> end == null || (r.getCreatedAt() != null && r.getCreatedAt().isBefore(end)))
+                .toList();
         return new ReportsSummaryDto(
-                throughput(all),
-                aging(all),
-                byDocumentType(all),
-                byOffice(all),
-                slaBreachRate(all));
+                throughput(all, end == null ? Instant.now() : end),
+                aging(scoped),
+                byDocumentType(scoped),
+                byOffice(scoped),
+                slaBreachRate(scoped));
+    }
+
+    /** The same figures as {@link #summary(LocalDate, LocalDate)}, as long-format CSV rows. */
+    public byte[] summaryCsv(LocalDate from, LocalDate to) {
+        ReportsSummaryDto s = summary(from, to);
+        java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+        try (java.io.PrintWriter w = new java.io.PrintWriter(buffer, true, java.nio.charset.StandardCharsets.UTF_8)) {
+            w.println("Section,Label,Metric,Value");
+            for (ThroughputPointDto p : s.throughput()) {
+                w.println(row("Throughput", p.periodLabel(), "created", p.created()));
+                w.println(row("Throughput", p.periodLabel(), "closed", p.closed()));
+            }
+            for (AgingBucketDto a : s.aging()) {
+                w.println(row("OpenAging", a.bucket(), "count", a.count()));
+            }
+            for (DocumentTypeBreakdownDto d : s.byDocumentType()) {
+                w.println(row("ByDocumentType", d.documentTypeName(), "total", d.total()));
+                w.println(row("ByDocumentType", d.documentTypeName(), "avgResolutionHours", d.avgResolutionHours()));
+            }
+            for (OfficeBreakdownDto o : s.byOffice()) {
+                w.println(row("ByOffice", o.officeName(), "total", o.total()));
+                w.println(row("ByOffice", o.officeName(), "overdue", o.overdueCount()));
+            }
+            w.println(row("Sla", "all", "breachRatePercent", s.slaBreachRate()));
+        }
+        return buffer.toByteArray();
+    }
+
+    private static String row(String section, String label, String metric, Number value) {
+        return String.join(",", CsvCells.cell(section), CsvCells.cell(label), CsvCells.cell(metric), String.valueOf(value));
     }
 
     /**
@@ -62,8 +107,7 @@ public class ReportsService {
      * first. A request counts as "created" in the window containing its
      * createdAt, and "closed" in the window containing its closedAt.
      */
-    private List<ThroughputPointDto> throughput(List<CorrespondenceRequest> all) {
-        Instant now = Instant.now();
+    private List<ThroughputPointDto> throughput(List<CorrespondenceRequest> all, Instant now) {
         List<ThroughputPointDto> points = new ArrayList<>();
         for (int weeksAgo = THROUGHPUT_WEEKS - 1; weeksAgo >= 0; weeksAgo--) {
             Instant windowStart = now.minus((long) (weeksAgo + 1) * 7, ChronoUnit.DAYS);

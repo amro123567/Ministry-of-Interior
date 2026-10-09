@@ -173,6 +173,9 @@ public class AuthService {
             throw new AuthException("Refresh token has expired or was revoked. Please log in again.");
         }
         AppUser user = stored.getUser();
+        if (!user.isEnabled()) {
+            throw new AuthException("This account is disabled.");
+        }
         List<String> roles = user.getRoles().stream().map(r -> r.getName().name()).toList();
         String access = jwtService.generateAccessToken(user.getUsername(), roles);
 

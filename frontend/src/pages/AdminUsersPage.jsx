@@ -18,7 +18,9 @@ const labelCls = 'block text-sm font-semibold text-slate-700 mb-1.5'
 // else here is the same GET /api/users + POST /api/users flow as before.
 export default function AdminUsersPage() {
   const { t } = useLanguage()
-  const { hasPermission } = useAuth()
+  const { hasPermission, user: me } = useAuth()
+  const [confirmId, setConfirmId] = useState(null)
+  const [rowError, setRowError] = useState(null)
   const [users, setUsers] = useState([])
   const [roles, setRoles] = useState([])
   const [offices, setOffices] = useState([])
@@ -40,6 +42,18 @@ export default function AdminUsersPage() {
     client.get('/governorates').then((r) => setGovernorates(r.data.filter((g) => g.active !== false)))
     client.get('/districts').then((r) => setDistricts(r.data.filter((d) => d.active !== false)))
   }, [])
+
+  async function toggleEnabled(u) {
+    setRowError(null)
+    try {
+      await client.patch(`/users/${u.id}/enabled`, { enabled: !u.enabled })
+      setConfirmId(null)
+      reload()
+    } catch (err) {
+      setConfirmId(null)
+      setRowError(err.response?.data?.message ?? t('adminUsers.errorGeneric'))
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -71,6 +85,9 @@ export default function AdminUsersPage() {
       <div className={`grid grid-cols-1 gap-4 items-start ${showForm ? 'lg:grid-cols-[1fr_380px]' : ''}`}>
         <div className="rounded-xl border border-slate-200 bg-white p-5">
           <h2 className="text-sm font-bold text-slate-900 mb-4">{t('adminUsers.staffAccounts')}</h2>
+          {rowError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-4" role="alert">{rowError}</div>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
@@ -79,6 +96,7 @@ export default function AdminUsersPage() {
                   <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('adminUsers.colFullName')}</th>
                   <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('adminUsers.colRoles')}</th>
                   <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('adminUsers.colOffice')}</th>
+                  <th className="text-start text-[11px] font-bold uppercase tracking-wide text-slate-500 px-4 py-3 border-b border-slate-200">{t('adminUsers.colStatus')}</th>
                   {/* AUDIT_VIEW-gated, matching UserActivityPage's own
                       route gate in App.jsx (not USER_MANAGE, which is all
                       this page itself requires) -- an admin who somehow
@@ -97,6 +115,33 @@ export default function AdminUsersPage() {
                     <td className="px-4 py-3.5 text-sm text-slate-700">{u.fullName}</td>
                     <td className="px-4 py-3.5 text-sm text-slate-700">{u.roles.join(', ')}</td>
                     <td className="px-4 py-3.5 text-sm text-slate-700">{u.officeName ?? '—'}</td>
+                    <td className="px-4 py-3.5 text-sm whitespace-nowrap">
+                      <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+                        u.enabled ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-300'
+                      }`}>
+                        {u.enabled ? t('adminUsers.active') : t('adminUsers.inactive')}
+                      </span>
+                      {u.username === me?.username ? (
+                        <span className="ms-2 text-xs text-slate-400">{t('adminUsers.you')}</span>
+                      ) : confirmId === u.id ? (
+                        <span className="ms-2 inline-flex items-center gap-2">
+                          <button type="button" onClick={() => toggleEnabled(u)} className="text-xs font-bold text-red-600 hover:underline">
+                            {t('adminUsers.confirm')}
+                          </button>
+                          <button type="button" onClick={() => setConfirmId(null)} className="text-xs text-slate-500 hover:underline">
+                            {t('adminUsers.cancel')}
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => (u.enabled ? setConfirmId(u.id) : toggleEnabled(u))}
+                          className="ms-2 text-xs font-semibold text-indigo-600 hover:underline"
+                        >
+                          {u.enabled ? t('adminUsers.deactivate') : t('adminUsers.activate')}
+                        </button>
+                      )}
+                    </td>
                     {hasPermission('AUDIT_VIEW') && (
                       <td className="px-4 py-3.5 text-sm whitespace-nowrap">
                         <Link

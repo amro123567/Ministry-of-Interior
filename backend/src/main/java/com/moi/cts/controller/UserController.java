@@ -24,6 +24,12 @@ public class UserController {
     @GetMapping
     public List<UserDto> all() { return userService.all(); }
 
+    @PatchMapping("/{id}/enabled")
+    public UserDto setEnabled(@PathVariable Long id, @RequestBody SetEnabledRequest request,
+                              @AuthenticationPrincipal AppUserPrincipal actor) {
+        return userService.setEnabled(id, request.enabled(), actor != null ? actor.getUser() : null);
+    }
+
     @PostMapping
     @Audited(entityType = "AppUser", action = "CREATE")
     public ResponseEntity<UserDto> create(@Valid @RequestBody CreateUserRequest request,

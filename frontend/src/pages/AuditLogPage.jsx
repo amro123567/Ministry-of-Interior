@@ -3,6 +3,7 @@ import { format } from 'date-fns'
 import client from '../api/client.js'
 import { SkeletonTableRows } from '../components/Skeleton.jsx'
 import LoginAttemptBadge from '../components/LoginAttemptBadge.jsx'
+import { downloadCsv } from '../api/download.js'
 import { useLanguage } from '../context/LanguageContext.jsx'
 
 const inputCls = 'rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
@@ -113,41 +114,45 @@ export default function AuditLogPage() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
 
+  const [facets, setFacets] = useState({ actions: [], entityTypes: [] })
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+
+  // Filters are applied by the server over the whole log (not just the latest rows),
+  // so older entries can be found and the export matches what is on screen.
+  const params = useMemo(() => ({
+    q: debouncedSearch.trim() || undefined,
+    action: action || undefined,
+    entityType: entityType || undefined,
+    from: dateFrom || undefined,
+    to: dateTo || undefined,
+  }), [debouncedSearch, action, entityType, dateFrom, dateTo])
+
   useEffect(() => {
-    client.get('/audit')
+    const h = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(h)
+  }, [search])
+
+  useEffect(() => {
+    client.get('/audit/facets').then((r) => setFacets(r.data)).catch(() => setFacets({ actions: [], entityTypes: [] }))
+  }, [])
+
+  useEffect(() => {
+    setLoading(true)
+    setError(null)
+    client.get('/audit', { params })
       .then((r) => setEntries(r.data))
       .catch(() => setError(t('auditLog.couldNotLoad')))
       .finally(() => setLoading(false))
-  }, [t])
+  }, [params, t])
 
-  const actionOptions = useMemo(
-    () => [...new Set(entries.map((e) => e.action))].sort(),
-    [entries],
-  )
-  const entityTypeOptions = useMemo(
-    () => [...new Set(entries.map((e) => e.entityType))].sort(),
-    [entries],
-  )
+  const actionOptions = facets.actions
+  const entityTypeOptions = facets.entityTypes
+  const filtered = entries
+  const anyFilter = Boolean(search || action || entityType || dateFrom || dateTo)
 
-  const filtered = useMemo(() => {
-    const fromTime = dateFrom ? new Date(dateFrom).getTime() : null
-    // Include the entire "to" day, not just its midnight instant.
-    const toTime = dateTo ? new Date(dateTo).getTime() + 24 * 60 * 60 * 1000 : null
-    const q = search.trim().toLowerCase()
-
-    return entries.filter((e) => {
-      if (action && e.action !== action) return false
-      if (entityType && e.entityType !== entityType) return false
-      const occurred = new Date(e.occurredAt).getTime()
-      if (fromTime !== null && occurred < fromTime) return false
-      if (toTime !== null && occurred >= toTime) return false
-      if (q) {
-        const haystack = `${e.actorName ?? ''} ${e.details ?? ''} ${e.entityType} #${e.entityId}`.toLowerCase()
-        if (!haystack.includes(q)) return false
-      }
-      return true
-    })
-  }, [entries, search, action, entityType, dateFrom, dateTo])
+  function clearFilters() {
+    setSearch(''); setAction(''); setEntityType(''); setDateFrom(''); setDateTo('')
+  }
 
   const showEmpty = !loading && !error && filtered.length === 0
 
@@ -210,6 +215,16 @@ export default function AuditLogPage() {
               onChange={(e) => setDateTo(e.target.value)}
               className={`${inputCls} w-[160px]`}
             />
+            {anyFilter && (
+              <button type="button" onClick={clearFilters}
+                className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                {t('requests.clearFilters')}
+              </button>
+            )}
+            <button type="button" onClick={() => downloadCsv('/audit/export', params, 'audit_log.csv')}
+              className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 ms-auto">
+              {t('requests.exportCsv')}
+            </button>
           </div>
 
           {error && (
