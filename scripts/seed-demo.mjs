@@ -231,7 +231,7 @@ async function main() {
     const x = row[13] ?? {}
     if (!x.transfer || !id[row[0]]) continue
     const cur = (await attempt('citizen', () => call('admin', 'GET', `/citizens/${id[row[0]]}`)))
-    const target = ref.offices.find((o) => o.id !== (cur?.officeId ?? cur?.office?.id)) ?? office(1)
+    const target = ref.offices.find((o) => o.id !== (cur?.officeId ?? cur?.office?.id) && o.nameEn !== cur?.officeName) ?? office(1)
     const t = await attempt(`transfer ${row[0]}`, () => call('officer', 'POST', '/registry-transfers', { citizenId: id[row[0]], toOfficeId: target.id, transferDate: dt(2026, 3, 1) }))
     if (t && x.transfer !== 'PENDING') await attempt(`decide transfer ${row[0]}`, () => call('manager', 'PATCH', `/registry-transfers/${t.id}/decide`, { decision: x.transfer, decisionReference: `TR-DEC-${row[0].toUpperCase()}` }))
   }
@@ -306,7 +306,7 @@ async function main() {
   const methods = ['CASH', 'BANK_TRANSFER', 'CHEQUE', 'WAIVED', 'CASH', 'BANK_TRANSFER', 'CASH', 'CHEQUE']
   for (const [i, q] of payable.entries()) {
     const pay = await attempt(`payment ${q.key}`, () => call('admin', 'POST', '/payments', {
-      requestId: q.id, amount: methods[i] === 'WAIVED' ? 0 : [150000, 75000, 300000, 50, 100000][i % 5], currency: i % 4 === 1 ? 'USD' : 'LBP', method: methods[i], receiptNumber: `RC-3${String(i + 1).padStart(4, '0')}`,
+      requestId: q.id, amount: methods[i] === 'WAIVED' ? 0.01 : [150000, 75000, 300000, 50, 100000][i % 5], currency: i % 4 === 1 ? 'USD' : 'LBP', method: methods[i], receiptNumber: `RC-3${String(i + 1).padStart(4, '0')}`,
     }))
     if (pay && !reversed && methods[i] === 'CHEQUE') {
       reversed = true
