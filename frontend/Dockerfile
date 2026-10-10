@@ -21,6 +21,16 @@ RUN apk add --no-cache openssl \
          -out /etc/nginx/certs/server.crt \
          -subj "/C=LB/ST=Beirut/L=Beirut/O=Ministry of Interior/OU=CTS/CN=localhost"
 
+# If a locally trusted cert (e.g. from mkcert) is mounted at /etc/nginx/certs-local,
+# use it instead of the self-signed fallback above. With nothing mounted the
+# fallback is used, so a fresh clone starts without any manual setup.
+RUN printf '%s\n' '#!/bin/sh' \
+      'if [ -s /etc/nginx/certs-local/server.crt ] && [ -s /etc/nginx/certs-local/server.key ]; then' \
+      '  cp /etc/nginx/certs-local/server.crt /etc/nginx/certs/server.crt' \
+      '  cp /etc/nginx/certs-local/server.key /etc/nginx/certs/server.key' \
+      'fi' > /docker-entrypoint.d/40-local-certs.sh \
+    && chmod +x /docker-entrypoint.d/40-local-certs.sh
+
 COPY --from=build /build/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 

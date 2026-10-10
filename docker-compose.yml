@@ -52,8 +52,9 @@ services:
     ports:
       - "3443:443"
     volumes:
-      # Locally trusted certificate made with mkcert (see certs/ -- git-ignored).
-      - ./certs:/etc/nginx/certs:ro
+      # Optional: locally trusted certificate made with mkcert (certs/ is git-ignored).
+      # If certs/ is empty or missing, the image's self-signed fallback is used.
+      - ./certs:/etc/nginx/certs-local:ro
     depends_on:
       backend:
         condition: service_healthy
