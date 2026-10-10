@@ -19,3 +19,6 @@ _work_cts/
 
 # Scratch outputs from AI-assisted work (may contain local env values)
 Claude outputs/
+
+# local TLS certificate (mkcert)
+certs/

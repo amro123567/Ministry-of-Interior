@@ -65,14 +65,26 @@ describe('Navbar', () => {
 })
 
 describe('Footer', () => {
-  it('shows branding, quick links, support phone and copyright', () => {
+  it('shows branding, modules, support resources, contact widget and copyright', () => {
+    signInAs({ username: 'Serhan Aoun', roles: ['VIEWER'], permissions: ['REPORTS_VIEW'] })
     shell(<Footer />)
-    expect(screen.getByText(/Ministry of Interior and Municipalities/)).toBeInTheDocument()
-    const nav = screen.getByRole('navigation')
-    expect(within(nav).getByRole('link', { name: en.nav.dashboard })).toHaveAttribute('href', '/')
-    expect(within(nav).getByRole('link', { name: en.nav.correspondence })).toHaveAttribute('href', '/requests')
-    expect(within(nav).getByRole('link', { name: en.footer.helpDesk })).toHaveAttribute('href', 'tel:+9611000000')
-    expect(screen.getByText('+961 1 000 000')).toBeInTheDocument()
+    expect(screen.getAllByText(/Ministry of Interior and Municipalities/).length).toBeGreaterThan(1)
+    expect(screen.getByText(/Operational/)).toHaveTextContent('v2.4.1')
+    const modules = screen.getByRole('navigation', { name: en.footer.modulesNav })
+    expect(within(modules).getByRole('link', { name: en.nav.dashboard })).toHaveAttribute('href', '/')
+    expect(within(modules).getByRole('link', { name: en.footer.correspondenceRegistry })).toHaveAttribute('href', '/requests')
+    expect(within(modules).getByRole('link', { name: en.footer.systemReports })).toHaveAttribute('href', '/reports')
+    const resources = screen.getByRole('navigation', { name: en.footer.resources })
+    expect(within(resources).getByRole('link', { name: en.footer.helpDesk })).toHaveAttribute('href', 'tel:+9611000000')
+    expect(screen.getAllByText('+961 1 000 000').length).toBeGreaterThan(0)
+    expect(screen.getByText(en.footer.hoursValue)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: en.footer.submitTicket })).toBeInTheDocument()
     expect(screen.getByText(new RegExp(`© ${new Date().getFullYear()}`))).toHaveTextContent(en.footer.rights)
+  })
+
+  it('hides the reports link from users who cannot view reports', () => {
+    signInAs({ username: 'Serhan Aoun', roles: ['VIEWER'], permissions: [] })
+    shell(<Footer />)
+    expect(screen.queryByRole('link', { name: en.footer.systemReports })).toBeNull()
   })
 })

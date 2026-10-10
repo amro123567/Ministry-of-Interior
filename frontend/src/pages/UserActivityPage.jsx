@@ -7,6 +7,7 @@ import LoginAttemptBadge from '../components/LoginAttemptBadge.jsx'
 import { SkeletonLine } from '../components/Skeleton.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import { tdCls, thCls } from '../ui.js'
+import Pagination, { usePagination } from '../components/Pagination.jsx'
 
 
 function Card({ title, children }) {
@@ -48,6 +49,9 @@ export default function UserActivityPage() {
   const [attempts, setAttempts] = useState([])
   const [sessions, setSessions] = useState([])
   const [access, setAccess] = useState([])
+  const att = usePagination(attempts)
+  const ses = usePagination(sessions)
+  const acc = usePagination(access)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -124,7 +128,7 @@ export default function UserActivityPage() {
                 </tr>
               </thead>
               <tbody>
-                {attempts.map((a) => (
+                {att.pageItems.map((a) => (
                   <tr key={a.id} className="border-b border-row-divider last:border-0">
                     <td className={`${tdCls} whitespace-nowrap`}>{format(new Date(a.attemptedAt), 'MMM d, yyyy HH:mm:ss')}</td>
                     <td className={tdCls}><LoginAttemptBadge wasSuccessful={a.wasSuccessful} failureReason={a.failureReason} /></td>
@@ -133,6 +137,7 @@ export default function UserActivityPage() {
                 ))}
               </tbody>
             </table>
+            <Pagination className="mt-3" {...att.pagination} />
           </div>
         )}
       </Card>
@@ -152,7 +157,7 @@ export default function UserActivityPage() {
                 </tr>
               </thead>
               <tbody>
-                {sessions.map((s) => (
+                {ses.pageItems.map((s) => (
                   <tr key={s.id} className="border-b border-row-divider last:border-0">
                     <td className={`${tdCls} whitespace-nowrap`}>{format(new Date(s.loginAt), 'MMM d, yyyy HH:mm:ss')}</td>
                     <td className={`${tdCls} whitespace-nowrap`}>
@@ -168,6 +173,7 @@ export default function UserActivityPage() {
                 ))}
               </tbody>
             </table>
+            <Pagination className="mt-3" {...ses.pagination} />
           </div>
         )}
       </Card>
@@ -187,7 +193,7 @@ export default function UserActivityPage() {
                 </tr>
               </thead>
               <tbody>
-                {access.map((a) => (
+                {acc.pageItems.map((a) => (
                   <tr key={a.id} className="border-b border-row-divider last:border-0">
                     <td className={`${tdCls} whitespace-nowrap`}>
                       <Link to={`/citizens/${a.citizenId}`} className="font-semibold text-primary hover:underline">
@@ -201,6 +207,7 @@ export default function UserActivityPage() {
                 ))}
               </tbody>
             </table>
+            <Pagination className="mt-3" {...acc.pagination} />
           </div>
         )}
       </Card>

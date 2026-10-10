@@ -138,7 +138,7 @@
 
   /* ---- Data tables ---- */
   .data-table { @apply w-full border-collapse; }
-  .data-table thead tr, .data-head { @apply bg-table-head; }
+  .data-table thead tr { @apply bg-table-head; }
   .th-cell {
     @apply h-11 whitespace-nowrap border-b border-border-subtle px-4 text-start text-xs font-bold uppercase
       tracking-wide text-ink-strong;

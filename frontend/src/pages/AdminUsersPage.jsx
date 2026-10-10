@@ -5,6 +5,7 @@ import DistrictScopedSelect from '../components/DistrictScopedSelect.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import { inputCls, labelCls } from '../ui.js'
+import Pagination, { usePagination } from '../components/Pagination.jsx'
 
 
 // Tailwind restyle folded into frontend integration pass Step 8, the same
@@ -21,6 +22,7 @@ export default function AdminUsersPage() {
   const [confirmId, setConfirmId] = useState(null)
   const [rowError, setRowError] = useState(null)
   const [users, setUsers] = useState([])
+  const { pageItems: userRows, pagination: userPaging } = usePagination(users)
   const [roles, setRoles] = useState([])
   const [offices, setOffices] = useState([])
   const [districts, setDistricts] = useState([])
@@ -108,7 +110,7 @@ export default function AdminUsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => (
+                {userRows.map((u) => (
                   <tr key={u.id} className="data-row">
                     <td className="td-cell text-sm font-semibold text-text-primary whitespace-nowrap">{u.username}</td>
                     <td className="td-cell text-sm text-slate-700">{u.fullName}</td>
@@ -157,6 +159,7 @@ export default function AdminUsersPage() {
               </tbody>
             </table>
           </div>
+          <div className="px-4 pb-4"><Pagination {...userPaging} /></div>
         </div>
 
         {showForm && (

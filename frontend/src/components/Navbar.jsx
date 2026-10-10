@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutGrid, Mail, CirclePlus, IdCard, Workflow, Users, ScrollText, BarChart3, Search, Settings, ChevronDown, LogOut, Menu, X } from 'lucide-react'
+import { LayoutGrid, Mail, CirclePlus, IdCard, Workflow, Users, ScrollText, BarChart3, Search, ChevronDown, LogOut, Menu, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import LangToggle from './LangToggle.jsx'
@@ -101,20 +101,20 @@ export default function Navbar() {
   // Inactive links sit at reduced opacity; the active tab is a quiet blue pill
   // (tinted fill + hairline border) instead of a solid block. Every link carries a
   // transparent border so activating one never shifts its neighbours.
-  const pill = 'flex items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-sm font-medium leading-5 transition-colors'
+  const pill = 'flex items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2.5 text-[15px] font-medium leading-5 transition-colors'
   const navLinkCls = ({ isActive }) => `${pill} ${
     isActive
-      ? 'border-blue-500/30 bg-blue-600/20 text-blue-400'
-      : 'border-transparent text-slate-300 hover:bg-white/5 hover:text-white'
+      ? 'bg-blue-600/20 text-blue-300'
+      : 'text-slate-300 hover:bg-white/5 hover:text-white'
   }`
   // /requests/new is its own tab, so it must not also light up "Correspondence".
   const linkCls = (to) => ({ isActive }) =>
     navLinkCls({ isActive: isActive && !(to === '/requests' && pathname.startsWith('/requests/new')) })
   const dropLinkCls = ({ isActive }) =>
     `flex items-center gap-2.5 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-      isActive ? 'bg-blue-600/20 text-blue-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'
+      isActive ? 'bg-blue-600/20 text-blue-300' : 'text-slate-300 hover:bg-white/5 hover:text-white'
     }`
-  const popover = 'absolute end-0 top-[calc(100%+10px)] z-30 rounded-xl border border-slate-700 bg-slate-900 shadow-xl shadow-black/30'
+  const popover = 'absolute end-0 top-[calc(100%+14px)] z-30 rounded-2xl border border-slate-700 bg-[#1A2747] shadow-[0_12px_32px_rgba(0,0,0,0.4)]'
 
   // A render function, not a component: declaring a component inside render gives it a new
   // identity every keystroke, which remounts the <input> and drops focus after each letter.
@@ -128,27 +128,24 @@ export default function Navbar() {
         placeholder={expandable ? t('nav.search') : t('nav.searchPlaceholder')}
         aria-label={t('nav.searchPlaceholder')}
         autoFocus={autoFocus}
-        className={`h-9 rounded-lg border border-slate-700 bg-slate-800/60 ps-9 pe-3 text-xs text-slate-100 placeholder:text-slate-400
-          transition-colors hover:border-slate-600 focus:border-blue-500/70 focus:bg-slate-800 focus:!outline-none focus-visible:!outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500/40 w-full`}
+        className={`h-10 rounded-full border border-slate-700 bg-slate-800/60 ps-9 pe-3 text-sm text-slate-100 placeholder:text-slate-400
+          transition-colors hover:border-slate-600 focus:border-blue-500 focus:bg-slate-800 focus:!outline-none focus-visible:!outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500/25 w-full`}
       />
     </form>
   )
 
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-800 bg-header font-sans antialiased shadow-lg shadow-black/10">
-      <div className="mx-auto flex min-h-16 max-w-[1400px] items-center gap-6 px-6 py-3 sm:px-8">
+    <header className="sticky top-0 z-20 px-4 pt-3 font-sans antialiased sm:px-8 2xl:px-12">
+      <div className="mx-auto max-w-[1800px] rounded-2xl border border-white/10 bg-[#1E2D50] shadow-[0_8px_28px_rgba(15,23,42,0.25)]">
+      <div className="flex min-h-[76px] items-center gap-5 px-5 py-2.5 sm:px-6">
         {/* Identity: seal in a soft rounded box + system name */}
-        <NavLink to="/" className="flex shrink-0 items-center gap-3 rounded-lg" aria-label={t('nav.brand')}>
-          <span className="grid place-items-center rounded-lg border border-white/10 bg-white/10 p-1.5">
-            <img src="/moi-seal.png" alt="" className="h-7 w-7 rounded-md bg-white object-contain p-0.5" />
-          </span>
-          <span className="text-[15px] font-extrabold leading-none tracking-wide text-white">CTS</span>
+        <NavLink to="/" className="flex shrink-0 items-center rounded-lg" aria-label={t('nav.brand')}>
+          <img src="/cts-logo.png" alt="" className="h-14 w-auto object-contain" />
         </NavLink>
 
         <nav className="hidden min-w-0 items-center gap-1 xl:flex" aria-label={t('nav.brand')}>
           {links.map(({ to, end, label, icon: Icon }) => (
             <NavLink key={to} to={to} end={end} className={linkCls(to)}>
-              <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
               {label}
             </NavLink>
           ))}
@@ -160,12 +157,11 @@ export default function Navbar() {
                 aria-haspopup="true"
                 aria-expanded={adminOpen}
                 className={`${pill} ${adminOpen || adminLinks.some((l) => pathname.startsWith(l.to))
-                  ? 'border-blue-500/30 bg-blue-600/20 text-blue-400'
-                  : 'border-transparent text-slate-300 hover:bg-white/5 hover:text-white'}`}
+                  ? 'bg-blue-600/20 text-blue-300'
+                  : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
               >
-                <Settings className="h-4 w-4 shrink-0" aria-hidden="true" />
                 {t('nav.admin')}
-                <ChevronDown className={`h-3.5 w-3.5 opacity-70 transition-transform ${adminOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                <ChevronDown className={`h-3.5 w-3.5 opacity-60 transition-transform ${adminOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
               </button>
               {adminOpen && (
                 <div className={`${popover} !end-auto start-0 w-52 p-1.5`}>
@@ -193,8 +189,8 @@ export default function Navbar() {
               aria-label={t('nav.searchPlaceholder')}
               aria-haspopup="true"
               aria-expanded={searchOpen}
-              className={`grid h-9 w-9 place-items-center rounded-lg border transition-colors ${
-                searchOpen ? 'border-slate-600 bg-slate-800 text-white' : 'border-slate-700 bg-slate-800/60 text-slate-300 hover:text-white'
+              className={`grid h-10 w-10 place-items-center rounded-full border transition-colors ${
+                searchOpen ? 'border-blue-500/40 bg-blue-600/20 text-blue-300' : 'border-slate-700 bg-slate-800/60 text-slate-300 hover:text-white'
               }`}
             >
               <Search className="h-4 w-4" aria-hidden="true" />
@@ -213,15 +209,15 @@ export default function Navbar() {
               aria-label={user.fullName || user.username}
               className="flex items-center gap-1.5 rounded-full py-0.5 ps-0.5 pe-1.5 transition-colors hover:bg-white/5"
             >
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-slate-600 bg-slate-700 text-xs font-semibold text-white">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-600 text-sm font-semibold text-white">
                 {initials}
               </span>
               <ChevronDown className={`hidden h-3.5 w-3.5 text-slate-400 transition-transform sm:block ${menuOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
             </button>
             {menuOpen && (
               <div className={`${popover} w-60 overflow-hidden`}>
-                <div className="flex items-center gap-3 border-b border-slate-800 px-4 py-3.5">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-slate-600 bg-slate-700 text-xs font-semibold text-white">{initials}</span>
+                <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3.5">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-600 text-xs font-semibold text-white">{initials}</span>
                   <div className="min-w-0">
                     <div className="truncate text-sm font-semibold text-white">{user.fullName}</div>
                     <div className="mt-0.5 truncate text-xs text-slate-400">{user.roles?.join(', ')}</div>
@@ -245,7 +241,7 @@ export default function Navbar() {
             onClick={() => setMobileOpen((v) => !v)}
             aria-label={t('common.menu')}
             aria-expanded={mobileOpen}
-            className="grid h-9 w-9 place-items-center rounded-lg border border-slate-700 bg-slate-800/60 text-slate-300 transition-colors hover:text-white xl:hidden"
+            className="grid h-10 w-10 place-items-center rounded-full border border-slate-700 bg-slate-800/60 text-slate-300 transition-colors hover:text-white xl:hidden"
           >
             {mobileOpen ? <X className="h-5 w-5" aria-hidden="true" /> : <Menu className="h-5 w-5" aria-hidden="true" />}
           </button>
@@ -253,7 +249,7 @@ export default function Navbar() {
       </div>
 
       {mobileOpen && (
-        <div className="border-t border-slate-800 bg-header px-6 py-4 sm:px-8 xl:hidden">
+        <div className="border-t border-white/10 px-4 py-4 sm:px-5 xl:hidden">
           {renderSearch({ className: 'mb-3 md:hidden' })}
           <nav className="flex flex-col gap-1" aria-label={t('nav.brand')}>
             {allLinks.map(({ to, end, label, icon: Icon }) => (
@@ -263,11 +259,12 @@ export default function Navbar() {
               </NavLink>
             ))}
           </nav>
-          <div className="mt-3 border-t border-slate-800 pt-3 sm:hidden">
+          <div className="mt-3 border-t border-white/10 pt-3 sm:hidden">
             <LangToggle tone="dark" />
           </div>
         </div>
       )}
+      </div>
     </header>
   )
 }

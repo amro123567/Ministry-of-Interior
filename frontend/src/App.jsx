@@ -52,7 +52,7 @@ export default function App() {
 
       <Navbar />
 
-      <main id="main-content" className="flex-1 w-full max-w-[1400px] mx-auto px-5 sm:px-8 py-6">
+      <main id="main-content" className="flex-1 w-full max-w-[1800px] mx-auto px-5 sm:px-8 2xl:px-12 py-6">
         <Breadcrumb />
         <Routes>
           <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />

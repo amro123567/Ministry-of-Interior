@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, CheckCircle2, Clock, Gauge as GaugeIcon, Layers } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { AlertTriangle, BarChart3, CheckCircle2, CirclePlus, Clock, Gauge as GaugeIcon, Layers, RefreshCw } from 'lucide-react'
 import client from '../api/client.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
@@ -8,6 +9,7 @@ import KpiCard, { Gauge, Sparkline, TrendPill } from '../components/dashboard/Kp
 import WaitingForReviewTable from '../components/dashboard/WaitingForReviewTable.jsx'
 import RequestsOverviewChart from '../components/dashboard/RequestsOverviewChart.jsx'
 import WorkloadDonut from '../components/dashboard/WorkloadDonut.jsx'
+import ManagementInsights from '../components/dashboard/ManagementInsights.jsx'
 import ActivityFeed from '../components/dashboard/ActivityFeed.jsx'
 import {
   activeCount, approvalRate, bucketByPeriod, humanizeHours, slaHealth, sortBySla, weekOverWeek,
@@ -30,7 +32,7 @@ function queueFor(hasPermission) {
 
 export default function DashboardPage() {
   const { t, lang } = useLanguage()
-  const { hasPermission } = useAuth()
+  const { hasPermission, user } = useAuth()
   const queue = useMemo(() => queueFor(hasPermission), [hasPermission])
   const [summary, setSummary] = useState(null)
   const [error, setError] = useState(null)
@@ -65,10 +67,33 @@ export default function DashboardPage() {
     )
   }
 
+  const hour = new Date().getHours()
+  const greet = t(`dashboard.greeting.${hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening'}`)
+  const firstName = String(user?.fullName || user?.username || '').trim().split(/\s+/)[0]
+  const today = new Intl.DateTimeFormat(lang === 'ar' ? 'ar' : 'en', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date())
+  const canCreate = hasPermission('REQUEST_TRANSITION_SUBMIT', 'REQUEST_TRANSITION_REVIEW', 'REQUEST_TRANSITION_DECIDE', 'REQUEST_TRANSITION_ARCHIVE')
   const heading = (
-    <div className="mb-5">
-      <h1 className="text-2xl font-extrabold tracking-tight text-navy">{t('dashboard.title')}</h1>
-      <p className="mt-1 text-sm text-slate-600">{t('dashboard.subtitle')}</p>
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand">{firstName ? `${greet}, ${firstName} · ` : ''}{today}</p>
+        <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-navy">{t('dashboard.title')}</h1>
+        <p className="mt-1 text-sm text-slate-600">{t('dashboard.subtitle')}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={reload} className="inline-flex h-10 items-center gap-2 rounded-xl border border-hairline bg-white px-3.5 text-sm font-semibold text-slate-700 shadow-sm hover:text-navy">
+          <RefreshCw className="h-4 w-4" aria-hidden="true" />{t('dashboard.refresh')}
+        </button>
+        {hasPermission('REPORTS_VIEW') && (
+          <Link to="/reports" className="inline-flex h-10 items-center gap-2 rounded-xl border border-hairline bg-white px-3.5 text-sm font-semibold text-slate-700 shadow-sm hover:text-navy">
+            <BarChart3 className="h-4 w-4" aria-hidden="true" />{t('dashboard.openReports')}
+          </Link>
+        )}
+        {canCreate && (
+          <Link to="/requests/new" className="inline-flex h-10 items-center gap-2 rounded-xl bg-navy px-4 text-sm font-bold text-white shadow-sm hover:opacity-90">
+            <CirclePlus className="h-4 w-4" aria-hidden="true" />{t('dashboard.newRequest')}
+          </Link>
+        )}
+      </div>
     </div>
   )
 
@@ -132,6 +157,8 @@ export default function DashboardPage() {
           footer={<span><b className="text-ok-ink">{approved}</b> {t('status.APPROVED')} · <b className="text-crit-ink">{rejected}</b> {t('status.REJECTED')}</span>}
         />
       </div>
+
+      <ManagementInsights summary={summary} rows={allRows} />
 
       <div className="mb-6">
         <WaitingForReviewTable queue={queue} rows={queueRows} loading={queueRows === null} onChanged={reload} />

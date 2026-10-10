@@ -5,6 +5,7 @@ import AccessTypeBadge from './AccessTypeBadge.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import { tdCls, thCls } from '../ui.js'
+import Pagination, { usePagination } from './Pagination.jsx'
 
 
 // Frontend for the two citizen-scoped tiers of Item 6's audit domain
@@ -24,6 +25,8 @@ export default function CitizenAuditSection({ citizenId }) {
   const { hasPermission } = useAuth()
   const [changes, setChanges] = useState([])
   const [access, setAccess] = useState([])
+  const chg = usePagination(changes, 5)
+  const acc = usePagination(access, 5)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -78,7 +81,7 @@ export default function CitizenAuditSection({ citizenId }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {changes.map((c) => (
+                  {chg.pageItems.map((c) => (
                     <tr key={c.id}>
                       <td className={`${tdCls} font-semibold text-text-primary whitespace-nowrap`}>{c.fieldName}</td>
                       <td className={tdCls}>
@@ -93,6 +96,7 @@ export default function CitizenAuditSection({ citizenId }) {
                   ))}
                 </tbody>
               </table>
+              <Pagination sizes={[5, 10, 25]} className="mt-3" {...chg.pagination} />
             </div>
           )}
 
@@ -111,7 +115,7 @@ export default function CitizenAuditSection({ citizenId }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {access.map((a) => (
+                  {acc.pageItems.map((a) => (
                     <tr key={a.id}>
                       <td className={`${tdCls} font-semibold text-text-primary whitespace-nowrap`}>{a.accessedByName}</td>
                       <td className={tdCls}><AccessTypeBadge accessType={a.accessType} /></td>
@@ -121,6 +125,7 @@ export default function CitizenAuditSection({ citizenId }) {
                   ))}
                 </tbody>
               </table>
+              <Pagination sizes={[5, 10, 25]} className="mt-3" {...acc.pagination} />
             </div>
           )}
         </>

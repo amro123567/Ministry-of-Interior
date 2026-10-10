@@ -7,8 +7,8 @@ import LoginAttemptBadge from '../components/LoginAttemptBadge.jsx'
 import { Badge } from '../components/ui/index.jsx'
 import { downloadCsv } from '../api/download.js'
 import { useLanguage } from '../context/LanguageContext.jsx'
-import { inputCls } from '../ui.js'
 import { ActiveFilterChips, FilterField } from '../components/FilterBar.jsx'
+import Pagination, { usePagination } from '../components/Pagination.jsx'
 
 
 // Soft-pill tints keyed by keyword rather than an exact action list, since
@@ -42,6 +42,7 @@ function ActionBadge({ action }) {
 function LoginAttemptsTab() {
   const { t } = useLanguage()
   const [attempts, setAttempts] = useState([])
+  const { pageItems: attemptRows, pagination: attemptPaging } = usePagination(attempts)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -82,7 +83,7 @@ function LoginAttemptsTab() {
           <tbody>
             {loading ? (
               <SkeletonTableRows rows={8} cols={5} />
-            ) : attempts.map((a) => (
+            ) : attemptRows.map((a) => (
               <tr key={a.id} className="data-row">
                 <td className="td-cell whitespace-nowrap">
                   {format(new Date(a.attemptedAt), 'MMM d, yyyy HH:mm:ss')}
@@ -96,6 +97,7 @@ function LoginAttemptsTab() {
           </tbody>
         </table>
       </div>
+      {!loading && <div className="px-4 pb-4"><Pagination {...attemptPaging} /></div>}
     </div>
   )
 }
@@ -147,7 +149,7 @@ export default function AuditLogPage() {
   const actionOptions = facets.actions
   const entityTypeOptions = facets.entityTypes
   const filtered = entries
-  const anyFilter = Boolean(search || action || entityType || dateFrom || dateTo)
+  const { pageItems: entryRows, pagination: entryPaging } = usePagination(filtered)
   // Search has its own box, so it is not repeated as a chip.
   const activeChips = [
     action && { key: 'action', label: action, onRemove: () => setAction('') },
@@ -264,7 +266,7 @@ export default function AuditLogPage() {
                   <tbody>
                     {loading ? (
                       <SkeletonTableRows rows={8} cols={5} />
-                    ) : filtered.map((e) => (
+                    ) : entryRows.map((e) => (
                       <tr key={e.id} className="data-row">
                         <td className="td-cell whitespace-nowrap">
                           {format(new Date(e.occurredAt), 'MMM d, yyyy HH:mm:ss')}
@@ -280,6 +282,7 @@ export default function AuditLogPage() {
                   </tbody>
                 </table>
               </div>
+              {!loading && <div className="px-4 pb-4"><Pagination {...entryPaging} /></div>}
             </div>
           )}
         </>

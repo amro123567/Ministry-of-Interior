@@ -5,7 +5,7 @@ import { useLanguage } from '../context/LanguageContext.jsx'
 // a centered column, a centered title + subtitle, one white card, grouped sections
 // and a single action bar.
 
-export function FormPage({ title, subtitle, onSubmit, noValidate, error, requiredNote = true, width = 'max-w-3xl', children }) {
+export function FormPage({ title, subtitle, onSubmit, noValidate, error, requiredNote = true, width = 'max-w-[1400px]', children }) {
   const { t } = useLanguage()
   return (
     <div className={`mx-auto w-full ${width}`}>

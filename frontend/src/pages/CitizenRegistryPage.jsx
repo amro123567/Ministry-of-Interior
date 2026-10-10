@@ -7,8 +7,8 @@ import { SkeletonTableRows } from '../components/Skeleton.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import { ActiveFilterChips, FilterField } from '../components/FilterBar.jsx'
+import Pagination from '../components/Pagination.jsx'
 
-const PAGE_SIZE = 15
 const MARITAL = ['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED']
 const SORTERS = {
   registryNumber: (c) => c.registryNumber ?? '',
@@ -49,6 +49,7 @@ export default function CitizenRegistryPage() {
   const [debounced, setDebounced] = useState(search)
   const [sort, setSort] = useState({ key: null, dir: 'asc' })
   const [page, setPage] = useState(1)
+  const [PAGE_SIZE, setPageSize] = useState(10)
   const office = searchParams.get('office') || ''
   const marital = searchParams.get('marital') || ''
   const life = searchParams.get('life') || '' // '', 'alive' or 'deceased'
@@ -107,7 +108,6 @@ export default function CitizenRegistryPage() {
   const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
   const currentPage = Math.min(page, pageCount)
   const visible = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
-  const anyFilter = Boolean(office || marital || life)
   const activeChips = [
     office && { key: 'office', onRemove: () => setParam('office', ''), label: office },
     marital && { key: 'marital', onRemove: () => setParam('marital', ''), label: t(`citizens.maritalStatus.${marital}`, marital) },
@@ -293,17 +293,9 @@ export default function CitizenRegistryPage() {
               ))}
           </div>
 
-          {!loading && sorted.length > PAGE_SIZE && (
-            <div className="mt-4 flex items-center justify-between gap-3 text-sm text-text-secondary">
-              <span>{t('requests.showing')} {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, sorted.length)} {t('requests.of')} {sorted.length}</span>
-              <div className="flex items-center gap-2">
-                <button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}
-                  className="btn-secondary btn-sm">{t('requests.prev')}</button>
-                <span>{currentPage} / {pageCount}</span>
-                <button type="button" disabled={currentPage >= pageCount} onClick={() => setPage(currentPage + 1)}
-                  className="btn-secondary btn-sm">{t('requests.next')}</button>
-              </div>
-            </div>
+          {!loading && (
+            <Pagination className="mt-4" total={sorted.length} page={currentPage} pageSize={PAGE_SIZE}
+              onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(1) }} />
           )}
         </>
       )}

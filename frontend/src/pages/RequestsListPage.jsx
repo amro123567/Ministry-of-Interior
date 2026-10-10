@@ -9,12 +9,12 @@ import { useLanguage } from '../context/LanguageContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { Badge, IconButton } from '../components/ui/index.jsx'
 import { ActiveFilterChips, FilterField } from '../components/FilterBar.jsx'
+import Pagination from '../components/Pagination.jsx'
 
 const STATUSES = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'ARCHIVED']
 const PRIORITIES = ['NORMAL', 'HIGH', 'URGENT']
 const SLA_STATES = ['ON_TRACK', 'DUE_SOON', 'OVERDUE']
 
-const PAGE_SIZES = [10, 25, 50]
 // Column key -> how to read a sortable value from a row.
 const SORTERS = {
   referenceNumber: (r) => r.referenceNumber ?? '',
@@ -64,7 +64,6 @@ export default function RequestsListPage() {
     client.get('/offices').then((r) => setOffices(r.data)).catch(() => setOffices([]))
   }, [])
 
-  const anyFilter = Boolean(status || assignedToMe || officeId || priority || direction || sla || from || to)
 
   function clearFilters() {
     const next = new URLSearchParams()
@@ -370,29 +369,9 @@ export default function RequestsListPage() {
               ))}
           </div>
 
-          {!loading && sorted.length > 0 && (
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-text-secondary">
-              <span>
-                {t('requests.showing')} {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, sorted.length)} {t('requests.of')} {sorted.length}
-              </span>
-              <div className="flex items-center gap-2">
-                <label className="flex items-center gap-2">
-                  {t('requests.perPage')}
-                  <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1) }} className="field !h-8 !w-auto">
-                    {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
-                  </select>
-                </label>
-                <button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}
-                  className="btn-secondary btn-sm">
-                  {t('requests.prev')}
-                </button>
-                <span>{currentPage} / {pageCount}</span>
-                <button type="button" disabled={currentPage >= pageCount} onClick={() => setPage(currentPage + 1)}
-                  className="btn-secondary btn-sm">
-                  {t('requests.next')}
-                </button>
-              </div>
-            </div>
+          {!loading && (
+            <Pagination className="mt-4" total={sorted.length} page={currentPage} pageSize={pageSize}
+              onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(1) }} />
           )}
         </>
       )}

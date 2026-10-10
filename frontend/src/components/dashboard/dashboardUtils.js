@@ -160,3 +160,47 @@ export function downloadTextFile(text, filename) {
   a.click()
   URL.revokeObjectURL(href)
 }
+
+// ---- management insights ---------------------------------------------------
+const isActiveRow = (r) => ACTIVE_STATUSES.includes(r.status)
+
+/** Active requests bucketed by age since creation: 0-2, 3-7, 8-14, 15+ days. */
+export function agingBuckets(rows, now = Date.now()) {
+  const out = [
+    { key: 'd0', count: 0 }, { key: 'd3', count: 0 }, { key: 'd8', count: 0 }, { key: 'd15', count: 0 },
+  ]
+  for (const r of rows) {
+    if (!isActiveRow(r)) continue
+    const d = parseDate(r.createdAt)
+    if (!d) continue
+    const days = Math.max(0, (now - d.getTime()) / DAY)
+    out[days < 3 ? 0 : days < 8 ? 1 : days < 15 ? 2 : 3].count += 1
+  }
+  return out
+}
+
+/** Active requests per priority (missing priority counts as NORMAL). */
+export function priorityMix(rows) {
+  const out = { URGENT: 0, HIGH: 0, NORMAL: 0 }
+  for (const r of rows) {
+    if (!isActiveRow(r)) continue
+    const p = r.priority && r.priority in out ? r.priority : 'NORMAL'
+    out[p] += 1
+  }
+  return out
+}
+
+/** Active requests per assignee, with how many of them are overdue; busiest first. */
+export function assigneeLoad(rows, max = 6) {
+  const map = new Map()
+  for (const r of rows) {
+    if (!isActiveRow(r) || !r.assignedToName) continue
+    const e = map.get(r.assignedToName) ?? { name: r.assignedToName, active: 0, overdue: 0 }
+    e.active += 1
+    if (r.slaStatus === 'OVERDUE') e.overdue += 1
+    map.set(r.assignedToName, e)
+  }
+  const list = [...map.values()].sort((a, b) => b.active - a.active || b.overdue - a.overdue)
+  const unassigned = rows.filter((r) => isActiveRow(r) && !r.assignedToName).length
+  return { list: list.slice(0, max), unassigned, people: list.length }
+}

@@ -35,7 +35,7 @@ const STEP_ICONS = [UserRound, FileText, Paperclip]
 
 function WizardSteps({ step, t }) {
   return (
-    <ol className="mb-8 grid grid-cols-3 gap-3" aria-label={t('requestCreate.steps')}>
+    <ol className="mx-auto mb-8 grid max-w-3xl grid-cols-3 gap-3" aria-label={t('requestCreate.steps')}>
       {STEPS.map((key, i) => {
         const done = i < step
         const active = i === step
@@ -218,7 +218,7 @@ export default function RequestCreatePage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl">
+    <div className="mx-auto w-full max-w-[1400px]">
       <header className="mb-6 text-center">
         <h1 className="text-2xl font-extrabold tracking-tight text-navy">{t('requestCreate.title')}</h1>
         <p className="mt-1 text-sm text-slate-600">{t('requestCreate.subtitle')}</p>
@@ -233,7 +233,7 @@ export default function RequestCreatePage() {
         <p className="mb-4 text-end text-xs text-text-secondary"><span className="text-required">*</span> {t('common.required')}</p>
 
         {step === 0 && (
-        <div className="space-y-5">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
         <Section title={t('requestCreate.secCitizen')}>
         <div className="grid grid-cols-1 gap-4">
           <div>
@@ -359,7 +359,7 @@ export default function RequestCreatePage() {
         )}
 
         {step === 1 && (
-        <div className="space-y-5">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
         <Section title={t('requestCreate.secClassify')}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
@@ -439,6 +439,7 @@ export default function RequestCreatePage() {
         )}
 
         {step === 2 && (
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:items-start">
           <div>
             <h2 className="text-sm font-bold text-text-primary mb-1">{t('requestCreate.attachTitle')}</h2>
             <p className="text-xs text-text-secondary mb-3">{t('requestCreate.attachHint')}</p>
@@ -466,8 +467,10 @@ export default function RequestCreatePage() {
                 ))}
               </ul>
             )}
+          </div>
 
-            <h2 className="text-sm font-bold text-text-primary mt-6 mb-2">{t('requestCreate.reviewTitle')}</h2>
+          <div>
+            <h2 className="text-sm font-bold text-text-primary mb-2">{t('requestCreate.reviewTitle')}</h2>
             <dl className="grid grid-cols-1 gap-x-6 gap-y-3 rounded-xl border border-hairline bg-slate-50/60 p-5 text-sm sm:grid-cols-2">
               <div><dt className="text-[11px] font-bold uppercase text-text-secondary">{t('requestCreate.citizen')}</dt><dd>{selectedCitizen ? `${selectedCitizen.firstNameEn} ${selectedCitizen.lastNameEn} (${selectedCitizen.registryNumber})` : '—'}</dd></div>
               <div><dt className="text-[11px] font-bold uppercase text-text-secondary">{t('requestCreate.documentType')}</dt><dd>{selectedType?.nameEn ?? '—'}</dd></div>
@@ -475,6 +478,7 @@ export default function RequestCreatePage() {
               <div><dt className="text-[11px] font-bold uppercase text-text-secondary">{t('requestCreate.direction')}</dt><dd>{form.direction === 'OUTGOING' ? t('requestCreate.directionOutgoing') : t('requestCreate.directionIncoming')}</dd></div>
               {form.subject && <div className="sm:col-span-2"><dt className="text-[11px] font-bold uppercase text-text-secondary">{t('requestCreate.subject')}</dt><dd>{form.subject}</dd></div>}
             </dl>
+          </div>
           </div>
         )}
 
@@ -494,12 +498,13 @@ export default function RequestCreatePage() {
               </button>
             )}
             {step < STEPS.length - 1 ? (
-              <button type="button" onClick={goNext}
+              <button key="next" type="button" onClick={goNext}
                       className="btn-primary">
                 {t('requestCreate.next')}<ArrowRight className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
               </button>
             ) : (
               <button
+                key="submit"
                 type="submit"
                 disabled={busy}
                 className="relative btn-primary "

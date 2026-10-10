@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowRight, Flag, GitBranch, KeyRound, MessageSquare, Paperclip, Play } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CheckCircle2, Flag, GitBranch, KeyRound, MessageSquare, Paperclip, Play, Search, Workflow } from 'lucide-react'
 import { format } from 'date-fns'
 import client from '../api/client.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -62,6 +62,8 @@ export default function WorkflowEnginePage() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [view, setView] = useState('diagram') // diagram | list
+  const [tab, setTab] = useState('design') // design | instances
+  const [filter, setFilter] = useState('')
 
   function load() {
     setLoading(true)
@@ -82,6 +84,47 @@ export default function WorkflowEnginePage() {
   }, [transitions])
 
   function stateById(id) { return states.find((s) => String(s.id) === String(id)) }
+
+  // Structural checks on the catalog, computed from the loaded states/transitions only:
+  // a usable workflow has one start, at least one end, every state reachable from the
+  // start, and no non-final state that traps a request with no way out.
+  const health = useMemo(() => {
+    if (states.length === 0) return []
+    const issues = []
+    const initial = states.filter((x) => x.isInitial)
+    const finals = states.filter((x) => x.isFinal)
+    if (initial.length === 0) issues.push({ key: 'noInitial', level: 'error', codes: [] })
+    if (initial.length > 1) issues.push({ key: 'multiInitial', level: 'warn', codes: initial.map((x) => x.code) })
+    if (finals.length === 0) issues.push({ key: 'noFinal', level: 'error', codes: [] })
+    if (initial.length > 0) {
+      const seen = new Set(initial.map((x) => x.code))
+      const queue = [...seen]
+      while (queue.length) {
+        const cur = queue.shift()
+        transitions.filter((tr) => tr.fromStateCode === cur).forEach((tr) => {
+          if (!seen.has(tr.toStateCode)) { seen.add(tr.toStateCode); queue.push(tr.toStateCode) }
+        })
+      }
+      const unreachable = states.filter((x) => !seen.has(x.code)).map((x) => x.code)
+      if (unreachable.length) issues.push({ key: 'unreachable', level: 'warn', codes: unreachable })
+    }
+    const deadEnds = states.filter((x) => !x.isFinal && !transitions.some((tr) => tr.fromStateCode === x.code)).map((x) => x.code)
+    if (deadEnds.length) issues.push({ key: 'deadEnd', level: 'warn', codes: deadEnds })
+    const leaky = states.filter((x) => x.isFinal && transitions.some((tr) => tr.fromStateCode === x.code)).map((x) => x.code)
+    if (leaky.length) issues.push({ key: 'finalOut', level: 'warn', codes: leaky })
+    return issues
+  }, [states, transitions])
+
+  const gatedCount = transitions.filter((tr) => (tr.requiredPermissionCodes ?? []).length > 0).length
+  const shownTransitions = useMemo(() => {
+    const q = filter.trim().toLowerCase()
+    if (!q) return transitions
+    return transitions.filter((tr) => [tr.actionCode, tr.labelEn, tr.labelAr, tr.fromStateCode, tr.toStateCode]
+      .some((v) => String(v ?? '').toLowerCase().includes(q)))
+  }, [transitions, filter])
+
+  // Live feedback while filling in the forms (the server stays the authority).
+  const normCode = (v) => v.toUpperCase().replace(/[^A-Z0-9_]+/g, '_')
 
   // ---- add state -----------------------------------------------------
   const emptyStateForm = { code: '', nameEn: '', nameAr: '', isInitial: false, isFinal: false, displayOrder: '', colorHex: '#6366F1' }
@@ -266,20 +309,63 @@ export default function WorkflowEnginePage() {
           <h1 className="text-2xl font-extrabold tracking-tight text-navy">{t('workflowEngine.title')}</h1>
           <p className="mt-1 text-sm text-slate-600">{t('workflowEngine.subtitle')}</p>
         </div>
-        <div className="flex gap-2" aria-label={t('workflowEngine.summary')} role="group">
-          <span className="rounded-lg border border-hairline bg-white px-3 py-1.5 text-xs font-semibold text-slate-600">
-            <b className="text-sm text-navy">{states.length}</b> {t('workflowEngine.states')}
-          </span>
-          <span className="rounded-lg border border-hairline bg-white px-3 py-1.5 text-xs font-semibold text-slate-600">
-            <b className="text-sm text-navy">{transitions.length}</b> {t('workflowEngine.transitions')}
-          </span>
-        </div>
+      </div>
+
+      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label={t('workflowEngine.summary')} role="group">
+        {[
+          { k: 'states', v: states.length, hint: `${states.filter((x) => x.isInitial).length} ${t('workflowEngine.initialTag')} · ${states.filter((x) => x.isFinal).length} ${t('workflowEngine.finalTag')}` },
+          { k: 'transitions', v: transitions.length, hint: `${transitions.filter((tr) => tr.requiresComment).length} ${t('workflowEngine.requiresComment').toLowerCase()}` },
+          { k: 'gated', v: gatedCount, hint: t('workflowEngine.gatedHint') },
+          { k: 'checks', v: health.length === 0 ? '✓' : health.length, hint: health.length === 0 ? t('workflowEngine.checksOk') : t('workflowEngine.checksIssues') },
+        ].map((x) => (
+          <div key={x.k} className="dash-card p-4">
+            <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{t(`workflowEngine.tile_${x.k}`)}</div>
+            <div className={`mt-1 text-3xl font-extrabold tabular-nums ${x.k === 'checks' && health.length > 0 ? 'text-warn-ink' : 'text-navy'}`}>{x.v}</div>
+            <div className="mt-0.5 truncate text-xs text-slate-600">{x.hint}</div>
+          </div>
+        ))}
       </div>
 
       {loadError && (
         <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-5" role="alert">{loadError}</div>
       )}
 
+      {/* ---- structure check ---- */}
+      {states.length > 0 && (
+        <div className={`mb-5 rounded-2xl border p-4 sm:px-5 ${health.length === 0 ? 'border-ok/30 bg-ok-tint' : 'border-warn/30 bg-warn-tint'}`} role="status">
+          <div className="flex items-center gap-2.5">
+            {health.length === 0
+              ? <CheckCircle2 size={18} className="text-ok-ink" aria-hidden="true" />
+              : <AlertTriangle size={18} className="text-warn-ink" aria-hidden="true" />}
+            <h2 className={`text-sm font-bold ${health.length === 0 ? 'text-ok-ink' : 'text-warn-ink'}`}>
+              {health.length === 0 ? t('workflowEngine.checksOkTitle') : t('workflowEngine.checksIssuesTitle')}
+            </h2>
+          </div>
+          {health.length > 0 && (
+            <ul className="mt-2 space-y-1 ps-7 text-sm text-slate-700">
+              {health.map((h) => (
+                <li key={h.key} className="list-disc">
+                  <span className={h.level === 'error' ? 'font-semibold text-crit-ink' : ''}>{t(`workflowEngine.check_${h.key}`)}</span>
+                  {h.codes.length > 0 && <> {h.codes.map((c) => <code key={c} className="me-1 rounded bg-white/70 px-1 font-mono text-xs">{c}</code>)}</>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/* ---- tabs ---- */}
+      <div role="tablist" aria-label={t('workflowEngine.title')} className="mb-4 inline-flex rounded-xl border border-hairline bg-white p-1 shadow-sm">
+        {[['design', Workflow], ['instances', Play]].map(([k, Icon]) => (
+          <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
+            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${tab === k ? 'bg-navy text-white shadow-sm' : 'text-slate-600 hover:text-navy'}`}>
+            <Icon size={15} aria-hidden="true" />{t(`workflowEngine.tab_${k}`)}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'design' && (
+      <>
       {/* ---- catalog: states ---- */}
       <div className="dash-card p-5 sm:p-6 mb-4">
         <div className="flex items-start justify-between gap-3 mb-4">
@@ -288,21 +374,22 @@ export default function WorkflowEnginePage() {
             <p className="mt-0.5 text-xs text-slate-600">{t('workflowEngine.statesHint')}</p>
           </div>
           {!addingState && canManage && (
-            <button type="button" onClick={() => setAddingState(true)} className="whitespace-nowrap text-sm font-semibold text-primary hover:underline">
-              {t('workflowEngine.addState')}
+            <button type="button" onClick={() => setAddingState(true)} className="whitespace-nowrap rounded-lg border border-brand/30 bg-brand-tint px-3 py-1.5 text-sm font-semibold text-brand hover:bg-brand/10">
+              + {t('workflowEngine.addState').replace(/^\+\s*/, '')}
             </button>
           )}
         </div>
 
         {addingState && (
-          <form onSubmit={handleCreateState} className="rounded-lg border border-border-subtle p-4 mb-4">
+          <form onSubmit={handleCreateState} className="mb-5 rounded-xl border border-brand/20 bg-slate-50/70 p-4 sm:p-5">
             {stateError && <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">{stateError}</div>}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div>
                 <label className={labelCls} htmlFor="ws-code">
                   {t('workflowEngine.code')} <span className="text-required">*</span>
                 </label>
-                <input id="ws-code" className={inputCls} required value={stateForm.code} onChange={(e) => setStateForm({ ...stateForm, code: e.target.value })} />
+                <input id="ws-code" className={inputCls} required value={stateForm.code} onChange={(e) => setStateForm({ ...stateForm, code: normCode(e.target.value) })} />
+                {states.some((x) => x.code === stateForm.code.trim()) && <p className="mt-1 text-xs font-semibold text-crit-ink">{t('workflowEngine.codeTaken')}</p>}
               </div>
               <div>
                 <label className={labelCls} htmlFor="ws-order">{t('workflowEngine.displayOrder')}</label>
@@ -331,7 +418,8 @@ export default function WorkflowEnginePage() {
                 </label>
               </div>
             </div>
-            <p className="text-xs text-text-secondary mb-4">{t('workflowEngine.initialHint')}</p>
+            <p className="text-xs text-text-secondary mb-3">{t('workflowEngine.initialHint')}</p>
+            <div className="mb-4 flex items-center gap-2 text-xs font-semibold text-slate-500">{t('workflowEngine.preview')}: <StateChip state={{ code: stateForm.code || '—', nameEn: stateForm.nameEn, nameAr: stateForm.nameAr, colorHex: stateForm.colorHex }} lang={lang} /></div>
             <div className="flex justify-end gap-2.5">
               <button type="button" onClick={() => setAddingState(false)} className="btn-secondary">
                 {t('common.cancel')}
@@ -394,15 +482,15 @@ export default function WorkflowEnginePage() {
             ))}
           </div>
           {!addingTransition && canManage && (
-            <button type="button" onClick={startAddingTransition} className="whitespace-nowrap text-sm font-semibold text-primary hover:underline">
-              {t('workflowEngine.addTransition')}
+            <button type="button" onClick={startAddingTransition} className="whitespace-nowrap rounded-lg border border-brand/30 bg-brand-tint px-3 py-1.5 text-sm font-semibold text-brand hover:bg-brand/10">
+              + {t('workflowEngine.addTransition').replace(/^\+\s*/, '')}
             </button>
           )}
           </div>
         </div>
 
         {addingTransition && (
-          <form onSubmit={handleCreateTransition} className="rounded-lg border border-border-subtle p-4 mb-4">
+          <form onSubmit={handleCreateTransition} className="mb-5 rounded-xl border border-brand/20 bg-slate-50/70 p-4 sm:p-5">
             {transitionError && <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">{transitionError}</div>}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div>
@@ -410,7 +498,7 @@ export default function WorkflowEnginePage() {
                   {t('workflowEngine.fromState')} <span className="text-required">*</span>
                 </label>
                 <select id="wt-from" className={inputCls} value={transitionForm.fromStateId} onChange={(e) => setTransitionForm({ ...transitionForm, fromStateId: e.target.value })}>
-                  {states.map((s) => <option key={s.id} value={s.id}>{s.code}</option>)}
+                  {states.map((s) => <option key={s.id} value={s.id}>{s.code}{(lang === 'ar' ? s.nameAr : s.nameEn) ? ` — ${lang === 'ar' ? s.nameAr : s.nameEn}` : ''}</option>)}
                 </select>
               </div>
               <div>
@@ -418,14 +506,14 @@ export default function WorkflowEnginePage() {
                   {t('workflowEngine.toState')} <span className="text-required">*</span>
                 </label>
                 <select id="wt-to" className={inputCls} value={transitionForm.toStateId} onChange={(e) => setTransitionForm({ ...transitionForm, toStateId: e.target.value })}>
-                  {states.map((s) => <option key={s.id} value={s.id}>{s.code}</option>)}
+                  {states.map((s) => <option key={s.id} value={s.id}>{s.code}{(lang === 'ar' ? s.nameAr : s.nameEn) ? ` — ${lang === 'ar' ? s.nameAr : s.nameEn}` : ''}</option>)}
                 </select>
               </div>
               <div>
                 <label className={labelCls} htmlFor="wt-action">
                   {t('workflowEngine.actionCode')} <span className="text-required">*</span>
                 </label>
-                <input id="wt-action" className={inputCls} required value={transitionForm.actionCode} onChange={(e) => setTransitionForm({ ...transitionForm, actionCode: e.target.value })} />
+                <input id="wt-action" className={inputCls} required value={transitionForm.actionCode} onChange={(e) => setTransitionForm({ ...transitionForm, actionCode: normCode(e.target.value) })} />
                 <p className="text-xs text-text-secondary mt-1">{t('workflowEngine.actionCodeHint')}</p>
               </div>
               <div>
@@ -447,7 +535,25 @@ export default function WorkflowEnginePage() {
                 </label>
               </div>
             </div>
-            <p className="text-xs text-text-secondary mb-2">{t('workflowEngine.requiresDocumentHint')}</p>
+            <p className="text-xs text-text-secondary mb-3">{t('workflowEngine.requiresDocumentHint')}</p>
+            {(() => {
+              const from = stateById(transitionForm.fromStateId)
+              const to = stateById(transitionForm.toStateId)
+              const loop = from && to && from.id === to.id
+              const dup = from && to && transitions.some((tr) => tr.fromStateCode === from.code && tr.toStateCode === to.code && tr.actionCode === transitionForm.actionCode.trim())
+              return (
+                <div className="mb-4 rounded-lg border border-slate-200 bg-white p-3">
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
+                    {t('workflowEngine.preview')}: <StateChip state={from} lang={lang} />
+                    <ArrowRight size={14} className="rtl:rotate-180" aria-hidden="true" />
+                    <StateChip state={to} lang={lang} />
+                    {transitionForm.actionCode && <code className="font-mono text-[11px]">({transitionForm.actionCode})</code>}
+                  </div>
+                  {loop && <p className="mt-2 text-xs font-semibold text-warn-ink">{t('workflowEngine.selfLoop')}</p>}
+                  {dup && <p className="mt-2 text-xs font-semibold text-crit-ink">{t('workflowEngine.duplicateTransition')}</p>}
+                </div>
+              )
+            })()}
 
             <label className={labelCls}>{t('workflowEngine.requiredPermissions')}</label>
             <p className="text-xs text-text-secondary mb-2">{t('workflowEngine.requiredPermissionsHint')}</p>
@@ -483,8 +589,15 @@ export default function WorkflowEnginePage() {
             currentLabel={t('workflowEngine.currentTag')}
           />
         ) : (
+          <>
+          <div className="relative mb-3 max-w-sm">
+            <Search size={15} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <input type="search" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={t('workflowEngine.filterPlaceholder')}
+              aria-label={t('workflowEngine.filterPlaceholder')} className={`${inputCls} ps-9`} />
+          </div>
+          {shownTransitions.length === 0 && <p className="py-6 text-center text-sm text-slate-600">{t('workflowEngine.noMatch')}</p>}
           <ul className="divide-y divide-slate-100" aria-label={t('workflowEngine.transitions')}>
-            {transitions.map((tr) => (
+            {shownTransitions.map((tr) => (
               <li key={tr.id} className="grid grid-cols-1 items-center gap-x-6 gap-y-2 py-3.5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)]">
                 <div className="flex flex-wrap items-center gap-2">
                   <StateChip state={stateByCode(tr.fromStateCode)} lang={lang} />
@@ -507,13 +620,18 @@ export default function WorkflowEnginePage() {
               </li>
             ))}
           </ul>
+          </>
         )}
         {!(transitions.length === 0) && view === 'diagram' && (
           <p className="mt-3 flex items-center gap-2 text-xs text-slate-500"><GitBranch size={13} aria-hidden="true" />{t('workflowEngine.diagramHint')}</p>
         )}
       </div>
 
+      </>
+      )}
+
       {/* ---- instance operator ---- */}
+      {tab === 'instances' && (
       <div className="dash-card p-5 sm:p-6">
         <h2 className="text-base font-bold text-navy mb-0.5">{t('workflowEngine.instances')}</h2>
         <p className="text-xs text-slate-600 mb-4">{t('workflowEngine.instancesHint')}</p>
@@ -622,6 +740,7 @@ export default function WorkflowEnginePage() {
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }

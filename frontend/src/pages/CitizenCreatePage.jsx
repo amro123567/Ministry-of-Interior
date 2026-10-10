@@ -93,7 +93,7 @@ export default function CitizenCreatePage() {
   return (
       <FormPage title={t('citizenCreate.title')} subtitle={t('citizenCreate.subtitle')} onSubmit={handleSubmit} noValidate error={error}>
         <FormSection title={t('citizenCreate.sectionEssentials')}>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <label className={labelCls} htmlFor="registry-number">
               {t('citizenCreate.registryNumber')} <span className="text-required">*</span>
@@ -129,7 +129,7 @@ export default function CitizenCreatePage() {
               <option value="F">{t('citizenCreate.genderFemale')}</option>
             </select>
           </div>
-          <div className="sm:col-span-2">
+          <div className="sm:col-span-2 lg:col-span-3">
             <DistrictScopedSelect
               id="office"
               label={t('citizenCreate.registeredOffice')}

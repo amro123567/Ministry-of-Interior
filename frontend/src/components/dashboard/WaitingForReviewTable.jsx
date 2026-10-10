@@ -8,8 +8,9 @@ import { useAuth } from '../../context/AuthContext.jsx'
 import { useLanguage } from '../../context/LanguageContext.jsx'
 import StatusBadge from '../StatusBadge.jsx'
 import { SkeletonLine } from '../Skeleton.jsx'
+import Pagination, { usePagination } from '../Pagination.jsx'
 import {
-  avatarTone, downloadTextFile, humanizeHours, initials, slaCountdown, sortBySla, toCsv,
+  avatarTone, downloadTextFile, humanizeHours, initials, slaCountdown, toCsv,
 } from './dashboardUtils.js'
 
 const PRIORITY_STYLE = {
@@ -118,13 +119,14 @@ export default function WaitingForReviewTable({ queue, rows, loading, onChanged 
     )
   }, [rows, search, status, priority, docType])
 
+  const { pageItems, pagination } = usePagination(visible)
   const anyFilter = Boolean(search || status || priority || docType)
   const approvable = visible.filter((r) => selected.has(r.id) && r.status === 'UNDER_REVIEW')
   const selectedVisible = visible.filter((r) => selected.has(r.id))
-  const allChecked = visible.length > 0 && visible.every((r) => selected.has(r.id))
+  const allChecked = pageItems.length > 0 && pageItems.every((r) => selected.has(r.id))
 
   const toggle = (id) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })
-  const toggleAll = () => setSelected(allChecked ? new Set() : new Set(visible.map((r) => r.id)))
+  const toggleAll = () => setSelected(allChecked ? new Set() : new Set(pageItems.map((r) => r.id)))
   const clearFilters = () => { setSearch(''); setStatus(''); setPriority(''); setDocType('') }
 
   const exportCsv = () => {
@@ -243,7 +245,7 @@ export default function WaitingForReviewTable({ queue, rows, loading, onChanged 
           {anyFilter ? t('common.noResults', 'No results') : t(`dashboard.queue.${queue.key}.empty`)}
         </div>
       ) : (
-        <div className="max-h-[540px] overflow-auto">
+        <div className="overflow-x-auto">
           <table className="w-full min-w-[980px] border-collapse">
             <thead>
               <tr>
@@ -262,7 +264,7 @@ export default function WaitingForReviewTable({ queue, rows, loading, onChanged 
               </tr>
             </thead>
             <tbody>
-              {visible.map((r) => {
+              {pageItems.map((r) => {
                 const prio = r.priority || 'NORMAL'
                 return (
                   <tr key={r.id} className={`border-b border-hairline last:border-0 transition-colors hover:bg-brand-tint/50 ${selected.has(r.id) ? 'bg-brand-tint/60' : ''}`}>
@@ -321,8 +323,11 @@ export default function WaitingForReviewTable({ queue, rows, loading, onChanged 
         </div>
       )}
       {!loading && visible.length > 0 && (
-        <div className="border-t border-hairline bg-slate-50 px-5 py-2.5 text-xs text-slate-600">
-          {t('requests.showing')} {visible.length} {t('requests.of')} {rows.length}
+        <div className="bg-slate-50 px-5 pb-4">
+          <Pagination className="!border-t-0" {...pagination} />
+          {visible.length <= 10 && (
+            <div className="pt-2.5 text-xs text-slate-600">{t('requests.showing')} {visible.length} {t('requests.of')} {rows.length}</div>
+          )}
         </div>
       )}
     </section>

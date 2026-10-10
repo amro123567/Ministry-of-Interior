@@ -8,6 +8,7 @@ import client from '../api/client.js'
 import { SkeletonLine } from '../components/Skeleton.jsx'
 import { downloadCsv } from '../api/download.js'
 import { useLanguage } from '../context/LanguageContext.jsx'
+import Pagination, { usePagination } from '../components/Pagination.jsx'
 
 // The backend labels each weekly window "Oct 2" (English). Re-render it with
 // the browser's own month names so the chart follows the selected language.
@@ -79,6 +80,8 @@ export default function ReportsPage() {
   const { t, lang } = useLanguage()
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
+  const typePaging = usePagination(data?.byDocumentType ?? [])
+  const officePaging = usePagination(data?.byOffice ?? [])
 
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
@@ -246,7 +249,7 @@ export default function ReportsPage() {
               <tbody>
                 {data.byDocumentType.length === 0 ? (
                   <tr><td colSpan={3} className="td-cell !py-6 text-center">{t('common.noResults')}</td></tr>
-                ) : data.byDocumentType.map((row) => (
+                ) : typePaging.pageItems.map((row) => (
                   <tr key={row.documentTypeName} className="data-row">
                     <td className="td-cell font-medium text-navy">{row.documentTypeName}</td>
                     <td className="td-cell"><BarCell value={row.total} max={maxType} /></td>
@@ -256,6 +259,7 @@ export default function ReportsPage() {
               </tbody>
             </table>
           </div>
+          <Pagination className="mt-3" {...typePaging.pagination} />
         </Card>
 
         <Card title={t('reports.byOfficeTitle')}>
@@ -271,7 +275,7 @@ export default function ReportsPage() {
               <tbody>
                 {data.byOffice.length === 0 ? (
                   <tr><td colSpan={3} className="td-cell !py-6 text-center">{t('common.noResults')}</td></tr>
-                ) : data.byOffice.map((row) => (
+                ) : officePaging.pageItems.map((row) => (
                   <tr key={row.officeName} className="data-row">
                     <td className="td-cell font-medium text-navy">{row.officeName}</td>
                     <td className="td-cell"><BarCell value={row.total} max={maxOffice} /></td>
@@ -285,6 +289,7 @@ export default function ReportsPage() {
               </tbody>
             </table>
           </div>
+          <Pagination className="mt-3" {...officePaging.pagination} />
         </Card>
       </div>
     </div>

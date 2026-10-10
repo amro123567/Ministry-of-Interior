@@ -51,6 +51,9 @@ services:
     restart: unless-stopped
     ports:
       - "3443:443"
+    volumes:
+      # Locally trusted certificate made with mkcert (see certs/ -- git-ignored).
+      - ./certs:/etc/nginx/certs:ro
     depends_on:
       backend:
         condition: service_healthy
