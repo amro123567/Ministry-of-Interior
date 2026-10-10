@@ -48,6 +48,25 @@
   --color-badge-success-bg: #D1FAE5; --color-badge-success-fg: #064E3B; --color-badge-success-bd: #6EE7B7;
   --color-badge-danger-bg: #FEE2E2;  --color-badge-danger-fg: #7F1D1D;  --color-badge-danger-bd: #FCA5A5;
 
+
+  /* Dashboard analytics palette (additive: does not change the global primary) */
+  --color-navy: #0F172A;
+  --color-brand: #2563EB;          /* vibrant blue accent */
+  --color-brand-hover: #1D4ED8;
+  --color-brand-tint: #EFF6FF;
+  --color-hairline: #E2E8F0;
+  --color-crit: #EF4444;           /* overdue / critical */
+  --color-crit-tint: #FEF2F2;
+  --color-crit-ink: #B91C1C;
+  --color-warn: #F59E0B;           /* pending / due soon */
+  --color-warn-tint: #FFFBEB;
+  --color-warn-ink: #B45309;       /* amber text that stays readable on white */
+  --color-active: #4F46E5;         /* in progress */
+  --color-active-tint: #EEF2FF;
+  --color-ok: #10B981;             /* completed / approved */
+  --color-ok-tint: #ECFDF5;
+  --color-ok-ink: #047857;
+
   /* Radii */
   --radius-card: 8px;      /* cards, modals                */
   --radius-control: 6px;   /* buttons, inputs, selects     */
@@ -137,4 +156,40 @@
   }
   .btn-success.btn-sm { @apply h-8 px-3 text-[13px]; }
   .btn-danger.btn-sm { @apply h-8 px-3 text-[13px]; }
+}
+
+@layer components {
+  /* Dashboard surface: white card, 1px slate-200 border, whisper shadow. */
+  .dash-card {
+    @apply rounded-xl border border-hairline bg-white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  .dash-chip {
+    @apply inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-bold leading-5;
+  }
+}
+
+@layer components {
+  /* Native <select> with one consistent chevron (instead of each browser's own arrow). */
+  .select-field {
+    @apply cursor-pointer appearance-none pe-9;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+  }
+  html[dir='rtl'] .select-field { background-position: left 0.75rem center; @apply pe-3 ps-9; }
+}
+
+@layer components {
+  /* Every <select class="field"> gets the same chevron, app-wide. */
+  select.field {
+    @apply cursor-pointer appearance-none pe-9;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+  }
+  html[dir='rtl'] select.field { background-position: left 0.75rem center; @apply pe-3 ps-9; }
+  select.field:disabled { @apply cursor-not-allowed; }
 }

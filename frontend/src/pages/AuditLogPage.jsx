@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
+import { Download, Search } from 'lucide-react'
 import client from '../api/client.js'
 import { SkeletonTableRows } from '../components/Skeleton.jsx'
 import LoginAttemptBadge from '../components/LoginAttemptBadge.jsx'
@@ -7,6 +8,7 @@ import { Badge } from '../components/ui/index.jsx'
 import { downloadCsv } from '../api/download.js'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import { inputCls } from '../ui.js'
+import { ActiveFilterChips, FilterField } from '../components/FilterBar.jsx'
 
 
 // Soft-pill tints keyed by keyword rather than an exact action list, since
@@ -146,6 +148,13 @@ export default function AuditLogPage() {
   const entityTypeOptions = facets.entityTypes
   const filtered = entries
   const anyFilter = Boolean(search || action || entityType || dateFrom || dateTo)
+  // Search has its own box, so it is not repeated as a chip.
+  const activeChips = [
+    action && { key: 'action', label: action, onRemove: () => setAction('') },
+    entityType && { key: 'entity', label: entityType, onRemove: () => setEntityType('') },
+    dateFrom && { key: 'from', label: `${t('auditLog.dateFrom')}: ${dateFrom}`, onRemove: () => setDateFrom('') },
+    dateTo && { key: 'to', label: `${t('auditLog.dateTo')}: ${dateTo}`, onRemove: () => setDateTo('') },
+  ].filter(Boolean)
 
   function clearFilters() {
     setSearch(''); setAction(''); setEntityType(''); setDateFrom(''); setDateTo('')
@@ -183,50 +192,51 @@ export default function AuditLogPage() {
 
       {tab === 'entity' && (
         <>
-          {/* 4-column filter grid: row 1 search (2 cols) + action + entity;
-              row 2 date range (from / to) ; row 3 reset (left of) export. */}
-          <div className="card p-4 mb-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <input
-              placeholder={t('auditLog.searchPlaceholder')}
-              aria-label={t('auditLog.searchPlaceholder')}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="field sm:col-span-2"
-            />
-            <select value={action} onChange={(e) => setAction(e.target.value)} className="field" aria-label={t('auditLog.allActions')}>
-              <option value="">{t('auditLog.allActions')}</option>
-              {actionOptions.map((a) => <option key={a} value={a}>{a}</option>)}
-            </select>
-            <select value={entityType} onChange={(e) => setEntityType(e.target.value)} className="field" aria-label={t('auditLog.allEntities')}>
-              <option value="">{t('auditLog.allEntities')}</option>
-              {entityTypeOptions.map((et) => <option key={et} value={et}>{et}</option>)}
-            </select>
-
-            <input
-              type="date"
-              aria-label={t('auditLog.dateFrom')}
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="field"
-            />
-            <input
-              type="date"
-              aria-label={t('auditLog.dateTo')}
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="field"
-            />
-            <div className="sm:col-span-2 flex flex-wrap items-center justify-end gap-2.5">
-              {anyFilter && (
-                <button type="button" onClick={clearFilters} className="btn-secondary">
-                  {t('requests.clearFilters')}
-                </button>
-              )}
-              <button type="button" onClick={() => downloadCsv('/audit/export', params, 'audit_log.csv')} className="btn-secondary">
-                {t('requests.exportCsv')}
+          {/* Same structure as the other list pages: search + Export on top, labelled filters in one
+              row (action, entity type, date range), then a removable chip per active filter. */}
+          <section className="card mb-5 divide-y divide-row-divider" aria-label={t('requests.filters')}>
+            <div className="flex flex-wrap items-center gap-3 p-4">
+              <div className="relative min-w-[240px] flex-1">
+                <Search size={16} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-text-muted" aria-hidden="true" />
+                <input
+                  type="search"
+                  placeholder={t('auditLog.searchPlaceholder')}
+                  aria-label={t('auditLog.searchPlaceholder')}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="field !ps-9"
+                />
+              </div>
+              <button type="button" onClick={() => downloadCsv('/audit/export', params, 'audit_log.csv')} className="btn-secondary shrink-0">
+                <Download size={16} aria-hidden="true" />{t('requests.exportCsv')}
               </button>
             </div>
-          </div>
+
+            <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+              <FilterField label={t('auditLog.colAction')}>
+                <select value={action} onChange={(e) => setAction(e.target.value)} className="field select-field" aria-label={t('auditLog.allActions')}>
+                  <option value="">{t('auditLog.allActions')}</option>
+                  {actionOptions.map((a) => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </FilterField>
+              <FilterField label={t('auditLog.colEntity')}>
+                <select value={entityType} onChange={(e) => setEntityType(e.target.value)} className="field select-field" aria-label={t('auditLog.allEntities')}>
+                  <option value="">{t('auditLog.allEntities')}</option>
+                  {entityTypeOptions.map((et) => <option key={et} value={et}>{et}</option>)}
+                </select>
+              </FilterField>
+              <FilterField label={t('auditLog.dateFrom')}>
+                <input type="date" aria-label={t('auditLog.dateFrom')} value={dateFrom} max={dateTo || undefined}
+                  onChange={(e) => setDateFrom(e.target.value)} className="field" />
+              </FilterField>
+              <FilterField label={t('auditLog.dateTo')}>
+                <input type="date" aria-label={t('auditLog.dateTo')} value={dateTo} min={dateFrom || undefined}
+                  onChange={(e) => setDateTo(e.target.value)} className="field" />
+              </FilterField>
+            </div>
+
+            <ActiveFilterChips chips={activeChips} onClear={clearFilters} />
+          </section>
 
           {error && (
             <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">

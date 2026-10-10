@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import client from '../api/client.js'
 import CitizenSearchPicker from '../components/CitizenSearchPicker.jsx'
+import { FormActions, FormPage, FormSection } from '../components/FormShell.jsx'
 import DistrictScopedSelect from '../components/DistrictScopedSelect.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import { inputCls, labelCls } from '../ui.js'
@@ -32,9 +33,9 @@ export default function FamilyRecordCreatePage() {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    client.get('/offices').then((r) => setOffices(r.data))
-    client.get('/governorates').then((r) => setGovernorates(r.data.filter((g) => g.active !== false)))
-    client.get('/districts').then((r) => setDistricts(r.data.filter((d) => d.active !== false)))
+    client.get('/offices').then((r) => setOffices(r.data)).catch(() => {})
+    client.get('/governorates').then((r) => setGovernorates(r.data.filter((g) => g.active !== false))).catch(() => {})
+    client.get('/districts').then((r) => setDistricts(r.data.filter((d) => d.active !== false))).catch(() => {})
   }, [])
 
   async function handleSubmit(e) {
@@ -60,26 +61,21 @@ export default function FamilyRecordCreatePage() {
   }
 
   return (
-    <div>
-      <h1 className="text-xl font-bold text-text-primary mb-5">{t('familyRecord.createTitle')}</h1>
-      <form onSubmit={handleSubmit} className="card p-7 max-w-xl">
-        {error && (
-          <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-5" role="alert">{error}</div>
-        )}
-        <p className="text-xs text-text-secondary mb-5"><span className="text-required">*</span> {t('common.required')}</p>
-
-        <div className="mb-5">
+      <FormPage title={t('familyRecord.createTitle')} subtitle={t('familyRecord.createSubtitle')} onSubmit={handleSubmit} error={error}>
+        <FormSection title={t('familyRecord.sectionHousehold')}>
+        <div className="space-y-4">
+        <div>
           <label className={labelCls} htmlFor="book-number">
             {t('familyRecord.bookNumber')} <span className="text-required">*</span>
           </label>
           <input id="book-number" className={inputCls} required value={bookNumber} onChange={(e) => setBookNumber(e.target.value)} />
         </div>
 
-        <div className="mb-5">
+        <div>
           <CitizenSearchPicker label={`${t('familyRecord.headOfHousehold')} *`} value={head} onChange={setHead} />
         </div>
 
-        <div className="mb-6">
+        <div>
           <DistrictScopedSelect
             id="reg-office"
             label={t('familyRecord.registrationOffice')}
@@ -93,16 +89,17 @@ export default function FamilyRecordCreatePage() {
             noneLabel={t('citizenCreate.officeNone')}
           />
         </div>
+        </div>
+        </FormSection>
 
-        <div className="flex justify-end gap-2.5 pt-5 border-t border-row-divider">
+        <FormActions>
           <button type="button" onClick={() => navigate(-1)} className="btn-secondary">
             {t('common.cancel')}
           </button>
           <button type="submit" disabled={busy} className="btn-primary ">
             {busy ? t('familyRecord.submitting') : t('familyRecord.submit')}
           </button>
-        </div>
-      </form>
-    </div>
+        </FormActions>
+      </FormPage>
   )
 }

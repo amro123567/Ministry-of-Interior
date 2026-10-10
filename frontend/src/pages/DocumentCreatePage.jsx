@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import client from '../api/client.js'
 import CitizenSearchPicker from '../components/CitizenSearchPicker.jsx'
+import { FormActions, FormPage, FormSection } from '../components/FormShell.jsx'
 import DistrictScopedSelect from '../components/DistrictScopedSelect.jsx'
 import { DOCUMENT_FORMS } from '../components/documentForms/index.jsx'
 import { Field, inputCls, labelCls } from '../components/documentForms/fields.jsx'
@@ -57,13 +58,13 @@ export default function DocumentCreatePage() {
   const setCommonField = (name, value) => setCommon((c) => ({ ...c, [name]: value }))
 
   useEffect(() => {
-    client.get('/document-types').then((r) => setDocumentTypes(r.data))
-    client.get('/offices').then((r) => setOffices(r.data))
-    client.get('/courts').then((r) => setCourts(r.data.filter((c) => c.active !== false)))
-    client.get('/religious-authorities').then((r) => setReligiousAuthorities(r.data.filter((a) => a.active !== false)))
-    client.get('/mukhtars').then((r) => setMukhtars(r.data.filter((m) => m.active !== false)))
-    client.get('/governorates').then((r) => setGovernorates(r.data.filter((g) => g.active !== false)))
-    client.get('/districts').then((r) => setDistricts(r.data.filter((d) => d.active !== false)))
+    client.get('/document-types').then((r) => setDocumentTypes(r.data)).catch(() => {})
+    client.get('/offices').then((r) => setOffices(r.data)).catch(() => {})
+    client.get('/courts').then((r) => setCourts(r.data.filter((c) => c.active !== false))).catch(() => {})
+    client.get('/religious-authorities').then((r) => setReligiousAuthorities(r.data.filter((a) => a.active !== false))).catch(() => {})
+    client.get('/mukhtars').then((r) => setMukhtars(r.data.filter((m) => m.active !== false))).catch(() => {})
+    client.get('/governorates').then((r) => setGovernorates(r.data.filter((g) => g.active !== false))).catch(() => {})
+    client.get('/districts').then((r) => setDistricts(r.data.filter((d) => d.active !== false))).catch(() => {})
   }, [])
 
   // Pre-pick which side of a marriage certificate the incoming citizen fills, from their gender.
@@ -102,31 +103,28 @@ export default function DocumentCreatePage() {
   const Fields = active.Fields
 
   return (
-    <div>
-      <h1 className="text-xl font-bold text-text-primary mb-5">{t('documentRegistry.createTitle')}</h1>
-      <form onSubmit={handleSubmit} className="card p-7 max-w-3xl">
-        {error && (
-          <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-5" role="alert">{error}</div>
-        )}
-
-        <div className="mb-6">
+      <FormPage title={t('documentRegistry.createTitle')} subtitle={t('documentRegistry.createSubtitle')} onSubmit={handleSubmit} error={error} requiredNote={false}>
+        <FormSection title={t('documentRegistry.sectionDocument')}>
+        <div className="space-y-4">
+        <div>
           <label className={labelCls} htmlFor="doc-kind">{t('documentRegistry.kind')}</label>
-          <select id="doc-kind" className={inputCls} value={kind} onChange={(e) => setKind(e.target.value)}>
+          <select id="doc-kind" className={`${inputCls} select-field`} value={kind} onChange={(e) => setKind(e.target.value)}>
             {DOCUMENT_KINDS.map((k) => <option key={k.key} value={k.key}>{t(k.labelKey)}</option>)}
           </select>
         </div>
 
         {active.needsCitizen && (
-          <div className="mb-6">
+          <div>
             <CitizenSearchPicker label={`${t('documentRegistry.citizen')} *`} value={citizen} onChange={setCitizen} />
           </div>
         )}
 
         <Fields values={values} set={set} ctx={ctx} />
+        </div>
+        </FormSection>
 
-        <details open className="mt-7 pt-5 border-t border-row-divider">
-          <summary className="cursor-pointer text-sm font-bold text-text-primary mb-4">{t('documentRegistry.sectionCommon')}</summary>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <FormSection collapsible defaultOpen title={t('documentRegistry.sectionCommon')}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field id="doc-number" label={t('documentRegistry.documentNumber')} name="documentNumber" values={common} set={setCommonField} />
             <Field id="doc-issue-date" label={t('documentRegistry.issueDate')} name="issueDate" type="date" values={common} set={setCommonField} />
             <div className="sm:col-span-2">
@@ -144,9 +142,9 @@ export default function DocumentCreatePage() {
               />
             </div>
           </div>
-        </details>
+        </FormSection>
 
-        <div className="flex justify-end gap-2.5 mt-7 pt-5 border-t border-row-divider">
+        <FormActions>
           <button
             type="button"
             onClick={() => navigate(-1)}
@@ -161,8 +159,7 @@ export default function DocumentCreatePage() {
           >
             {busy ? t('documentRegistry.submitting') : t('documentRegistry.submit')}
           </button>
-        </div>
-      </form>
-    </div>
+        </FormActions>
+      </FormPage>
   )
 }

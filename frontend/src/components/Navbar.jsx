@@ -5,13 +5,13 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import LangToggle from './LangToggle.jsx'
 
-// Single horizontal header replacing the old Sidebar + TopHeader pair --
-// brand, permission-gated nav links, global search, language toggle and
-// the user menu all live in one bar now, so the content column below it
-// is full-width on every page. (There was an older, unused Navbar.jsx
-// from before the Tailwind redesign; this replaces it rather than
-// reviving it -- that one used hardcoded hasRole('ADMIN') checks and was
-// missing the Reports/Audit/Citizens links entirely.)
+// Single horizontal header: brand, permission-gated nav links, an inline
+// expandable search pill, the EN | AR switch and the user menu in one 64px bar.
+//
+// Width budget (why the search is a pill only from 1400px): a full-permission
+// admin has six nav entries (five links + the Admin menu). Below 1400px the
+// search collapses to an icon button that opens a popover, so the bar never
+// wraps or scrolls sideways; below 1280px the links move into the mobile menu.
 export default function Navbar() {
   const { user, logout, hasPermission } = useAuth()
   const { t } = useLanguage()
@@ -98,63 +98,57 @@ export default function Navbar() {
 
   const allLinks = [...links, ...adminLinks]
 
+  // Inactive links sit at reduced opacity; the active tab is a quiet blue pill
+  // (tinted fill + hairline border) instead of a solid block. Every link carries a
+  // transparent border so activating one never shifts its neighbours.
+  const pill = 'flex items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-sm font-medium leading-5 transition-colors'
+  const navLinkCls = ({ isActive }) => `${pill} ${
+    isActive
+      ? 'border-blue-500/30 bg-blue-600/20 text-blue-400'
+      : 'border-transparent text-slate-300 hover:bg-white/5 hover:text-white'
+  }`
   // /requests/new is its own tab, so it must not also light up "Correspondence".
   const linkCls = (to) => ({ isActive }) =>
     navLinkCls({ isActive: isActive && !(to === '/requests' && pathname.startsWith('/requests/new')) })
-
-  // Items inside the white admin dropdown sit on a light surface, so they
-  // can't share the dark-bar link colours.
   const dropLinkCls = ({ isActive }) =>
-    `flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-      isActive ? 'bg-primary-tint text-primary' : 'text-text-secondary hover:bg-row-hover hover:text-text-primary'
+    `flex items-center gap-2.5 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+      isActive ? 'bg-blue-600/20 text-blue-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'
     }`
+  const popover = 'absolute end-0 top-[calc(100%+10px)] z-30 rounded-xl border border-slate-700 bg-slate-900 shadow-xl shadow-black/30'
 
-  const navLinkCls = ({ isActive }) =>
-    `flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-      isActive ? 'bg-nav-active text-white' : 'text-slate-200 hover:bg-white/10 hover:text-white'
-    }`
-
-  // One control, one border: the magnifier is an absolutely-positioned icon
-  // inside the input's own box (no bordered wrapper around a second,
-  // outline-less input, which is what drew two nested outlines before).
-  const SearchForm = ({ className = '', autoFocus = false }) => (
-    <form onSubmit={handleSearchSubmit} role="search" className={`relative ${className}`}>
-      <Search size={16} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-text-muted" aria-hidden="true" />
+  // A render function, not a component: declaring a component inside render gives it a new
+  // identity every keystroke, which remounts the <input> and drops focus after each letter.
+  const renderSearch = ({ className = '', autoFocus = false, expandable = false } = {}) => (
+    <form onSubmit={handleSearchSubmit} role="search" className={`relative ${expandable ? 'w-52 shrink-0' : ''} ${className}`}>
+      <Search size={16} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
       <input
         type="search"
         value={searchValue}
         onChange={(e) => setSearchValue(e.target.value)}
-        placeholder={t('nav.searchPlaceholder')}
+        placeholder={expandable ? t('nav.search') : t('nav.searchPlaceholder')}
         aria-label={t('nav.searchPlaceholder')}
         autoFocus={autoFocus}
-        className="field ps-9"
+        className={`h-9 rounded-lg border border-slate-700 bg-slate-800/60 ps-9 pe-3 text-xs text-slate-100 placeholder:text-slate-400
+          transition-colors hover:border-slate-600 focus:border-blue-500/70 focus:bg-slate-800 focus:!outline-none focus-visible:!outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500/40 w-full`}
       />
     </form>
   )
 
   return (
-    <header className="sticky top-0 z-20 border-b border-white/10 bg-header shadow-md">
-      <div className="h-[64px] max-w-[1400px] mx-auto px-5 sm:px-8 flex items-center gap-4">
-        <NavLink to="/" className="flex items-center gap-2.5 flex-shrink-0">
-          <img
-            src="/moi-seal.png"
-            alt=""
-            className="h-8 w-8 rounded-md bg-white ring-1 ring-border-subtle object-contain p-0.5"
-          />
-          {/* Brand name/subtitle text is deliberately never shown here (not
-              even at very wide viewports): the header's content column is
-              capped at max-w-[1400px], so there is no width at which extra
-              text can appear without taking room back from a full-permission
-              admin's 7-link nav -- see PROJECT_STATE.md's Navbar write-up.
-              The seal image alone identifies the ministry; the full brand
-              name still appears on the login page. */}
-          <span className="sr-only">{t('nav.brand')}</span>
+    <header className="sticky top-0 z-20 border-b border-slate-800 bg-header font-sans antialiased shadow-lg shadow-black/10">
+      <div className="mx-auto flex min-h-16 max-w-[1400px] items-center gap-6 px-6 py-3 sm:px-8">
+        {/* Identity: seal in a soft rounded box + system name */}
+        <NavLink to="/" className="flex shrink-0 items-center gap-3 rounded-lg" aria-label={t('nav.brand')}>
+          <span className="grid place-items-center rounded-lg border border-white/10 bg-white/10 p-1.5">
+            <img src="/moi-seal.png" alt="" className="h-7 w-7 rounded-md bg-white object-contain p-0.5" />
+          </span>
+          <span className="text-[15px] font-extrabold leading-none tracking-wide text-white">CTS</span>
         </NavLink>
 
-        <nav className="hidden xl:flex items-center gap-1 min-w-0">
+        <nav className="hidden min-w-0 items-center gap-1 xl:flex" aria-label={t('nav.brand')}>
           {links.map(({ to, end, label, icon: Icon }) => (
             <NavLink key={to} to={to} end={end} className={linkCls(to)}>
-              <Icon size={16} className="flex-shrink-0" />
+              <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
               {label}
             </NavLink>
           ))}
@@ -165,17 +159,19 @@ export default function Navbar() {
                 onClick={() => setAdminOpen((v) => !v)}
                 aria-haspopup="true"
                 aria-expanded={adminOpen}
-                className="flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium text-slate-200 hover:bg-white/10 hover:text-white transition-colors"
+                className={`${pill} ${adminOpen || adminLinks.some((l) => pathname.startsWith(l.to))
+                  ? 'border-blue-500/30 bg-blue-600/20 text-blue-400'
+                  : 'border-transparent text-slate-300 hover:bg-white/5 hover:text-white'}`}
               >
-                <Settings size={16} className="flex-shrink-0" />
+                <Settings className="h-4 w-4 shrink-0" aria-hidden="true" />
                 {t('nav.admin')}
-                <ChevronDown size={14} className={`text-slate-300 transition-transform ${adminOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`h-3.5 w-3.5 opacity-70 transition-transform ${adminOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
               </button>
               {adminOpen && (
-                <div className="absolute start-0 top-[calc(100%+8px)] w-48 rounded-lg border border-border-subtle bg-surface-card p-1 shadow-lg z-30">
+                <div className={`${popover} !end-auto start-0 w-52 p-1.5`}>
                   {adminLinks.map(({ to, end, label, icon: Icon }) => (
                     <NavLink key={to} to={to} end={end} onClick={() => setAdminOpen(false)} className={dropLinkCls}>
-                      <Icon size={16} className="flex-shrink-0" />
+                      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
                       {label}
                     </NavLink>
                   ))}
@@ -185,86 +181,89 @@ export default function Navbar() {
           )}
         </nav>
 
-        <div className="flex items-center gap-3 ms-auto flex-shrink-0">
-          <div className="hidden md:block relative" ref={searchRef}>
+        {/* Right action bar */}
+        <div className="ms-auto flex shrink-0 items-center gap-3">
+          {/* >= 1400px: inline pill that widens on focus */}
+          <div className="hidden min-[1400px]:block">{renderSearch({ expandable: true })}</div>
+          {/* md..1400px: icon button + popover */}
+          <div className="relative hidden md:max-[1399px]:block" ref={searchRef}>
             <button
               type="button"
               onClick={() => setSearchOpen((v) => !v)}
               aria-label={t('nav.searchPlaceholder')}
               aria-haspopup="true"
               aria-expanded={searchOpen}
-              className={`h-9 w-9 grid place-items-center rounded-md transition-colors ${
-                searchOpen ? 'bg-white/15 text-white' : 'text-slate-200 hover:bg-white/10'
+              className={`grid h-9 w-9 place-items-center rounded-lg border transition-colors ${
+                searchOpen ? 'border-slate-600 bg-slate-800 text-white' : 'border-slate-700 bg-slate-800/60 text-slate-300 hover:text-white'
               }`}
             >
-              <Search size={18} />
+              <Search className="h-4 w-4" aria-hidden="true" />
             </button>
-            {searchOpen && (
-              <div className="absolute end-0 top-[calc(100%+8px)] w-72 z-30 rounded-md shadow-lg">
-                <SearchForm autoFocus />
-              </div>
-            )}
+            {searchOpen && <div className={`${popover} w-72 p-2`}>{renderSearch({ autoFocus: true })}</div>}
           </div>
-          <div className="w-px h-7 bg-white/20 hidden sm:block" />
+
           <LangToggle tone="dark" className="hidden sm:inline-flex" />
-          <div className="w-px h-7 bg-white/20 hidden sm:block" />
+
           <div className="relative" ref={menuRef}>
             <button
               type="button"
               onClick={() => setMenuOpen((v) => !v)}
               aria-haspopup="true"
               aria-expanded={menuOpen}
-              className="flex items-center gap-2"
+              aria-label={user.fullName || user.username}
+              className="flex items-center gap-1.5 rounded-full py-0.5 ps-0.5 pe-1.5 transition-colors hover:bg-white/5"
             >
-              <span className="h-9 w-9 rounded-full bg-white/10 text-white border border-white/30 grid place-items-center text-[13px] font-bold flex-shrink-0">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-slate-600 bg-slate-700 text-xs font-semibold text-white">
                 {initials}
               </span>
-              {/* Name/role text next to the avatar is deliberately dropped
-                  for the same reason as the brand subtitle above -- it's
-                  still shown in full inside the dropdown opened by this
-                  button, one click away. */}
-              <ChevronDown size={14} className={`hidden sm:block text-slate-300 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`hidden h-3.5 w-3.5 text-slate-400 transition-transform sm:block ${menuOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
             </button>
             {menuOpen && (
-              <div className="absolute end-0 top-[calc(100%+8px)] w-56 rounded-lg border border-border-subtle bg-surface-card shadow-lg overflow-hidden z-30">
-                <div className="px-4 py-3 border-b border-row-divider">
-                  <div className="text-sm font-bold text-text-primary">{user.fullName}</div>
-                  <div className="text-xs text-slate-500 mt-0.5">{user.roles?.join(', ')}</div>
+              <div className={`${popover} w-60 overflow-hidden`}>
+                <div className="flex items-center gap-3 border-b border-slate-800 px-4 py-3.5">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-slate-600 bg-slate-700 text-xs font-semibold text-white">{initials}</span>
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-white">{user.fullName}</div>
+                    <div className="mt-0.5 truncate text-xs text-slate-400">{user.roles?.join(', ')}</div>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-start text-sm font-semibold text-badge-danger-fg hover:bg-red-50"
-                >
-                  <LogOut size={15} /> {t('common.signOut')}
-                </button>
+                <div className="p-1.5">
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-start text-sm font-medium text-red-400 transition-colors hover:bg-red-500/10"
+                  >
+                    <LogOut className="h-4 w-4" aria-hidden="true" /> {t('common.signOut')}
+                  </button>
+                </div>
               </div>
             )}
           </div>
+
           <button
             type="button"
             onClick={() => setMobileOpen((v) => !v)}
             aria-label={t('common.menu')}
             aria-expanded={mobileOpen}
-            className="xl:hidden h-9 w-9 grid place-items-center rounded-md text-slate-200 hover:bg-white/10"
+            className="grid h-9 w-9 place-items-center rounded-lg border border-slate-700 bg-slate-800/60 text-slate-300 transition-colors hover:text-white xl:hidden"
           >
-            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+            {mobileOpen ? <X className="h-5 w-5" aria-hidden="true" /> : <Menu className="h-5 w-5" aria-hidden="true" />}
           </button>
         </div>
       </div>
 
       {mobileOpen && (
-        <div className="xl:hidden border-t border-white/10 bg-header px-5 sm:px-8 py-3">
-          <SearchForm className="md:hidden mb-3" />
-          <nav className="flex flex-col gap-1">
+        <div className="border-t border-slate-800 bg-header px-6 py-4 sm:px-8 xl:hidden">
+          {renderSearch({ className: 'mb-3 md:hidden' })}
+          <nav className="flex flex-col gap-1" aria-label={t('nav.brand')}>
             {allLinks.map(({ to, end, label, icon: Icon }) => (
               <NavLink key={to} to={to} end={end} onClick={() => setMobileOpen(false)} className={linkCls(to)}>
-                <Icon size={18} className="flex-shrink-0" />
+                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
                 {label}
               </NavLink>
             ))}
           </nav>
-          <div className="sm:hidden mt-3 pt-3 border-t border-white/10">
+          <div className="mt-3 border-t border-slate-800 pt-3 sm:hidden">
             <LangToggle tone="dark" />
           </div>
         </div>

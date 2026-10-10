@@ -60,9 +60,9 @@ export default function CivilStatusAmendmentSection({ citizenId, citizen, onDeci
     setAmendmentDate('')
     setFormError(null)
     setRequesting(true)
-    if (courts.length === 0) client.get('/courts').then((r) => setCourts(r.data.filter((c) => c.active !== false)))
-    if (governorates.length === 0) client.get('/governorates').then((r) => setGovernorates(r.data.filter((g) => g.active !== false)))
-    if (districts.length === 0) client.get('/districts').then((r) => setDistricts(r.data.filter((d) => d.active !== false)))
+    if (courts.length === 0) client.get('/courts').then((r) => setCourts(r.data.filter((c) => c.active !== false))).catch(() => {})
+    if (governorates.length === 0) client.get('/governorates').then((r) => setGovernorates(r.data.filter((g) => g.active !== false))).catch(() => {})
+    if (districts.length === 0) client.get('/districts').then((r) => setDistricts(r.data.filter((d) => d.active !== false))).catch(() => {})
   }
 
   function handleFieldChange(next) {

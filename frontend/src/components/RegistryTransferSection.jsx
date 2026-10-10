@@ -56,7 +56,7 @@ export default function RegistryTransferSection({ citizenId, currentOfficeName, 
     setTransferDate('')
     setFormError(null)
     setRequesting(true)
-    if (offices.length === 0) client.get('/offices').then((r) => setOffices(r.data))
+    if (offices.length === 0) client.get('/offices').then((r) => setOffices(r.data)).catch(() => {})
   }
 
   async function handleSubmit(e) {

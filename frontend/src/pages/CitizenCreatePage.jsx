@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import client from '../api/client.js'
 import ParentLineagePicker from '../components/ParentLineagePicker.jsx'
+import { FormActions, FormPage, FormSection } from '../components/FormShell.jsx'
 import DistrictScopedSelect from '../components/DistrictScopedSelect.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import { inputCls, labelCls } from '../ui.js'
@@ -35,9 +36,9 @@ export default function CitizenCreatePage() {
   const [errors, setErrors] = useState({})
 
   useEffect(() => {
-    client.get('/offices').then((r) => setOffices(r.data))
-    client.get('/governorates').then((r) => setGovernorates(r.data.filter((g) => g.active !== false)))
-    client.get('/districts').then((r) => setDistricts(r.data.filter((d) => d.active !== false)))
+    client.get('/offices').then((r) => setOffices(r.data)).catch(() => {})
+    client.get('/governorates').then((r) => setGovernorates(r.data.filter((g) => g.active !== false))).catch(() => {})
+    client.get('/districts').then((r) => setDistricts(r.data.filter((d) => d.active !== false))).catch(() => {})
   }, [])
 
   function update(field, value) {
@@ -88,21 +89,11 @@ export default function CitizenCreatePage() {
   }
 
   const Err = ({ id, text }) => (text ? <p id={id} className="mt-1 text-xs text-badge-danger-fg">{text}</p> : null)
-  const summaryCls = 'cursor-pointer select-none text-sm font-bold text-text-primary py-1'
 
   return (
-    <div>
-      <h1 className="text-xl font-bold text-text-primary mb-5">{t('citizenCreate.title')}</h1>
-      <form onSubmit={handleSubmit} noValidate className="card p-7 max-w-3xl">
-        {error && (
-          <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-5" role="alert">
-            {error}
-          </div>
-        )}
-        <p className="text-xs text-text-secondary mb-5"><span className="text-required">*</span> {t('common.required')}</p>
-
-        <h2 className="text-sm font-bold text-text-primary mb-4">{t('citizenCreate.sectionEssentials')}</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pb-6 mb-5 border-b border-row-divider">
+      <FormPage title={t('citizenCreate.title')} subtitle={t('citizenCreate.subtitle')} onSubmit={handleSubmit} noValidate error={error}>
+        <FormSection title={t('citizenCreate.sectionEssentials')}>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className={labelCls} htmlFor="registry-number">
               {t('citizenCreate.registryNumber')} <span className="text-required">*</span>
@@ -133,7 +124,7 @@ export default function CitizenCreatePage() {
           </div>
           <div>
             <label className={labelCls} htmlFor="gender">{t('citizenCreate.gender')}</label>
-            <select id="gender" className={inputCls} value={form.gender} onChange={(e) => update('gender', e.target.value)}>
+            <select id="gender" className={`${inputCls} select-field`} value={form.gender} onChange={(e) => update('gender', e.target.value)}>
               <option value="M">{t('citizenCreate.genderMale')}</option>
               <option value="F">{t('citizenCreate.genderFemale')}</option>
             </select>
@@ -153,10 +144,10 @@ export default function CitizenCreatePage() {
             />
           </div>
         </div>
+        </FormSection>
 
-        <details className="pb-4 mb-4 border-b border-row-divider">
-          <summary className={summaryCls}>{t('citizenCreate.sectionNames')}</summary>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-4">
+        <FormSection collapsible title={t('citizenCreate.sectionNames')}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
               <label className={labelCls} htmlFor="middle-en">{t('citizenCreate.middleNameEn')}</label>
               <input id="middle-en" className={inputCls}
@@ -178,11 +169,10 @@ export default function CitizenCreatePage() {
                 value={form.lastNameAr} onChange={(e) => update('lastNameAr', e.target.value)} />
             </div>
           </div>
-        </details>
+        </FormSection>
 
-        <details className="pb-4 mb-4 border-b border-row-divider">
-          <summary className={summaryCls}>{t('citizenCreate.sectionCivilStatus')}</summary>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-4">
+        <FormSection collapsible title={t('citizenCreate.sectionCivilStatus')}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className={labelCls} htmlFor="sijill">{t('citizenCreate.sijillReference')}</label>
               <input id="sijill" className={inputCls}
@@ -200,7 +190,7 @@ export default function CitizenCreatePage() {
             </div>
             <div>
               <label className={labelCls} htmlFor="marital">{t('citizenCreate.maritalStatus')}</label>
-              <select id="marital" className={inputCls} value={form.maritalStatus} onChange={(e) => update('maritalStatus', e.target.value)}>
+              <select id="marital" className={`${inputCls} select-field`} value={form.maritalStatus} onChange={(e) => update('maritalStatus', e.target.value)}>
                 <option value="">{t('citizenCreate.maritalStatusNone')}</option>
                 <option value="SINGLE">{t('citizens.maritalStatus.SINGLE')}</option>
                 <option value="MARRIED">{t('citizens.maritalStatus.MARRIED')}</option>
@@ -219,17 +209,16 @@ export default function CitizenCreatePage() {
                 value={form.sect} onChange={(e) => update('sect', e.target.value)} />
             </div>
           </div>
-        </details>
+        </FormSection>
 
-        <details className="pb-2">
-          <summary className={summaryCls}>{t('citizenCreate.sectionLineage')}</summary>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-4">
+        <FormSection collapsible title={t('citizenCreate.sectionLineage')}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <ParentLineagePicker label={t('citizenCreate.father')} value={father} onChange={setFather} />
             <ParentLineagePicker label={t('citizenCreate.mother')} value={mother} onChange={setMother} />
           </div>
-        </details>
+        </FormSection>
 
-        <div className="flex justify-end gap-2.5 mt-7 pt-5 border-t border-row-divider">
+        <FormActions>
           <button
             type="button"
             onClick={() => navigate(-1)}
@@ -249,8 +238,7 @@ export default function CitizenCreatePage() {
             )}
             <span className={busy ? 'invisible' : ''}>{t('citizenCreate.submit')}</span>
           </button>
-        </div>
-      </form>
-    </div>
+        </FormActions>
+      </FormPage>
   )
 }

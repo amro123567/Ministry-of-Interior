@@ -55,6 +55,16 @@ describe('CitizenRegistryPage', () => {
     await waitFor(() => expect(table().getByText('REG-2')).toBeInTheDocument())
     expect(table().queryByText('REG-1')).not.toBeInTheDocument()
   })
+
+  it('shows each active filter as a chip, and removing the chip widens the list again', async () => {
+    renderRegistry('/citizens?marital=SINGLE')
+    await waitFor(() => expect(table().getByText('REG-2')).toBeInTheDocument())
+    const user = userEvent.setup()
+    const chips = within(screen.getByRole('group', { name: en.requests.activeFilters }))
+    await user.click(chips.getByRole('button', { name: new RegExp(`${en.requests.removeFilter}: ${en.citizens.maritalStatus.SINGLE}`) }))
+    await waitFor(() => expect(table().getByText('REG-1')).toBeInTheDocument())
+    expect(screen.queryByRole('group', { name: en.requests.activeFilters })).toBeNull()
+  })
 })
 
 describe('CitizenCreatePage', () => {

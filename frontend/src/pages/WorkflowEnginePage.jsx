@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { ArrowRight, Flag, GitBranch, KeyRound, MessageSquare, Paperclip, Play } from 'lucide-react'
 import { format } from 'date-fns'
 import client from '../api/client.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -7,17 +8,25 @@ import WorkflowDiagram from '../components/WorkflowDiagram.jsx'
 import { inputCls, labelCls } from '../ui.js'
 
 
+// A state is shown as a neutral chip with its configured colour as a small dot -- colour carries
+// identity only; fills, borders and text stay slate so a row of states is calm, not a rainbow.
 function StateChip({ state, lang }) {
   if (!state) return <span className="text-slate-300">—</span>
   const color = state.colorHex || '#94A3B8'
   const label = (lang === 'ar' ? state.nameAr : state.nameEn) || state.code
   return (
-    <span
-      className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold"
-      style={{ borderColor: color, color, backgroundColor: `${color}1A` }}
-    >
-      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: color }} />
+    <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800">
+      <span className="h-2 w-2 rounded-full ring-2 ring-offset-0" style={{ backgroundColor: color, '--tw-ring-color': `${color}33` }} />
       {label}
+    </span>
+  )
+}
+
+// Small neutral label with an icon (Start / End / requires comment ...).
+function MetaTag({ icon: Icon, children, title }) {
+  return (
+    <span title={title} className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-slate-600">
+      <Icon size={11} aria-hidden="true" />{children}
     </span>
   )
 }
@@ -64,6 +73,14 @@ export default function WorkflowEnginePage() {
   useEffect(load, [])
 
   function stateByCode(code) { return states.find((s) => s.code === code) }
+  // How many transitions enter / leave each state, for the state cards.
+  const counts = useMemo(() => {
+    const m = new Map()
+    const bump = (code, k) => m.set(code, { in: 0, out: 0, ...m.get(code), [k]: (m.get(code)?.[k] ?? 0) + 1 })
+    transitions.forEach((tr) => { bump(tr.fromStateCode, 'out'); bump(tr.toStateCode, 'in') })
+    return m
+  }, [transitions])
+
   function stateById(id) { return states.find((s) => String(s.id) === String(id)) }
 
   // ---- add state -----------------------------------------------------
@@ -114,7 +131,7 @@ export default function WorkflowEnginePage() {
     })
     setTransitionError(null)
     setAddingTransition(true)
-    if (permissions.length === 0) client.get('/permissions').then((r) => setPermissions(r.data))
+    if (permissions.length === 0) client.get('/permissions').then((r) => setPermissions(r.data)).catch(() => {})
   }
 
   function togglePermission(id) {
@@ -244,19 +261,34 @@ export default function WorkflowEnginePage() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-text-primary mb-1">{t('workflowEngine.title')}</h1>
-      <p className="text-sm text-text-secondary mb-5">{t('workflowEngine.subtitle')}</p>
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight text-navy">{t('workflowEngine.title')}</h1>
+          <p className="mt-1 text-sm text-slate-600">{t('workflowEngine.subtitle')}</p>
+        </div>
+        <div className="flex gap-2" aria-label={t('workflowEngine.summary')} role="group">
+          <span className="rounded-lg border border-hairline bg-white px-3 py-1.5 text-xs font-semibold text-slate-600">
+            <b className="text-sm text-navy">{states.length}</b> {t('workflowEngine.states')}
+          </span>
+          <span className="rounded-lg border border-hairline bg-white px-3 py-1.5 text-xs font-semibold text-slate-600">
+            <b className="text-sm text-navy">{transitions.length}</b> {t('workflowEngine.transitions')}
+          </span>
+        </div>
+      </div>
 
       {loadError && (
         <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-5" role="alert">{loadError}</div>
       )}
 
       {/* ---- catalog: states ---- */}
-      <div className="card p-5 mb-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-bold text-text-primary">{t('workflowEngine.states')}</h2>
+      <div className="dash-card p-5 sm:p-6 mb-4">
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-base font-bold text-navy">{t('workflowEngine.states')}</h2>
+            <p className="mt-0.5 text-xs text-slate-600">{t('workflowEngine.statesHint')}</p>
+          </div>
           {!addingState && canManage && (
-            <button type="button" onClick={() => setAddingState(true)} className="text-sm font-semibold text-primary hover:underline">
+            <button type="button" onClick={() => setAddingState(true)} className="whitespace-nowrap text-sm font-semibold text-primary hover:underline">
               {t('workflowEngine.addState')}
             </button>
           )}
@@ -314,38 +346,55 @@ export default function WorkflowEnginePage() {
         {!loading && states.length === 0 ? (
           <p className="text-sm text-text-secondary">{t('workflowEngine.noStates')}</p>
         ) : (
-          <div className="flex flex-wrap gap-2">
-            {states.map((s) => (
-              <div key={s.id} className="flex items-center gap-2">
-                <StateChip state={s} lang={lang} />
-                {s.isInitial && <span className="text-[10px] font-bold uppercase text-text-secondary">{t('workflowEngine.initialTag')}</span>}
-                {s.isFinal && <span className="text-[10px] font-bold uppercase text-text-secondary">{t('workflowEngine.finalTag')}</span>}
-              </div>
-            ))}
-          </div>
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6" aria-label={t('workflowEngine.states')}>
+            {states.map((s) => {
+              const color = s.colorHex || '#94A3B8'
+              const inN = counts.get(s.code)?.in ?? 0
+              const outN = counts.get(s.code)?.out ?? 0
+              return (
+                <li key={s.id} className="flex flex-col gap-2.5 rounded-xl border border-slate-200 bg-white p-3.5 transition-shadow hover:shadow-md">
+                  <div className="flex items-center gap-2.5">
+                    <span className="h-3 w-3 shrink-0 rounded-full ring-4" style={{ backgroundColor: color, '--tw-ring-color': `${color}26` }} aria-hidden="true" />
+                    <span className="min-w-0 truncate text-sm font-bold text-navy">{(lang === 'ar' ? s.nameAr : s.nameEn) || s.code}</span>
+                  </div>
+                  <code className="truncate font-mono text-[11px] text-slate-500">{s.code}</code>
+                  <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2.5">
+                    <span className="text-[11px] font-semibold text-slate-500">
+                      <b className="text-slate-800">{inN}</b> {t('workflowEngine.inCount')} · <b className="text-slate-800">{outN}</b> {t('workflowEngine.outCount')}
+                    </span>
+                    {s.isInitial && <MetaTag icon={Play}>{t('workflowEngine.initialTag')}</MetaTag>}
+                    {s.isFinal && <MetaTag icon={Flag}>{t('workflowEngine.finalTag')}</MetaTag>}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
         )}
       </div>
 
       {/* ---- catalog: transitions ---- */}
-      <div className="card p-5 mb-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-bold text-text-primary">{t('workflowEngine.transitions')}</h2>
+      <div className="dash-card p-5 sm:p-6 mb-4">
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-base font-bold text-navy">{t('workflowEngine.transitions')}</h2>
+            <p className="mt-0.5 text-xs text-slate-600">{t('workflowEngine.transitionsHint')}</p>
+          </div>
           <div className="flex items-center gap-3">
-          <div className="inline-flex rounded-lg border border-border-subtle p-0.5 text-xs font-semibold" role="group" aria-label={t('workflowEngine.viewLabel')}>
+          <div className="inline-flex rounded-lg border border-hairline bg-slate-50 p-0.5 text-xs font-semibold" role="group" aria-label={t('workflowEngine.viewLabel')}>
             {['diagram', 'list'].map((v) => (
               <button
                 key={v}
                 type="button"
                 aria-pressed={view === v}
                 onClick={() => setView(v)}
-                className={`rounded-md px-2.5 py-1 ${view === v ? 'bg-primary text-white' : 'text-text-secondary hover:bg-row-hover'}`}
+                className={`rounded-md px-2.5 py-1 ${view === v ? 'bg-navy text-white shadow-sm' : 'text-slate-600 hover:text-navy'}`}
               >
                 {t(`workflowEngine.view_${v}`)}
               </button>
             ))}
           </div>
           {!addingTransition && canManage && (
-            <button type="button" onClick={startAddingTransition} className="text-sm font-semibold text-primary hover:underline">
+            <button type="button" onClick={startAddingTransition} className="whitespace-nowrap text-sm font-semibold text-primary hover:underline">
               {t('workflowEngine.addTransition')}
             </button>
           )}
@@ -431,37 +480,43 @@ export default function WorkflowEnginePage() {
             lang={lang}
             label={t('workflowEngine.diagramLabel')}
             currentCode={instance?.currentStateCode}
+            currentLabel={t('workflowEngine.currentTag')}
           />
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-slate-100" aria-label={t('workflowEngine.transitions')}>
             {transitions.map((tr) => (
-              <li key={tr.id} className="py-3 flex flex-wrap items-center gap-2">
-                <StateChip state={stateByCode(tr.fromStateCode)} lang={lang} />
-                <span className="text-slate-300">→</span>
-                <StateChip state={stateByCode(tr.toStateCode)} lang={lang} />
-                <span className="text-sm font-semibold text-text-primary ms-1">
-                  {(lang === 'ar' ? tr.labelAr : tr.labelEn) || tr.actionCode}
-                </span>
-                <span className="font-mono text-[11px] text-text-secondary">({tr.actionCode})</span>
-                {tr.requiresComment && <span className="text-[10px] font-bold uppercase text-badge-warning-fg">{t('workflowEngine.requiresComment')}</span>}
-                {tr.requiresDocument && <span className="text-[10px] font-bold uppercase text-badge-warning-fg" title={t('workflowEngine.requiresDocumentHint')}>{t('workflowEngine.requiresDocument')}</span>}
-                {tr.requiredPermissionCodes.length > 0 && (
-                  <span className="flex flex-wrap gap-1">
-                    {tr.requiredPermissionCodes.map((code) => (
-                      <span key={code} className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[10px] text-text-secondary">{code}</span>
-                    ))}
-                  </span>
-                )}
+              <li key={tr.id} className="grid grid-cols-1 items-center gap-x-6 gap-y-2 py-3.5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <StateChip state={stateByCode(tr.fromStateCode)} lang={lang} />
+                  <ArrowRight size={15} className="text-slate-400 rtl:rotate-180" aria-hidden="true" />
+                  <StateChip state={stateByCode(tr.toStateCode)} lang={lang} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-bold text-navy">{(lang === 'ar' ? tr.labelAr : tr.labelEn) || tr.actionCode}</div>
+                  <code className="font-mono text-[11px] text-slate-500">({tr.actionCode})</code>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 lg:justify-end">
+                  {tr.requiresComment && <MetaTag icon={MessageSquare}>{t('workflowEngine.requiresComment')}</MetaTag>}
+                  {tr.requiresDocument && <MetaTag icon={Paperclip} title={t('workflowEngine.requiresDocumentHint')}>{t('workflowEngine.requiresDocument')}</MetaTag>}
+                  {tr.requiredPermissionCodes.map((code) => (
+                    <span key={code} className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10.5px] text-slate-600">
+                      <KeyRound size={10} aria-hidden="true" />{code}
+                    </span>
+                  ))}
+                </div>
               </li>
             ))}
           </ul>
         )}
+        {!(transitions.length === 0) && view === 'diagram' && (
+          <p className="mt-3 flex items-center gap-2 text-xs text-slate-500"><GitBranch size={13} aria-hidden="true" />{t('workflowEngine.diagramHint')}</p>
+        )}
       </div>
 
       {/* ---- instance operator ---- */}
-      <div className="card p-5">
-        <h2 className="text-sm font-bold text-text-primary mb-1">{t('workflowEngine.instances')}</h2>
-        <p className="text-xs text-text-secondary mb-4">{t('workflowEngine.instancesHint')}</p>
+      <div className="dash-card p-5 sm:p-6">
+        <h2 className="text-base font-bold text-navy mb-0.5">{t('workflowEngine.instances')}</h2>
+        <p className="text-xs text-slate-600 mb-4">{t('workflowEngine.instancesHint')}</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
           <form onSubmit={handleLookup} className="rounded-lg border border-border-subtle p-4">

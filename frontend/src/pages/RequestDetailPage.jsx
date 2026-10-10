@@ -97,21 +97,23 @@ export default function RequestDetailPage() {
   const [reversalReason, setReversalReason] = useState('')
   const [reverseBusy, setReverseBusy] = useState(false)
 
+  const [loadError, setLoadError] = useState(null)
   const load = useCallback(() => {
-    client.get(`/requests/${id}`).then((r) => setRequest(r.data))
-    client.get(`/requests/${id}/history`).then((r) => setHistory(r.data))
+    setLoadError(null)
+    client.get(`/requests/${id}`).then((r) => setRequest(r.data)).catch((err) => setLoadError(apiErrorMessage(err, t('requestDetail.couldNotLoad'), t)))
+    client.get(`/requests/${id}/history`).then((r) => setHistory(r.data)).catch(() => {})
     client.get(`/requests/${id}/transitions`).then((r) => setNextTransitions(r.data)).catch(() => setNextTransitions([]))
     client.get(`/requests/${id}/audit`).then((r) => setAuditEntries(r.data)).catch(() => setAuditEntries([]))
-    client.get(`/requests/${id}/assignments`).then((r) => setAssignments(r.data))
-    client.get(`/requests/${id}/documents`).then((r) => setAttachments(r.data))
+    client.get(`/requests/${id}/assignments`).then((r) => setAssignments(r.data)).catch(() => {})
+    client.get(`/requests/${id}/documents`).then((r) => setAttachments(r.data)).catch(() => {})
     // GET /api/sla-records/{id} lazily recomputes the snapshot from the
     // request's current state on every read (RequestFinanceService), so
     // this always reflects the latest status -- the "Refresh" button below
     // calls the dedicated POST .../refresh endpoint instead, mainly to
     // keep that endpoint genuinely wired to something in the UI.
-    client.get(`/sla-records/${id}`).then((r) => setSlaRecord(r.data))
-    client.get(`/requests/${id}/payments`).then((r) => setPayments(r.data))
-  }, [id])
+    client.get(`/sla-records/${id}`).then((r) => setSlaRecord(r.data)).catch(() => {})
+    client.get(`/requests/${id}/payments`).then((r) => setPayments(r.data)).catch(() => {})
+  }, [id, t])
 
   useEffect(() => { load() }, [load])
   useEffect(() => { if (hasPermission('USER_VIEW')) client.get('/users').then((r) => setUsers(r.data)) }, [hasPermission])
@@ -229,6 +231,9 @@ export default function RequestDetailPage() {
     }
   }
 
+  if (loadError && !request) {
+    return <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg" role="alert">{loadError}</div>
+  }
   if (!request) return <p className="text-sm text-text-secondary">{t('common.loading')}</p>
 
   const available = nextTransitions.map((tr) => ({

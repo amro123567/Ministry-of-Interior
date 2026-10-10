@@ -80,4 +80,31 @@ describe('RequestsListPage', () => {
     await user.click(screen.getByRole('button', { name: new RegExp(en.requests.colCitizen, 'i') }))
     expect(within(bodyRows()[0]).getByText('Citizen L')).toBeInTheDocument()
   })
+
+  it('keeps the secondary filters behind "More filters", but opens them when the URL already uses one', async () => {
+    const user = userEvent.setup()
+    const first = renderList()
+    expect(screen.queryByLabelText(en.requests.filterOffice)).toBeNull()
+    await user.click(screen.getByRole('button', { name: new RegExp(en.requests.moreFilters) }))
+    expect(screen.getByLabelText(en.requests.filterOffice)).toBeInTheDocument()
+    first.unmount()
+
+    renderList('/requests?direction=OUTGOING')
+    expect(screen.getByLabelText(en.requests.colDirection)).toHaveValue('OUTGOING')
+  })
+
+  it('echoes every active filter as a chip that removes just that filter', async () => {
+    const user = userEvent.setup()
+    renderList('/requests?status=SUBMITTED&priority=HIGH')
+    const chips = within(await screen.findByRole('group', { name: en.requests.activeFilters }))
+    expect(chips.getByText(en.status.SUBMITTED)).toBeInTheDocument()
+    expect(chips.getByText(en.requests.priority.HIGH)).toBeInTheDocument()
+
+    await user.click(chips.getByRole('button', { name: new RegExp(`${en.requests.removeFilter}: ${en.status.SUBMITTED}`) }))
+    await waitFor(() => {
+      const last = client.get.mock.calls.filter(([u]) => u === '/requests').at(-1)[1].params
+      expect(last.status).toBeUndefined()
+      expect(last.priority).toBe('HIGH') // the other filter is untouched
+    })
+  })
 })

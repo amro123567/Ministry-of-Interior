@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Routes, Route } from 'react-router-dom'
 import client from '../api/client.js'
@@ -91,5 +91,22 @@ describe('AuditLogPage', () => {
       expect(last[1].params.action).toBe('USER_DISABLED')
     })
     expect(screen.getByRole('button', { name: en.requests.exportCsv })).toBeInTheDocument()
+  })
+
+  it('shows each active filter as a chip, and removing it clears just that filter', async () => {
+    renderWithProviders(<Routes><Route path="/admin/audit" element={<AuditLogPage />} /></Routes>, { route: '/admin/audit' })
+    const user = userEvent.setup()
+    await screen.findByRole('option', { name: 'USER_DISABLED' })
+    await user.selectOptions(screen.getByDisplayValue(en.auditLog.allActions), 'USER_DISABLED')
+
+    const chips = within(await screen.findByRole('group', { name: en.requests.activeFilters }))
+    expect(chips.getByText('USER_DISABLED')).toBeInTheDocument()
+    await user.click(chips.getByRole('button', { name: new RegExp(`${en.requests.removeFilter}: USER_DISABLED`) }))
+
+    await waitFor(() => {
+      const last = client.get.mock.calls.filter(([u]) => u === '/audit').pop()
+      expect(last[1].params.action).toBeUndefined()
+    })
+    expect(screen.queryByRole('group', { name: en.requests.activeFilters })).toBeNull()
   })
 })

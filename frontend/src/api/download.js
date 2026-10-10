@@ -7,6 +7,9 @@ export async function downloadCsv(url, params, filename) {
   const a = document.createElement('a')
   a.href = href
   a.download = filename
+  document.body.appendChild(a)
   a.click()
-  URL.revokeObjectURL(href)
+  a.remove()
+  // Revoke later: revoking immediately can cancel the download in some browsers.
+  setTimeout(() => URL.revokeObjectURL(href), 10000)
 }

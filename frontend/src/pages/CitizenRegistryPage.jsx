@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { format } from 'date-fns'
-import { Eye } from 'lucide-react'
+import { Eye, Search } from 'lucide-react'
 import client from '../api/client.js'
 import { SkeletonTableRows } from '../components/Skeleton.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
+import { ActiveFilterChips, FilterField } from '../components/FilterBar.jsx'
 
 const PAGE_SIZE = 15
 const MARITAL = ['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED']
@@ -107,6 +108,11 @@ export default function CitizenRegistryPage() {
   const currentPage = Math.min(page, pageCount)
   const visible = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
   const anyFilter = Boolean(office || marital || life)
+  const activeChips = [
+    office && { key: 'office', onRemove: () => setParam('office', ''), label: office },
+    marital && { key: 'marital', onRemove: () => setParam('marital', ''), label: t(`citizens.maritalStatus.${marital}`, marital) },
+    life && { key: 'life', onRemove: () => setParam('life', ''), label: t(life === 'deceased' ? 'citizens.deceased' : 'citizens.alive') },
+  ].filter(Boolean)
 
   function toggleSort(key) {
     setSort((cur) => (cur.key === key ? { key, dir: cur.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
@@ -158,35 +164,45 @@ export default function CitizenRegistryPage() {
         )}
       </div>
 
-      <div className="card p-4 mb-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <input
-          placeholder={t('citizens.searchPlaceholder')}
-          aria-label={t('citizens.searchPlaceholder')}
-          value={search}
-          onChange={(e) => handleSearchChange(e.target.value)}
-          className="field sm:col-span-2"
-        />
-        <select value={office} onChange={(e) => setParam('office', e.target.value)} className="field" aria-label={t('citizens.colOffice')}>
-          <option value="">{t('citizens.allOffices')}</option>
-          {offices.map((o) => <option key={o} value={o}>{o}</option>)}
-        </select>
-        <select value={marital} onChange={(e) => setParam('marital', e.target.value)} className="field" aria-label={t('citizens.colMaritalStatus')}>
-          <option value="">{t('citizens.allMarital')}</option>
-          {MARITAL.map((m) => <option key={m} value={m}>{t(`citizens.maritalStatus.${m}`, m)}</option>)}
-        </select>
-        <select value={life} onChange={(e) => setParam('life', e.target.value)} className="field" aria-label={t('citizens.lifeStatus')}>
-          <option value="">{t('citizens.allLife')}</option>
-          <option value="alive">{t('citizens.alive')}</option>
-          <option value="deceased">{t('citizens.deceased')}</option>
-        </select>
-        {anyFilter && (
-          <div className="sm:col-span-2 lg:col-span-3 flex items-center justify-end">
-            <button type="button" onClick={clearFilters} className="btn-secondary">
-              {t('requests.clearFilters')}
-            </button>
+      {/* Same structure as the Correspondence filters: search on top, labelled selects in one
+          row, then a removable chip for each active filter. Filters apply live (URL = state). */}
+      <section className="card mb-5 divide-y divide-row-divider" aria-label={t('requests.filters')}>
+        <div className="p-4">
+          <div className="relative">
+            <Search size={16} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-text-muted" aria-hidden="true" />
+            <input
+              type="search"
+              placeholder={t('citizens.searchPlaceholder')}
+              aria-label={t('citizens.searchPlaceholder')}
+              value={search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="field !ps-9"
+            />
           </div>
-        )}
-      </div>
+        </div>
+        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-3">
+          <FilterField label={t('citizens.colOffice')}>
+            <select value={office} onChange={(e) => setParam('office', e.target.value)} className="field select-field" aria-label={t('citizens.colOffice')}>
+              <option value="">{t('citizens.allOffices')}</option>
+              {offices.map((o) => <option key={o} value={o}>{o}</option>)}
+            </select>
+          </FilterField>
+          <FilterField label={t('citizens.colMaritalStatus')}>
+            <select value={marital} onChange={(e) => setParam('marital', e.target.value)} className="field select-field" aria-label={t('citizens.colMaritalStatus')}>
+              <option value="">{t('citizens.allMarital')}</option>
+              {MARITAL.map((m) => <option key={m} value={m}>{t(`citizens.maritalStatus.${m}`, m)}</option>)}
+            </select>
+          </FilterField>
+          <FilterField label={t('citizens.lifeStatus')}>
+            <select value={life} onChange={(e) => setParam('life', e.target.value)} className="field select-field" aria-label={t('citizens.lifeStatus')}>
+              <option value="">{t('citizens.allLife')}</option>
+              <option value="alive">{t('citizens.alive')}</option>
+              <option value="deceased">{t('citizens.deceased')}</option>
+            </select>
+          </FilterField>
+        </div>
+        <ActiveFilterChips chips={activeChips} onClear={clearFilters} />
+      </section>
 
       {error && (
         <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">

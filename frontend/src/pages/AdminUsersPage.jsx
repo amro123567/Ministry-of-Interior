@@ -31,15 +31,15 @@ export default function AdminUsersPage() {
   const [showForm, setShowForm] = useState(false)
 
   function reload() {
-    client.get('/users').then((r) => setUsers(r.data))
+    client.get('/users').then((r) => setUsers(r.data)).catch(() => {})
   }
 
   useEffect(() => {
     reload()
-    client.get('/roles').then((r) => { setRoles(r.data); setForm((f) => ({ ...f, roleName: r.data[0]?.name ?? '' })) })
-    client.get('/offices').then((r) => { setOffices(r.data); setForm((f) => ({ ...f, officeId: r.data[0]?.id ?? '' })) })
-    client.get('/governorates').then((r) => setGovernorates(r.data.filter((g) => g.active !== false)))
-    client.get('/districts').then((r) => setDistricts(r.data.filter((d) => d.active !== false)))
+    client.get('/roles').then((r) => { setRoles(r.data); setForm((f) => ({ ...f, roleName: r.data[0]?.name ?? '' })) }).catch(() => {})
+    client.get('/offices').then((r) => { setOffices(r.data); setForm((f) => ({ ...f, officeId: r.data[0]?.id ?? '' })) }).catch(() => {})
+    client.get('/governorates').then((r) => setGovernorates(r.data.filter((g) => g.active !== false))).catch(() => {})
+    client.get('/districts').then((r) => setDistricts(r.data.filter((d) => d.active !== false))).catch(() => {})
   }, [])
 
   async function toggleEnabled(u) {
@@ -70,7 +70,7 @@ export default function AdminUsersPage() {
   return (
     <div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold text-text-primary">{t('adminUsers.title')}</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight text-navy">{t('adminUsers.title')}</h1>
         <button
           type="button"
           onClick={() => { setShowForm((v) => !v); setError(null) }}
@@ -82,8 +82,8 @@ export default function AdminUsersPage() {
       </div>
 
       <div className={`grid grid-cols-1 gap-4 items-start ${showForm ? 'lg:grid-cols-[1fr_380px]' : ''}`}>
-        <div className="card p-5">
-          <h2 className="text-sm font-bold text-text-primary mb-4">{t('adminUsers.staffAccounts')}</h2>
+        <div className="dash-card p-5">
+          <h2 className="mb-4 text-base font-bold text-navy">{t('adminUsers.staffAccounts')}</h2>
           {rowError && (
             <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">{rowError}</div>
           )}
@@ -160,8 +160,8 @@ export default function AdminUsersPage() {
         </div>
 
         {showForm && (
-        <form className="card p-5" onSubmit={handleSubmit}>
-          <h2 className="text-sm font-bold text-text-primary mb-4">{t('adminUsers.createUser')}</h2>
+        <form className="dash-card p-6" onSubmit={handleSubmit}>
+          <h2 className="mb-4 text-base font-bold text-navy">{t('adminUsers.createUser')}</h2>
           {error && (
             <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">{error}</div>
           )}
@@ -183,7 +183,7 @@ export default function AdminUsersPage() {
           </div>
           <div className="mb-4">
             <label className={labelCls} htmlFor="new-user-role">{t('adminUsers.role')}</label>
-            <select id="new-user-role" className={inputCls} value={form.roleName} onChange={(e) => setForm({ ...form, roleName: e.target.value })}>
+            <select id="new-user-role" className={`${inputCls} select-field`} value={form.roleName} onChange={(e) => setForm({ ...form, roleName: e.target.value })}>
               {roles.map((r) => <option key={r.id} value={r.name}>{r.name}</option>)}
             </select>
           </div>

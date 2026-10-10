@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ArrowLeft, ArrowRight, Check, FileText, Paperclip, Send, UserRound } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import client from '../api/client.js'
 import { apiErrorMessage } from '../api/errors.js'
@@ -14,6 +15,7 @@ import { inputCls, labelCls } from '../ui.js'
 const ALLOWED_EXTENSIONS = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'txt', 'csv', 'doc', 'docx', 'xls', 'xlsx']
 const MAX_FILE_BYTES = 15 * 1024 * 1024
 const STEPS = ['stepSender', 'stepDetails', 'stepAttach']
+const HINTS = ['hintSender', 'hintDetails', 'hintAttach']
 
 function fileProblem(file, t) {
   const name = file.name || ''
@@ -29,25 +31,40 @@ function FieldError({ id, message }) {
   return <p id={id} className="mt-1 text-xs text-badge-danger-fg" role="alert">{message}</p>
 }
 
+const STEP_ICONS = [UserRound, FileText, Paperclip]
+
 function WizardSteps({ step, t }) {
   return (
-    <ol className="flex items-center mb-6" aria-label={t('requestCreate.steps')}>
+    <ol className="mb-8 grid grid-cols-3 gap-3" aria-label={t('requestCreate.steps')}>
       {STEPS.map((key, i) => {
         const done = i < step
         const active = i === step
+        const Icon = STEP_ICONS[i]
         return (
-          <li key={key} className={`flex items-center ${i < STEPS.length - 1 ? 'flex-1' : ''}`} aria-current={active ? 'step' : undefined}>
-            <div className="flex items-center gap-2">
-              <span className={`h-7 w-7 rounded-full grid place-items-center text-xs font-bold ${
-                active ? 'bg-primary text-white' : done ? 'bg-badge-success-fg text-white' : 'bg-border-subtle text-text-secondary'
-              }`}>{done ? '✓' : i + 1}</span>
-              <span className={`text-sm ${active ? 'font-bold text-text-primary' : 'text-text-secondary'} hidden sm:inline`}>{t(`requestCreate.${key}`)}</span>
+          <li key={key} aria-current={active ? 'step' : undefined} className="flex flex-col items-center text-center">
+            <div className="mb-2 flex w-full items-center">
+              <div className={`h-0.5 flex-1 ${i === 0 ? 'invisible' : done || active ? 'bg-brand' : 'bg-hairline'}`} />
+              <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 transition-colors ${
+                active ? 'border-brand bg-brand text-white shadow-[0_0_0_4px_rgba(37,99,235,0.15)]'
+                  : done ? 'border-ok bg-ok text-white' : 'border-hairline bg-white text-slate-400'
+              }`}>{done ? <Check className="h-5 w-5" aria-hidden="true" /> : <Icon className="h-5 w-5" aria-hidden="true" />}</span>
+              <div className={`h-0.5 flex-1 ${i === STEPS.length - 1 ? 'invisible' : done ? 'bg-brand' : 'bg-hairline'}`} />
             </div>
-            {i < STEPS.length - 1 && <div className={`h-0.5 flex-1 mx-3 ${done ? 'bg-badge-success-fg' : 'bg-border-subtle'}`} />}
+            <span className={`text-sm ${active ? 'font-bold text-navy' : done ? 'font-semibold text-ok-ink' : 'font-medium text-slate-500'}`}>{t(`requestCreate.${key}`)}</span>
+            <span className="hidden text-xs text-slate-500 sm:block">{t(`requestCreate.${HINTS[i]}`)}</span>
           </li>
         )
       })}
     </ol>
+  )
+}
+
+function Section({ title, children }) {
+  return (
+    <fieldset className="rounded-xl border border-hairline bg-slate-50/60 p-5">
+      <legend className="px-2 text-xs font-bold uppercase tracking-wider text-brand">{title}</legend>
+      {children}
+    </fieldset>
   )
 }
 
@@ -75,19 +92,19 @@ export default function RequestCreatePage() {
   const [failedUploads, setFailedUploads] = useState([])
 
   useEffect(() => {
-    client.get('/document-types').then((r) => setDocumentTypes(r.data))
+    client.get('/document-types').then((r) => setDocumentTypes(r.data)).catch(() => setError(t('requestCreate.errorGeneric')))
     client.get('/offices').then((r) => {
       setOffices(r.data)
       setForm((f) => ({ ...f, officeId: r.data[0]?.id ?? '' }))
-    })
+    }).catch(() => setError(t('requestCreate.errorGeneric')))
     client.get('/departments').then((r) => setDepartments(r.data.filter((d) => d.active !== false))).catch(() => setDepartments([]))
-    client.get('/governorates').then((r) => setGovernorates(r.data.filter((g) => g.active !== false)))
-    client.get('/districts').then((r) => setDistricts(r.data.filter((d) => d.active !== false)))
+    client.get('/governorates').then((r) => setGovernorates(r.data.filter((g) => g.active !== false))).catch(() => setGovernorates([]))
+    client.get('/districts').then((r) => setDistricts(r.data.filter((d) => d.active !== false))).catch(() => setDistricts([]))
   }, [])
 
   useEffect(() => {
     const handle = setTimeout(() => {
-      client.get('/citizens', { params: { q: citizenQuery || undefined } }).then((r) => setCitizens(r.data))
+      client.get('/citizens', { params: { q: citizenQuery || undefined } }).then((r) => setCitizens(r.data)).catch(() => setCitizens([]))
     }, 250)
     return () => clearTimeout(handle)
   }, [citizenQuery])
@@ -185,9 +202,9 @@ export default function RequestCreatePage() {
 
   if (createdId) {
     return (
-      <div>
-        <h1 className="text-xl font-bold text-text-primary mb-5">{t('requestCreate.title')}</h1>
-        <div className="rounded-lg border border-badge-warning-bd bg-badge-warning-bg p-6 max-w-3xl" role="alert">
+      <div className="mx-auto w-full max-w-3xl">
+        <h1 className="mb-5 text-center text-2xl font-extrabold text-navy">{t('requestCreate.title')}</h1>
+        <div className="rounded-lg border border-badge-warning-bd bg-badge-warning-bg p-6" role="alert">
           <p className="text-sm font-semibold text-badge-warning-fg mb-2">{t('requestCreate.createdWithFailures')}</p>
           <ul className="list-disc ps-5 text-sm text-badge-warning-fg mb-4">
             {failedUploads.map((n) => <li key={n}>{n}</li>)}
@@ -201,20 +218,25 @@ export default function RequestCreatePage() {
   }
 
   return (
-    <div>
-      <h1 className="text-xl font-bold text-text-primary mb-5">{t('requestCreate.title')}</h1>
-      <form onSubmit={handleSubmit} noValidate className="card p-7 max-w-3xl">
+    <div className="mx-auto w-full max-w-3xl">
+      <header className="mb-6 text-center">
+        <h1 className="text-2xl font-extrabold tracking-tight text-navy">{t('requestCreate.title')}</h1>
+        <p className="mt-1 text-sm text-slate-600">{t('requestCreate.subtitle')}</p>
+      </header>
+      <form onSubmit={handleSubmit} noValidate className="dash-card p-6 sm:p-8">
         {error && (
           <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-5" role="alert">
             {error}
           </div>
         )}
         <WizardSteps step={step} t={t} />
-        <p className="text-xs text-text-secondary mb-5"><span className="text-required">*</span> {t('common.required')}</p>
+        <p className="mb-4 text-end text-xs text-text-secondary"><span className="text-required">*</span> {t('common.required')}</p>
 
         {step === 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <div className="sm:col-span-2">
+        <div className="space-y-5">
+        <Section title={t('requestCreate.secCitizen')}>
+        <div className="grid grid-cols-1 gap-4">
+          <div>
             <label className={labelCls} htmlFor="citizen-search">
               {t('requestCreate.citizen')} <span className="text-required">*</span>
             </label>
@@ -226,7 +248,7 @@ export default function RequestCreatePage() {
               onChange={(e) => setCitizenQuery(e.target.value)}
             />
           </div>
-          <div className="sm:col-span-2">
+          <div>
             <select
               value={form.citizenId}
               onChange={(e) => setForm({ ...form, citizenId: e.target.value })}
@@ -234,7 +256,7 @@ export default function RequestCreatePage() {
               aria-required="true"
               aria-invalid={Boolean(errors.citizenId)}
               aria-describedby={errors.citizenId ? 'err-citizen' : undefined}
-              className={`${inputCls} ${errors.citizenId ? '!border-required' : ''}`}
+              className={`${inputCls} select-field ${errors.citizenId ? '!border-required' : ''}`}
             >
               <option value="">{t('requestCreate.selectCitizen')}</option>
               {citizens.map((c) => (
@@ -250,15 +272,15 @@ export default function RequestCreatePage() {
               /requests/new), so without this check they'd see a button
               whose click would just come back as a 403. */}
           {hasPermission('CITIZEN_MANAGE') && (
-            <div className="sm:col-span-2">
-              <button type="button" className="text-sm font-semibold text-primary hover:underline" onClick={() => setShowNewCitizen((v) => !v)}>
+            <div>
+              <button type="button" className="text-sm font-semibold text-brand hover:underline" onClick={() => setShowNewCitizen((v) => !v)}>
                 {showNewCitizen ? t('requestCreate.cancel') : t('requestCreate.registerNew')}
               </button>
             </div>
           )}
 
           {showNewCitizen && hasPermission('CITIZEN_MANAGE') && (
-            <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-lg border border-dashed border-border-subtle bg-app p-4">
+            <div className="grid grid-cols-1 gap-4 rounded-lg border border-dashed border-border-subtle bg-white p-4 sm:grid-cols-2">
               <div>
                 <label className={labelCls} htmlFor="reg-number">
                   {t('requestCreate.registryNumber')} <span className="text-required">*</span>
@@ -303,11 +325,15 @@ export default function RequestCreatePage() {
               </div>
             </div>
           )}
+        </div>
+        </Section>
+        <Section title={t('requestCreate.secRouting')}>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className={labelCls} htmlFor="direction">{t('requestCreate.direction')}</label>
             <select
               id="direction"
-              className={inputCls}
+              className={`${inputCls} select-field`}
               value={form.direction}
               onChange={(e) => setForm({ ...form, direction: e.target.value })}
             >
@@ -319,7 +345,7 @@ export default function RequestCreatePage() {
             <label className={labelCls} htmlFor="department">{t('requestCreate.department')}</label>
             <select
               id="department"
-              className={inputCls}
+              className={`${inputCls} select-field`}
               value={form.departmentId}
               onChange={(e) => setForm({ ...form, departmentId: e.target.value })}
             >
@@ -328,17 +354,21 @@ export default function RequestCreatePage() {
             </select>
           </div>
         </div>
+        </Section>
+        </div>
         )}
 
         {step === 1 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div className="space-y-5">
+        <Section title={t('requestCreate.secClassify')}>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className={labelCls} htmlFor="doc-type">
               {t('requestCreate.documentType')} <span className="text-required">*</span>
             </label>
             <select
               id="doc-type"
-              className={inputCls}
+              className={`${inputCls} select-field`}
               value={form.documentTypeId}
               onChange={(e) => setForm({ ...form, documentTypeId: e.target.value })}
               required
@@ -356,7 +386,7 @@ export default function RequestCreatePage() {
               id="office"
               label={<>{t('requestCreate.office')} <span className="text-required">*</span></>}
               required
-              className={inputCls}
+              className={`${inputCls} select-field`}
               labelClassName={labelCls}
               items={offices}
               districts={districts}
@@ -370,7 +400,7 @@ export default function RequestCreatePage() {
             <label className={labelCls} htmlFor="priority">{t('requestCreate.priority')}</label>
             <select
               id="priority"
-              className={inputCls}
+              className={`${inputCls} select-field`}
               value={form.priority}
               onChange={(e) => setForm({ ...form, priority: e.target.value })}
             >
@@ -379,7 +409,11 @@ export default function RequestCreatePage() {
               <option value="URGENT">{t('requestCreate.priorityUrgent')}</option>
             </select>
           </div>
-          <div className="sm:col-span-2">
+        </div>
+        </Section>
+        <Section title={t('requestCreate.secContent')}>
+        <div className="grid grid-cols-1 gap-4">
+          <div>
             <label className={labelCls} htmlFor="subject">{t('requestCreate.subject')}</label>
             <input
               id="subject"
@@ -389,7 +423,7 @@ export default function RequestCreatePage() {
               onChange={(e) => setForm({ ...form, subject: e.target.value })}
             />
           </div>
-          <div className="sm:col-span-2">
+          <div>
             <label className={labelCls} htmlFor="notes">{t('requestCreate.notes')}</label>
             <textarea
               id="notes"
@@ -400,15 +434,17 @@ export default function RequestCreatePage() {
             />
           </div>
         </div>
-
+        </Section>
+        </div>
         )}
 
         {step === 2 && (
           <div>
             <h2 className="text-sm font-bold text-text-primary mb-1">{t('requestCreate.attachTitle')}</h2>
             <p className="text-xs text-text-secondary mb-3">{t('requestCreate.attachHint')}</p>
-            <label className="flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-border-subtle bg-app px-4 py-8 text-center cursor-pointer hover:border-primary/60">
-              <span className="text-sm font-semibold text-primary">{t('requestCreate.addFiles')}</span>
+            <label className="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-border-subtle bg-slate-50 px-4 py-8 text-center transition-colors hover:border-brand hover:bg-brand-tint">
+              <Paperclip className="h-6 w-6 text-brand" aria-hidden="true" />
+              <span className="text-sm font-semibold text-brand">{t('requestCreate.addFiles')}</span>
               <span className="text-xs text-text-secondary">{ALLOWED_EXTENSIONS.join(', ')} · 15 MB</span>
               <input
                 type="file"
@@ -432,7 +468,7 @@ export default function RequestCreatePage() {
             )}
 
             <h2 className="text-sm font-bold text-text-primary mt-6 mb-2">{t('requestCreate.reviewTitle')}</h2>
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 rounded-lg bg-app p-4 text-sm">
+            <dl className="grid grid-cols-1 gap-x-6 gap-y-3 rounded-xl border border-hairline bg-slate-50/60 p-5 text-sm sm:grid-cols-2">
               <div><dt className="text-[11px] font-bold uppercase text-text-secondary">{t('requestCreate.citizen')}</dt><dd>{selectedCitizen ? `${selectedCitizen.firstNameEn} ${selectedCitizen.lastNameEn} (${selectedCitizen.registryNumber})` : '—'}</dd></div>
               <div><dt className="text-[11px] font-bold uppercase text-text-secondary">{t('requestCreate.documentType')}</dt><dd>{selectedType?.nameEn ?? '—'}</dd></div>
               <div><dt className="text-[11px] font-bold uppercase text-text-secondary">{t('requestCreate.office')}</dt><dd>{selectedOffice?.nameEn ?? '—'}</dd></div>
@@ -442,7 +478,7 @@ export default function RequestCreatePage() {
           </div>
         )}
 
-        <div className="flex justify-between gap-2.5 mt-7 pt-5 border-t border-row-divider">
+        <div className="flex justify-between gap-2.5 mt-8 pt-5 border-t border-hairline">
           <button
             type="button"
             onClick={() => navigate(-1)}
@@ -454,13 +490,13 @@ export default function RequestCreatePage() {
             {step > 0 && (
               <button type="button" onClick={goBack}
                       className="btn-secondary">
-                {t('requestCreate.back')}
+                <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />{t('requestCreate.back')}
               </button>
             )}
             {step < STEPS.length - 1 ? (
               <button type="button" onClick={goNext}
                       className="btn-primary">
-                {t('requestCreate.next')}
+                {t('requestCreate.next')}<ArrowRight className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
               </button>
             ) : (
               <button
@@ -473,7 +509,7 @@ export default function RequestCreatePage() {
                     <span className="h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
                   </span>
                 )}
-                <span className={busy ? 'invisible' : ''}>{t('requestCreate.submit')}</span>
+                <span className={`inline-flex items-center gap-2 ${busy ? 'invisible' : ''}`}><Send className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />{t('requestCreate.submit')}</span>
               </button>
             )}
           </div>

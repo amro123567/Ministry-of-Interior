@@ -1,13 +1,14 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { format } from 'date-fns'
-import { Eye } from 'lucide-react'
+import { ChevronDown, Eye, Search, SlidersHorizontal, UserCheck } from 'lucide-react'
 import client from '../api/client.js'
 import StatusBadge, { SlaBadge } from '../components/StatusBadge.jsx'
 import { SkeletonTableRows } from '../components/Skeleton.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { Badge, IconButton } from '../components/ui/index.jsx'
+import { ActiveFilterChips, FilterField } from '../components/FilterBar.jsx'
 
 const STATUSES = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'ARCHIVED']
 const PRIORITIES = ['NORMAL', 'HIGH', 'URGENT']
@@ -49,6 +50,8 @@ export default function RequestsListPage() {
   const sla = get('sla')
   const from = get('from')
   const to = get('to')
+  // Secondary filters live behind a toggle, but open by default when the URL already uses one.
+  const [moreOpen, setMoreOpen] = useState(Boolean(officeId || direction || from || to))
 
   function setParam(key, value) {
     const next = new URLSearchParams(searchParams)
@@ -142,6 +145,23 @@ export default function RequestsListPage() {
 
   const showEmpty = !loading && !error && requests.length === 0
 
+  const secondaryCount = [officeId, direction, from, to].filter(Boolean).length
+  const officeName = (id) => {
+    const o = offices.find((x) => String(x.id) === String(id))
+    return o ? (document.dir === 'rtl' && o.nameAr ? o.nameAr : o.nameEn) : id
+  }
+  // One removable chip per active filter (search has its own box, so it is not repeated here).
+  const activeChips = [
+    status && { key: 'status', onRemove: () => setParam('status', ''), label: t(`status.${status}`, status) },
+    priority && { key: 'priority', onRemove: () => setParam('priority', ''), label: t(`requests.priority.${priority}`, priority) },
+    sla && { key: 'sla', onRemove: () => setParam('sla', ''), label: t(`sla.${sla}`, sla) },
+    assignedToMe && { key: 'mine', onRemove: () => setParam('mine', ''), label: t('requests.assignedToMe') },
+    officeId && { key: 'office', onRemove: () => setParam('office', ''), label: officeName(officeId) },
+    direction && { key: 'direction', onRemove: () => setParam('direction', ''), label: t(direction === 'INCOMING' ? 'requests.directionIncoming' : 'requests.directionOutgoing') },
+    from && { key: 'from', onRemove: () => setParam('from', ''), label: `${t('requests.dateFrom')}: ${from}` },
+    to && { key: 'to', onRemove: () => setParam('to', ''), label: `${t('requests.dateTo')}: ${to}` },
+  ].filter(Boolean)
+
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
@@ -165,67 +185,96 @@ export default function RequestsListPage() {
         </div>
       </div>
 
-      {/* Filters apply live (the URL is the source of truth), so there is no
-          separate "Apply" step -- this panel is a 4-column grid: row 1 search
-          (2 cols) + status + priority; row 2 office + direction + date range;
-          row 3 SLA / assigned-to-me on the left, reset on the right. */}
-      <div className="card p-4 mb-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <input
-          placeholder={t('requests.searchPlaceholder')}
-          aria-label={t('requests.searchPlaceholder')}
-          value={search}
-          onChange={(e) => setParam('q', e.target.value)}
-          className="field sm:col-span-2"
-        />
-        <select value={status} onChange={(e) => setParam('status', e.target.value)} className="field" aria-label={t('requests.colStatus')}>
-          <option value="">{t('requests.allStatuses')}</option>
-          {STATUSES.map((s) => <option key={s} value={s}>{t(`status.${s}`, s)}</option>)}
-        </select>
-        <select value={priority} onChange={(e) => setParam('priority', e.target.value)} className="field" aria-label={t('requests.filterPriority')}>
-          <option value="">{t('requests.allPriorities')}</option>
-          {PRIORITIES.map((p) => <option key={p} value={p}>{t(`requests.priority.${p}`, p)}</option>)}
-        </select>
-
-        <select value={officeId} onChange={(e) => setParam('office', e.target.value)} className="field" aria-label={t('requests.filterOffice')}>
-          <option value="">{t('requests.allOffices')}</option>
-          {offices.map((o) => (
-            <option key={o.id} value={o.id}>{document.dir === 'rtl' && o.nameAr ? o.nameAr : o.nameEn}</option>
-          ))}
-        </select>
-        <select value={direction} onChange={(e) => setParam('direction', e.target.value)} className="field" aria-label={t('requests.colDirection')}>
-          <option value="">{t('requests.allDirections')}</option>
-          <option value="INCOMING">{t('requests.directionIncoming')}</option>
-          <option value="OUTGOING">{t('requests.directionOutgoing')}</option>
-        </select>
-        <label className="flex flex-col gap-1 text-xs font-semibold text-text-secondary xl:flex-row xl:items-center xl:gap-2">
-          <span className="shrink-0">{t('requests.dateFrom')}</span>
-          <input type="date" value={from} max={to || undefined} onChange={(e) => setParam('from', e.target.value)} className="field font-normal" />
-        </label>
-        <label className="flex flex-col gap-1 text-xs font-semibold text-text-secondary xl:flex-row xl:items-center xl:gap-2">
-          <span className="shrink-0">{t('requests.dateTo')}</span>
-          <input type="date" value={to} min={from || undefined} onChange={(e) => setParam('to', e.target.value)} className="field font-normal" />
-        </label>
-
-        <select value={sla} onChange={(e) => setParam('sla', e.target.value)} className="field" aria-label={t('requests.filterSla')}>
-          <option value="">{t('requests.allSla')}</option>
-          {SLA_STATES.map((x) => <option key={x} value={x}>{t(`sla.${x}`, x)}</option>)}
-        </select>
-        <div className="sm:col-span-2 lg:col-span-3 flex flex-wrap items-center justify-end gap-2.5">
+      {/* Filters apply live (the URL is the source of truth), so there is no "Apply" step.
+          Layout: search + quick toggles on top; the three filters people use most (status,
+          priority, SLA) in one labelled row; the rest (office, direction, dates) behind
+          "More filters"; and every active filter echoed as a removable chip. */}
+      <section className="card mb-5 divide-y divide-row-divider" aria-label={t('requests.filters')}>
+        <div className="flex flex-wrap items-center gap-3 p-4">
+          <div className="relative min-w-[240px] flex-1">
+            <Search size={16} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-text-muted" aria-hidden="true" />
+            <input
+              type="search"
+              placeholder={t('requests.searchPlaceholder')}
+              aria-label={t('requests.searchPlaceholder')}
+              value={search}
+              onChange={(e) => setParam('q', e.target.value)}
+              className="field !ps-9"
+            />
+          </div>
           <button
             type="button"
             onClick={() => setParam('mine', assignedToMe ? '' : '1')}
             aria-pressed={assignedToMe}
-            className={assignedToMe ? 'btn-primary' : 'btn-secondary'}
+            className={`${assignedToMe ? 'btn-primary' : 'btn-secondary'} shrink-0`}
           >
-            {t('requests.assignedToMe')}
+            <UserCheck size={16} aria-hidden="true" />{t('requests.assignedToMe')}
           </button>
-          {anyFilter && (
-            <button type="button" onClick={clearFilters} className="btn-secondary">
-              {t('requests.clearFilters')}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setMoreOpen((o) => !o)}
+            aria-expanded={moreOpen}
+            aria-controls="more-filters"
+            className="btn-secondary shrink-0"
+          >
+            <SlidersHorizontal size={16} aria-hidden="true" />
+            {moreOpen ? t('requests.fewerFilters') : t('requests.moreFilters')}
+            {secondaryCount > 0 && !moreOpen && (
+              <span className="grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-[11px] font-bold text-white">{secondaryCount}</span>
+            )}
+            <ChevronDown size={14} className={`transition-transform ${moreOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+          </button>
         </div>
-      </div>
+
+        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-3">
+          <FilterField label={t('requests.colStatus')}>
+            <select value={status} onChange={(e) => setParam('status', e.target.value)} className="field select-field" aria-label={t('requests.colStatus')}>
+              <option value="">{t('requests.allStatuses')}</option>
+              {STATUSES.map((x) => <option key={x} value={x}>{t(`status.${x}`, x)}</option>)}
+            </select>
+          </FilterField>
+          <FilterField label={t('requests.labelPriority')}>
+            <select value={priority} onChange={(e) => setParam('priority', e.target.value)} className="field select-field" aria-label={t('requests.filterPriority')}>
+              <option value="">{t('requests.allPriorities')}</option>
+              {PRIORITIES.map((x) => <option key={x} value={x}>{t(`requests.priority.${x}`, x)}</option>)}
+            </select>
+          </FilterField>
+          <FilterField label={t('requests.labelSla')}>
+            <select value={sla} onChange={(e) => setParam('sla', e.target.value)} className="field select-field" aria-label={t('requests.filterSla')}>
+              <option value="">{t('requests.allSla')}</option>
+              {SLA_STATES.map((x) => <option key={x} value={x}>{t(`sla.${x}`, x)}</option>)}
+            </select>
+          </FilterField>
+        </div>
+
+        {moreOpen && (
+          <div id="more-filters" className="grid grid-cols-1 gap-3 bg-app/60 p-4 sm:grid-cols-2 lg:grid-cols-4">
+            <FilterField label={t('requests.labelOffice')}>
+              <select value={officeId} onChange={(e) => setParam('office', e.target.value)} className="field select-field" aria-label={t('requests.filterOffice')}>
+                <option value="">{t('requests.allOffices')}</option>
+                {offices.map((o) => (
+                  <option key={o.id} value={o.id}>{document.dir === 'rtl' && o.nameAr ? o.nameAr : o.nameEn}</option>
+                ))}
+              </select>
+            </FilterField>
+            <FilterField label={t('requests.colDirection')}>
+              <select value={direction} onChange={(e) => setParam('direction', e.target.value)} className="field select-field" aria-label={t('requests.colDirection')}>
+                <option value="">{t('requests.allDirections')}</option>
+                <option value="INCOMING">{t('requests.directionIncoming')}</option>
+                <option value="OUTGOING">{t('requests.directionOutgoing')}</option>
+              </select>
+            </FilterField>
+            <FilterField label={t('requests.dateFrom')}>
+              <input type="date" value={from} max={to || undefined} onChange={(e) => setParam('from', e.target.value)} className="field" aria-label={t('requests.dateFrom')} />
+            </FilterField>
+            <FilterField label={t('requests.dateTo')}>
+              <input type="date" value={to} min={from || undefined} onChange={(e) => setParam('to', e.target.value)} className="field" aria-label={t('requests.dateTo')} />
+            </FilterField>
+          </div>
+        )}
+
+        <ActiveFilterChips chips={activeChips} onClear={clearFilters} />
+      </section>
 
       {error && (
         <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">
