@@ -41,7 +41,7 @@ describe('LoginPage', () => {
 
     expect(await screen.findByText('Invalid username or password')).toBeInTheDocument()
     expect(screen.queryByText('home page')).not.toBeInTheDocument()
-    expect(localStorage.getItem('cts_user')).toBeNull()
+    expect(sessionStorage.getItem('cts_user')).toBeNull()
     // the button is usable again so the user can retry
     expect(screen.getByRole('button', { name: en.login.signIn })).toBeEnabled()
   })
@@ -68,7 +68,7 @@ describe('LoginPage', () => {
 
     expect(client.post).toHaveBeenCalledWith('/auth/login', { username: 'officer', password: 'Officer1234!' })
     expect(await screen.findByText('home page')).toBeInTheDocument()
-    expect(JSON.parse(localStorage.getItem('cts_user'))).toMatchObject({
+    expect(JSON.parse(sessionStorage.getItem('cts_user'))).toMatchObject({
       username: 'officer', permissions: ['REQUEST_TRANSITION_SUBMIT'],
     })
   })
