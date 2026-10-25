@@ -1,6 +1,7 @@
 package com.moi.cts.service;
 
 import com.moi.cts.dto.RequestDtos.*;
+import com.moi.cts.dto.UpdateDraftRequest;
 import com.moi.cts.entity.*;
 import com.moi.cts.exception.ApiExceptions.BadRequestException;
 import com.moi.cts.exception.ApiExceptions.IllegalTransitionException;
@@ -87,12 +88,15 @@ public class RequestService {
         }
         if (f.search() != null && !f.search().isBlank()) {
             String like = "%" + f.search().trim().toLowerCase(Locale.ROOT) + "%";
-            spec = spec.and((root, q, cb) -> cb.or(
-                    cb.like(cb.lower(root.get("referenceNumber")), like),
-                    cb.like(cb.lower(cb.coalesce(root.<String>get("subject"), "")), like),
-                    cb.like(cb.lower(root.join("citizen").get("firstNameEn")), like),
-                    cb.like(cb.lower(root.join("citizen").get("lastNameEn")), like),
-                    cb.like(root.join("citizen").get("registryNumber"), like)));
+            spec = spec.and((root, q, cb) -> {
+                var citizen = root.join("citizen");
+                return cb.or(
+                        cb.like(cb.lower(root.get("referenceNumber")), like),
+                        cb.like(cb.lower(cb.coalesce(root.<String>get("subject"), "")), like),
+                        cb.like(cb.lower(citizen.<String>get("firstNameEn")), like),
+                        cb.like(cb.lower(cb.coalesce(citizen.<String>get("lastNameEn"), "")), like),
+                        cb.like(cb.lower(citizen.<String>get("registryNumber")), like));
+            });
         }
         if (Boolean.TRUE.equals(f.assignedToMe()) && actorUserId != null) {
             spec = spec.and((root, q, cb) -> cb.equal(root.get("assignedTo").get("id"), actorUserId));
@@ -200,7 +204,7 @@ public class RequestService {
         req.setOffice(office);
         req.setCreatedBy(createdBy);
         req.setStatus(RequestStatus.DRAFT);
-        req.setPriority(request.priority() != null ? request.priority() : "NORMAL");
+        req.setPriority(normalizePriority(request.priority()));
         req.setNotes(request.notes());
         req.setDirection(direction);
         req.setSubject(request.subject() == null || request.subject().isBlank() ? null : request.subject().trim());
@@ -211,6 +215,49 @@ public class RequestService {
         recordHistory(req, null, RequestStatus.DRAFT, createdBy, "Created");
         auditService.log("CorrespondenceRequest", req.getId(), "CREATE", createdBy,
                 "reference=" + req.getReferenceNumber() + " direction=" + direction);
+        return toDetail(req);
+    }
+
+    @Transactional
+    public RequestDetailDto updateDraft(Long id, UpdateDraftRequest request, AppUserPrincipal actor) {
+        CorrespondenceRequest req = find(id);
+        if (req.getStatus() != RequestStatus.DRAFT) {
+            throw new BadRequestException("Request " + req.getReferenceNumber() + " is " + req.getStatus()
+                    + "; only a DRAFT can be edited.");
+        }
+        Citizen citizen = citizenRepository.findById(request.citizenId())
+                .orElseThrow(() -> new NotFoundException("Citizen not found: " + request.citizenId()));
+        DocumentType docType = documentTypeRepository.findById(request.documentTypeId())
+                .orElseThrow(() -> new NotFoundException("Document type not found: " + request.documentTypeId()));
+        Office office = officeRepository.findById(request.officeId())
+                .orElseThrow(() -> new NotFoundException("Office not found: " + request.officeId()));
+        Department department = request.departmentId() == null ? null
+                : departmentRepository.findById(request.departmentId())
+                        .orElseThrow(() -> new NotFoundException("Department not found: " + request.departmentId()));
+        CorrespondenceDirection direction = req.getDirection();
+        if (request.direction() != null && !request.direction().isBlank()) {
+            try {
+                direction = CorrespondenceDirection.valueOf(request.direction().trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Unknown direction: " + request.direction());
+            }
+        }
+        AppUser editor = currentUser(actor);
+        boolean typeChanged = req.getDocumentType() == null || !req.getDocumentType().getId().equals(docType.getId());
+        req.setCitizen(citizen);
+        req.setDocumentType(docType);
+        req.setOffice(office);
+        req.setDepartment(department);
+        req.setDirection(direction);
+        req.setPriority(normalizePriority(request.priority()));
+        req.setNotes(request.notes() == null || request.notes().isBlank() ? null : request.notes());
+        req.setSubject(request.subject() == null || request.subject().isBlank() ? null : request.subject().trim());
+        if (typeChanged) {
+            req.setDueAt(Instant.now().plus(docType.getSlaDays(), ChronoUnit.DAYS));
+        }
+        req = requestRepository.save(req);
+        auditService.log("CorrespondenceRequest", req.getId(), "UPDATE", editor,
+                "reference=" + req.getReferenceNumber() + " draft edited");
         return toDetail(req);
     }
 
@@ -339,6 +386,15 @@ public class RequestService {
         h.setChangedBy(actor);
         h.setNote(note);
         historyRepository.save(h);
+    }
+
+    private String normalizePriority(String raw) {
+        if (raw == null || raw.isBlank()) return "NORMAL";
+        String p = raw.trim().toUpperCase(Locale.ROOT);
+        if (!List.of("NORMAL", "HIGH", "URGENT").contains(p)) {
+            throw new BadRequestException("Unknown priority: " + raw);
+        }
+        return p;
     }
 
     private CorrespondenceRequest find(Long id) {

@@ -86,7 +86,7 @@ export default function CitizenAuditSection({ citizenId }) {
                       <td className={`${tdCls} font-semibold text-text-primary whitespace-nowrap`}>{c.fieldName}</td>
                       <td className={tdCls}>
                         <span className="text-text-secondary">{c.oldValue || '—'}</span>
-                        <span className="mx-1.5 text-slate-300">→</span>
+                        <span className="mx-1.5 text-slate-400">{t('common.to')}</span>
                         <span className="text-text-primary">{c.newValue || '—'}</span>
                       </td>
                       <td className={`${tdCls} whitespace-nowrap`}>{c.changedByName}</td>

@@ -68,7 +68,7 @@ export default function FamilyHistorySection({ citizenId, citizenLabel }) {
                   </span>
                   <span className="text-xs text-text-secondary ms-2">
                     {m.joinedDate ? format(new Date(m.joinedDate), 'MMM d, yyyy') : '—'}
-                    {m.leftDate && ` → ${format(new Date(m.leftDate), 'MMM d, yyyy')} (${m.leftReason})`}
+                    {m.leftDate && ` ${t('common.to')} ${format(new Date(m.leftDate), 'MMM d, yyyy')} (${m.leftReason})`}
                   </span>
                 </div>
                 <Link to={`/family-records/${m.familyRecordId}`} className="text-sm font-semibold text-primary hover:underline whitespace-nowrap">

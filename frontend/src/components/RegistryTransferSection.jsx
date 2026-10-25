@@ -147,7 +147,7 @@ export default function RegistryTransferSection({ citizenId, currentOfficeName, 
           {transfers.map((tr) => (
             <li key={tr.id} className="py-3">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-                <span className="text-sm font-semibold text-text-primary">{tr.fromOfficeName ?? '—'} → {tr.toOfficeName}</span>
+                <span className="text-sm font-semibold text-text-primary">{tr.fromOfficeName ?? '—'} {t('common.to')} {tr.toOfficeName}</span>
                 <ApprovalStatusBadge status={tr.status} />
               </div>
               <div className="text-xs text-text-secondary">

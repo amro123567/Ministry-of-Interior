@@ -6,7 +6,7 @@
 2. Open **https://localhost:3443** once and accept the certificate warning, so it does not appear in front of the audience.
 3. Check `docker compose ps`: mysql and backend *healthy*, frontend *running*.
 4. Open four browser profiles or private windows, one per role, already signed in: officer, manager, admin, viewer (passwords in `docs/INSTALLATION.md`). Zoom to 110%.
-5. Have `docs/postman/CTS_API_Collection.json` imported in Postman, and a terminal ready with `mvn test` already run (110 tests).
+5. Have `docs/postman/CTS_API_Collection.json` imported in Postman, and a terminal ready with `mvn test` already run (122 tests).
 6. Keep a small `sample.pdf` and a `test.exe` on the desktop for the upload step.
 7. **Backup**: a screen recording of the full run (the 5 UAT screenshots and `docs/screens/manual/` are the fallback if the system fails).
 
@@ -31,7 +31,7 @@
 | 8:15 | Manager | **Reports**: breach rate, throughput, by type, by office. | Live figures, no spreadsheet. |
 | 8:45 | Viewer | Sign in: no **New Request**, no Reports, no Users. Open a request: no action buttons. | Four roles over twelve permissions, enforced on the server and mirrored in the interface. |
 | 9:15 | Any | Press **EN** to switch to Arabic. | Full right-to-left Arabic interface. |
-| 9:30 | Terminal | Show `mvn test`: 110 passed; newman 44 requests, 51 assertions; UAT table. | Tested at API, component and user-acceptance level. |
+| 9:30 | Terminal | Show `mvn test`: 122 passed; newman 44 requests, 51 assertions; UAT table. | Tested at API, component and user-acceptance level. |
 | 10:00 | — | Slide: deviations and future work. | Honest limits (below). |
 
 ## Honest limits to state before they are asked

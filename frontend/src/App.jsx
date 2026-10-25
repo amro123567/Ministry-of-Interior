@@ -3,6 +3,7 @@ import Navbar from './components/Navbar.jsx'
 import Footer from './components/Footer.jsx'
 import Breadcrumb from './components/Breadcrumb.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { useLanguage } from './context/LanguageContext.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
@@ -21,6 +22,7 @@ import FamilyRecordDetailPage from './pages/FamilyRecordDetailPage.jsx'
 import DocumentCreatePage from './pages/DocumentCreatePage.jsx'
 import DocumentDetailPage from './pages/DocumentDetailPage.jsx'
 import WorkflowEnginePage from './pages/WorkflowEnginePage.jsx'
+import NotFoundPage from './pages/NotFoundPage.jsx'
 
 export default function App() {
   const location = useLocation()
@@ -54,6 +56,12 @@ export default function App() {
 
       <main id="main-content" className="flex-1 w-full max-w-[1800px] mx-auto px-5 sm:px-8 2xl:px-12 py-6">
         <Breadcrumb />
+        <ErrorBoundary
+          key={location.pathname}
+          title={t('common.pageErrorTitle', 'Something went wrong')}
+          message={t('common.pageErrorMessage', 'This page could not be displayed. Try again, or go back and reopen it.')}
+          retryLabel={t('common.retry', 'Try again')}
+        >
         <Routes>
           <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/requests" element={<ProtectedRoute><RequestsListPage /></ProtectedRoute>} />
@@ -132,7 +140,9 @@ export default function App() {
             path="/admin/audit"
             element={<ProtectedRoute permissions={['AUDIT_VIEW']}><AuditLogPage /></ProtectedRoute>}
           />
+          <Route path="*" element={<ProtectedRoute><NotFoundPage /></ProtectedRoute>} />
         </Routes>
+        </ErrorBoundary>
       </main>
       <Footer />
     </div>

@@ -173,7 +173,7 @@ export default function GuardianshipSection({ citizenId }) {
               <div className="text-xs text-text-secondary mt-0.5">
                 {g.courtName ?? '—'} · {t('guardianship.courtDecisionNumber')} {g.courtDecisionNumber} ·{' '}
                 {g.startDate ? format(new Date(g.startDate), 'MMM d, yyyy') : '—'}
-                {g.endDate && ` → ${format(new Date(g.endDate), 'MMM d, yyyy')}`}
+                {g.endDate && ` ${t('common.to')} ${format(new Date(g.endDate), 'MMM d, yyyy')}`}
               </div>
             </li>
           ))}

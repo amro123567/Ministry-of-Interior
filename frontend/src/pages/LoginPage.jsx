@@ -20,8 +20,8 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    if (user) navigate('/', { replace: true })
-  }, [user, navigate])
+    if (user) navigate(location.state?.from ?? '/', { replace: true })
+  }, [user, navigate, location.state])
 
   if (user) return null
 

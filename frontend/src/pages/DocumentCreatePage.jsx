@@ -29,7 +29,7 @@ export default function DocumentCreatePage() {
   const presetCitizen = presetCitizenId ? { citizenId: Number(presetCitizenId), citizenLabel: presetCitizenLabel } : emptyPick
 
   const requestedKind = searchParams.get('kind')
-  const [kind, setKindState] = useState(DOCUMENT_FORMS[requestedKind] ? requestedKind : 'birth')
+  const [kind, setKindState] = useState(Object.hasOwn(DOCUMENT_FORMS, requestedKind) ? requestedKind : 'birth')
   const [values, setValues] = useState(DOCUMENT_FORMS[kind].initial)
   const [common, setCommon] = useState(emptyCommon)
   const [citizen, setCitizen] = useState(presetCitizen)

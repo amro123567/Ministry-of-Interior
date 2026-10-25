@@ -1,6 +1,6 @@
 # CTS — Project Milestone Log
 
-Source: the git history of `github.com/amro123567/Ministry-of-Interior` (branch `spring-rewrite`), 15 September to 9 October 2026, plus the project plan (CPP work-breakdown structure).
+Source: the git history of `github.com/amro123567/Ministry-of-Interior` (branch `main`), 15 September to 9 October 2026, plus the project plan (CPP work-breakdown structure).
 
 ## Timeline
 
@@ -12,16 +12,16 @@ Source: the git history of `github.com/amro123567/Ministry-of-Interior` (branch 
 | 3.0 Development | 20 Sep | Full-requirements migration: documents with seven certificate subtypes, citizen registry, workflow engine, SLA records and payments, three-tier audit, sessions, permission-based RBAC; matching front-end screens | "Full-requirements migration (Items 1-8) + permission-based RBAC + frontend integration pass" |
 | 6.0 Documentation | 21 Sep | Repository cleanup; Software Design Document updated | "Update SDD" |
 | 3.0 / 4.0 Hardening | 2–3 Oct | Gap closure against the requirements: write-access limited to workflow roles (viewer is read-only); incoming/outgoing direction, subject and department routing; list filters; readable references `CTS-YYYY-NNNNNN`; append-only audit tables with MySQL triggers; closed requests cannot be assigned; workflow catalog drives transitions; document validation and physical-custody records (FR-11); document-type authority catalog (FR-05) | 20 commits on 3 Oct, see `git log` |
-| 4.0 Testing and Validation | 9 Oct | CSV export honours filters; non-fatal reference migration; audit rows for seeded data; Postman collection with assertions on every request (44 requests, 51 assertions, run with newman); 12 front-end component tests; 10 user-acceptance scenarios (one defect found and fixed: executable uploads were accepted) | commits of 9 Oct; `docs/UAT.md` |
+| 4.0 Testing and Validation | 9 Oct | CSV export honours filters; non-fatal reference migration; audit rows for seeded data; Postman collection with assertions on every request (44 requests, 51 assertions, run with newman); front-end component tests; 10 user-acceptance scenarios (one defect found and fixed: executable uploads were accepted) | commits of 9 Oct; `docs/UAT.md` |
 | 6.0 Documentation | 9 Oct | README refresh, installation guide, user manual with real screenshots | "Add installation guide, user manual with screenshots" |
 
-## Test status at the last milestone
+## Test status (latest run)
 
 | Layer | Result |
 |---|---|
-| Backend (JUnit, in-memory H2) | 110 tests, 0 failures |
+| Backend (JUnit, in-memory H2) | 122 tests, 0 failures |
 | API (Postman / newman) | 44 requests, 51 assertions, 0 failed |
-| Front end (Vitest + Testing Library) | 12 tests, 0 failures |
+| Front end (Vitest + Testing Library) | 50 tests |
 | User acceptance | 10 scenarios, all pass after one fix (`docs/UAT.md`) |
 
 ## Remaining

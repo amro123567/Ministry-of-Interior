@@ -1,4 +1,4 @@
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useLanguage } from '../context/LanguageContext.jsx'
 
 // Lightweight route -> breadcrumb trail. No new dependency: derived from the
@@ -6,25 +6,26 @@ import { useLanguage } from '../context/LanguageContext.jsx'
 export default function Breadcrumb() {
   const { t } = useLanguage()
   const location = useLocation()
-  const params = useParams()
   const path = location.pathname
+  // Rendered outside <Routes>, so useParams() is always empty here; read the id from the path.
+  const idOf = (prefix) => (path.startsWith(prefix) ? path.slice(prefix.length).split('/')[0] : '')
 
   const trail = [{ label: t('nav.dashboard'), to: '/' }]
 
   if (path.startsWith('/requests/new')) {
     trail.push({ label: t('nav.correspondence'), to: '/requests' })
     trail.push({ label: t('requestCreate.title') })
-  } else if (path.startsWith('/requests/') && params.id) {
+  } else if (idOf('/requests/')) {
     trail.push({ label: t('nav.correspondence'), to: '/requests' })
-    trail.push({ label: `#${params.id}` })
+    trail.push({ label: `#${idOf('/requests/')}` })
   } else if (path.startsWith('/requests')) {
     trail.push({ label: t('nav.correspondence') })
-  } else if (path.startsWith('/citizens/') && params.id) {
+  } else if (idOf('/citizens/')) {
     trail.push({ label: t('nav.citizens'), to: '/citizens' })
-    trail.push({ label: `#${params.id}` })
+    trail.push({ label: `#${idOf('/citizens/')}` })
   } else if (path.startsWith('/citizens')) {
     trail.push({ label: t('nav.citizens') })
-  } else if (path.startsWith('/admin/users/') && params.id) {
+  } else if (idOf('/admin/users/')) {
     trail.push({ label: t('nav.users'), to: '/admin/users' })
     trail.push({ label: t('userActivity.breadcrumb') })
   } else if (path.startsWith('/admin/users')) {

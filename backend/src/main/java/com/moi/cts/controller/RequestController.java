@@ -2,6 +2,7 @@ package com.moi.cts.controller;
 
 import com.moi.cts.dto.MiscDtos.AuditEntryDto;
 import com.moi.cts.dto.RequestDtos.*;
+import com.moi.cts.dto.UpdateDraftRequest;
 import com.moi.cts.security.AppUserPrincipal;
 import com.moi.cts.service.AuditService;
 import com.moi.cts.service.RequestService;
@@ -70,6 +71,12 @@ public class RequestController {
     public ResponseEntity<RequestDetailDto> create(@Valid @RequestBody CreateRequestRequest request,
                                                      @AuthenticationPrincipal AppUserPrincipal actor) {
         return ResponseEntity.ok(requestService.create(request, actor));
+    }
+
+    @PutMapping("/{id}")
+    public RequestDetailDto updateDraft(@PathVariable Long id, @Valid @RequestBody UpdateDraftRequest request,
+                                        @AuthenticationPrincipal AppUserPrincipal actor) {
+        return requestService.updateDraft(id, request, actor);
     }
 
     @PatchMapping("/{id}/assign")

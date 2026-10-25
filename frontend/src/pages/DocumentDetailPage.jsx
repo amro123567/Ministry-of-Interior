@@ -34,6 +34,8 @@ export default function DocumentDetailPage() {
   useEffect(() => {
     if (!kind) { setError(t('documentRegistry.couldNotLoad')); setLoading(false); return }
     setLoading(true)
+    setError(null)
+    setData(null)
     client.get(`/documents/${apiSegment}/${id}`)
       .then((r) => setData(r.data))
       .catch(() => setError(t('documentRegistry.couldNotLoad')))

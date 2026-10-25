@@ -53,7 +53,9 @@ public class AuthService {
         this.lockoutMinutes = lockoutMinutes;
     }
 
-    @Transactional
+    // noRollbackFor: the failed-attempt counter, lockout and login-attempt audit rows written
+    // before an AuthException is thrown must survive it, or lockout could never persist.
+    @Transactional(noRollbackFor = AuthException.class)
     public TokenResponse login(LoginRequest request) {
         AppUser lookedUp = userRepository.findByUsername(request.username()).orElse(null);
         try {

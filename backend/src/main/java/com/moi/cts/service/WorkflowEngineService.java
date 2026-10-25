@@ -106,6 +106,11 @@ public class WorkflowEngineService {
         }
         Set<Permission> required = request.requiredPermissionIds() == null ? Set.of()
                 : request.requiredPermissionIds().stream().map(this::findPermission).collect(Collectors.toSet());
+        // WorkflowTransition.isPermittedFor() treats an empty set as "anyone", so a
+        // transition without permissions would be open even to a read-only user.
+        if (required.isEmpty()) {
+            throw new BadRequestException("A workflow transition must require at least one permission.");
+        }
 
         WorkflowTransition transition = new WorkflowTransition();
         transition.setFromState(from);

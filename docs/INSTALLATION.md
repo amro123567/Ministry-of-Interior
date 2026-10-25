@@ -19,7 +19,6 @@ For running without Docker, see section 6.
 ```powershell
 git clone https://github.com/amro123567/Ministry-of-Interior.git
 cd Ministry-of-Interior
-git checkout spring-rewrite
 ```
 
 ## 3. Configure secrets
@@ -105,8 +104,8 @@ Open **http://localhost:5173** (plain HTTP). The development server forwards `/a
 ## 7. Run the tests
 
 ```powershell
-cd backend ; mvn test                      # 110 backend tests, no MySQL needed
-cd ..\frontend ; npm install ; npm test    # 12 component tests
+cd backend ; mvn test                      # 122 backend tests, no MySQL needed
+cd ..\frontend ; npm install ; npm test    # 50 component tests
 npx newman run docs/postman/CTS_API_Collection.json   # API tests, backend must be running
 ```
 

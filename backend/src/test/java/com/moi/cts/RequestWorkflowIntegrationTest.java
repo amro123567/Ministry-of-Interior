@@ -1088,9 +1088,10 @@ class RequestWorkflowIntegrationTest {
                 .andExpect(status().isOk());
 
         // Operating an instance (create + transition) is NOT gated by
-        // USER_MANAGE -- the officer can do both, same as the tests above,
-        // because the real authorization lives on each transition's own
-        // requiredPermissions instead.
+        // USER_MANAGE -- the officer can do both, same as the tests above.
+        // It does need one REQUEST_TRANSITION_* permission (a viewer is
+        // rejected, see aViewerCannotCreateOrOperateAWorkflowInstance), and
+        // each transition's own requiredPermissions are checked on top.
         mockMvc.perform(post("/api/workflow/instances")
                         .header("Authorization", "Bearer " + officerToken)
                         .contentType("application/json")
@@ -1098,7 +1099,75 @@ class RequestWorkflowIntegrationTest {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    void aViewerCannotCreateOrOperateAWorkflowInstance() throws Exception {
+        String viewerToken = tokenFor("viewer", "Viewer1234!");
+        String officerToken = tokenFor("officer", "Officer1234!");
+
+        mockMvc.perform(post("/api/workflow/instances")
+                        .header("Authorization", "Bearer " + viewerToken)
+                        .contentType("application/json")
+                        .content("{\"entityType\":\"TEST_SUBJECT\",\"entityId\":9005}"))
+                .andExpect(status().isForbidden());
+
+        MvcResult created = mockMvc.perform(post("/api/workflow/instances")
+                        .header("Authorization", "Bearer " + officerToken)
+                        .contentType("application/json")
+                        .content("{\"entityType\":\"TEST_SUBJECT\",\"entityId\":9006}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        long instanceId = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asLong();
+
+        mockMvc.perform(post("/api/workflow/instances/" + instanceId + "/transition")
+                        .header("Authorization", "Bearer " + viewerToken)
+                        .contentType("application/json")
+                        .content("{\"actionCode\":\"SUBMIT\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void creatingAWorkflowTransitionWithoutAnyRequiredPermissionIsRejected() throws Exception {
+        String adminToken = tokenFor("admin", "Admin1234!");
+        long underReviewId = workflowStateIdByCode(adminToken, "UNDER_REVIEW");
+        long archivedId = workflowStateIdByCode(adminToken, "ARCHIVED");
+
+        mockMvc.perform(post("/api/workflow/transitions")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType("application/json")
+                        .content("{\"fromStateId\":" + underReviewId + ",\"toStateId\":" + archivedId
+                                + ",\"actionCode\":\"NO_PERMISSION_ATTEMPT\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
     // ---- full service-request model: SLA records & payments ---------------
+
+    @Test
+    void aDraftCanBeEditedButNotOnceSubmittedAndNotByAViewer() throws Exception {
+        String officerToken = tokenFor("officer", "Officer1234!");
+        String viewerToken = tokenFor("viewer", "Viewer1234!");
+        long citizenId = createCitizen(officerToken, "REG-900201", "Draft", "Edit");
+        long docTypeId = firstDocumentTypeId(officerToken);
+        long officeId = firstOfficeId(officerToken);
+        long requestId = createRequest(officerToken, citizenId, docTypeId, officeId);
+        String body = "{\"citizenId\":" + citizenId + ",\"documentTypeId\":" + docTypeId + ",\"officeId\":" + officeId
+                + ",\"priority\":\"HIGH\",\"subject\":\"Edited subject\",\"notes\":\"Edited notes\"}";
+
+        mockMvc.perform(put("/api/requests/" + requestId).header("Authorization", "Bearer " + viewerToken)
+                        .contentType("application/json").content(body))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(put("/api/requests/" + requestId).header("Authorization", "Bearer " + officerToken)
+                        .contentType("application/json").content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.priority").value("HIGH"))
+                .andExpect(jsonPath("$.subject").value("Edited subject"))
+                .andExpect(jsonPath("$.status").value("DRAFT"));
+
+        transition(officerToken, requestId, "SUBMITTED", null).andExpect(status().isOk());
+        mockMvc.perform(put("/api/requests/" + requestId).header("Authorization", "Bearer " + officerToken)
+                        .contentType("application/json").content(body))
+                .andExpect(status().isBadRequest());
+    }
 
     @Test
     void slaRecordTracksTheLiveStatusWhileOpenAndBecomesMetOnceClosedBeforeTheDueDate() throws Exception {

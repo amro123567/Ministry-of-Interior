@@ -4,6 +4,7 @@ import client from '../api/client.js'
 import { apiErrorMessage } from '../api/errors.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
+import { inputCls } from '../ui.js'
 
 const CUSTODY_EVENTS = ['RECEIVED', 'TRANSFERRED', 'STORED', 'RELEASED', 'RETURNED']
 

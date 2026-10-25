@@ -4,20 +4,20 @@ const client = axios.create({ baseURL: '/api', timeout: 15000 })
 
 function getTokens() {
   return {
-    accessToken: localStorage.getItem('cts_access_token'),
-    refreshToken: localStorage.getItem('cts_refresh_token'),
+    accessToken: sessionStorage.getItem('cts_access_token'),
+    refreshToken: sessionStorage.getItem('cts_refresh_token'),
   }
 }
 
 export function setTokens(accessToken, refreshToken) {
-  if (accessToken) localStorage.setItem('cts_access_token', accessToken)
-  if (refreshToken) localStorage.setItem('cts_refresh_token', refreshToken)
+  if (accessToken) sessionStorage.setItem('cts_access_token', accessToken)
+  if (refreshToken) sessionStorage.setItem('cts_refresh_token', refreshToken)
 }
 
 export function clearTokens() {
-  localStorage.removeItem('cts_access_token')
-  localStorage.removeItem('cts_refresh_token')
-  localStorage.removeItem('cts_user')
+  sessionStorage.removeItem('cts_access_token')
+  sessionStorage.removeItem('cts_refresh_token')
+  sessionStorage.removeItem('cts_user')
 }
 
 client.interceptors.request.use((config) => {

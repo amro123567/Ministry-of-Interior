@@ -47,8 +47,7 @@ export default function Navbar() {
 
   async function handleLogout() {
     setMenuOpen(false)
-    await logout()
-    navigate('/login', { state: { loggedOut: true } })
+    try { await logout() } finally { navigate('/login', { state: { loggedOut: true } }) }
   }
 
   function handleSearchSubmit(e) {

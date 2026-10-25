@@ -111,10 +111,15 @@ export default function RequestCreatePage() {
 
   async function handleCreateCitizen(e) {
     e.preventDefault()
-    const res = await client.post('/citizens', newCitizen)
-    setCitizens((c) => [res.data, ...c])
-    setForm((f) => ({ ...f, citizenId: res.data.id }))
-    setShowNewCitizen(false)
+    setError(null)
+    try {
+      const res = await client.post('/citizens', newCitizen)
+      setCitizens((c) => [res.data, ...c])
+      setForm((f) => ({ ...f, citizenId: res.data.id }))
+      setShowNewCitizen(false)
+    } catch (err) {
+      setError(apiErrorMessage(err, t('requestCreate.errorGeneric'), t))
+    }
   }
 
   function validate(forStep) {

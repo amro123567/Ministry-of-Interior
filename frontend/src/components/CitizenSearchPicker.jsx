@@ -23,11 +23,13 @@ export default function CitizenSearchPicker({ label, value, onChange, excludeCit
 
   useEffect(() => {
     if (citizenId) { setResults([]); return }
+    let stale = false
     const handle = setTimeout(() => {
       client.get('/citizens', { params: { q: query || undefined } })
-        .then((r) => setResults(r.data.filter((c) => c.id !== excludeCitizenId)))
+        .then((r) => { if (!stale) setResults(r.data.filter((c) => c.id !== excludeCitizenId)) })
+        .catch(() => { if (!stale) setResults([]) })
     }, 250)
-    return () => clearTimeout(handle)
+    return () => { stale = true; clearTimeout(handle) }
   }, [query, citizenId, excludeCitizenId])
 
   return (

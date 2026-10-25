@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, ArrowRight, CheckCircle2, Flag, GitBranch, KeyRound, MessageSquare, Paperclip, Play, Search, Workflow } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CheckCircle2, Flag, GitBranch, Inbox, KeyRound, MessageSquare, Paperclip, Play, Search, Workflow } from 'lucide-react'
 import { format } from 'date-fns'
 import client from '../api/client.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -30,6 +30,10 @@ function MetaTag({ icon: Icon, children, title }) {
     </span>
   )
 }
+
+// The six statuses a correspondence request can actually hold. The catalog may contain
+// other states (for other engine subjects), but a request can never reach them.
+const REQUEST_STATUS_CODES = new Set(['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'ARCHIVED'])
 
 // The admin-configurable workflow engine (ERD domain 3): a catalog of
 // WorkflowState/WorkflowTransition an admin edits, plus a WorkflowInstance
@@ -390,6 +394,9 @@ export default function WorkflowEnginePage() {
                 </label>
                 <input id="ws-code" className={inputCls} required value={stateForm.code} onChange={(e) => setStateForm({ ...stateForm, code: normCode(e.target.value) })} />
                 {states.some((x) => x.code === stateForm.code.trim()) && <p className="mt-1 text-xs font-semibold text-crit-ink">{t('workflowEngine.codeTaken')}</p>}
+                {stateForm.code.trim() && !states.some((x) => x.code === stateForm.code.trim()) && !REQUEST_STATUS_CODES.has(stateForm.code.trim()) && (
+                  <p className="mt-1 text-xs font-semibold text-warn-ink">{t('workflowEngine.newCodeWarning')}</p>
+                )}
               </div>
               <div>
                 <label className={labelCls} htmlFor="ws-order">{t('workflowEngine.displayOrder')}</label>
@@ -452,6 +459,9 @@ export default function WorkflowEnginePage() {
                     </span>
                     {s.isInitial && <MetaTag icon={Play}>{t('workflowEngine.initialTag')}</MetaTag>}
                     {s.isFinal && <MetaTag icon={Flag}>{t('workflowEngine.finalTag')}</MetaTag>}
+                    {REQUEST_STATUS_CODES.has(s.code)
+                      ? <MetaTag icon={Inbox} title={t('workflowEngine.usedByRequestsHint')}>{t('workflowEngine.usedByRequests')}</MetaTag>
+                      : <MetaTag icon={AlertTriangle} title={t('workflowEngine.engineOnlyHint')}>{t('workflowEngine.engineOnly')}</MetaTag>}
                   </div>
                 </li>
               )

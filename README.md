@@ -107,7 +107,7 @@ database first; see `backend/README.md`.
 
 ## Tests
 
-Backend — 110 tests on an in-memory H2 database (no MySQL needed): end-to-end
+Backend — 122 tests on an in-memory H2 database (no MySQL needed): end-to-end
 workflow tests over the real REST API, JWT unit tests, seed-data invariant
 checks, audit immutability, CSV export filtering, reference-number migration,
 and upload file-type validation.
@@ -117,8 +117,9 @@ cd backend
 mvn test
 ```
 
-Frontend — 12 component tests (Vitest + React Testing Library): login, route
-and button permission gating, and the create-request form.
+Frontend — 50 component tests (Vitest + React Testing Library): login, route
+and button permission gating, dashboard, request and document forms, citizen
+and admin pages, navigation and the workflow page.
 
 ```powershell
 cd frontend

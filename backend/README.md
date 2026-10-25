@@ -47,7 +47,7 @@ With Docker, none of this is needed; see the root `README.md`.
 mvn test
 ```
 
-110 tests, all on in-memory H2 (no MySQL needed):
+122 tests, all on in-memory H2 (no MySQL needed):
 
 - End-to-end workflow tests over the real REST API: login, refresh,
   logout, lockout, the full request lifecycle, illegal-transition and

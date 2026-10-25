@@ -5,8 +5,14 @@ const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const raw = localStorage.getItem('cts_user')
-    return raw ? JSON.parse(raw) : null
+    // Per-tab session storage: opening the app in a fresh tab/window starts
+    // signed out and lands on /login instead of restoring a stale session.
+    try {
+      const raw = sessionStorage.getItem('cts_user')
+      return raw && sessionStorage.getItem('cts_access_token') ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
   })
 
   const login = useCallback(async (username, password) => {
@@ -23,7 +29,7 @@ export function AuthProvider({ children }) {
       // backend will actually allow.
       permissions: res.data.permissions ?? [],
     }
-    localStorage.setItem('cts_user', JSON.stringify(u))
+    sessionStorage.setItem('cts_user', JSON.stringify(u))
     setUser(u)
     return u
   }, [])
@@ -32,7 +38,7 @@ export function AuthProvider({ children }) {
     // Clear client-side state first so logging out always works instantly,
     // even if the backend is unreachable or slow — the server-side call
     // below is best-effort and must never block the user from logging out.
-    const refreshToken = localStorage.getItem('cts_refresh_token')
+    const refreshToken = sessionStorage.getItem('cts_refresh_token')
     clearTokens()
     setUser(null)
     if (refreshToken) {

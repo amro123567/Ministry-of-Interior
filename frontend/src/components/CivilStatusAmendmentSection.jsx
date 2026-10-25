@@ -198,7 +198,7 @@ export default function CivilStatusAmendmentSection({ citizenId, citizen, onDeci
             <li key={a.id} className="py-3">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
                 <span className="text-sm font-semibold text-text-primary">
-                  {t(`civilStatusAmendment.fieldNames.${a.fieldChanged}`, a.fieldChanged)}: {a.oldValue || '—'} → {a.newValue}
+                  {t(`civilStatusAmendment.fieldNames.${a.fieldChanged}`, a.fieldChanged)}: {a.oldValue || '—'} {t('common.to')} {a.newValue}
                 </span>
                 <ApprovalStatusBadge status={a.status} />
               </div>

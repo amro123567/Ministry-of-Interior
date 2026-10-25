@@ -148,6 +148,12 @@ public class SecurityConfig {
                 // reach it.
                 .requestMatchers(HttpMethod.POST, "/api/workflow/states").hasAuthority("USER_MANAGE")
                 .requestMatchers(HttpMethod.POST, "/api/workflow/transitions").hasAuthority("USER_MANAGE")
+                // Operating an instance (create + execute a transition) needs at
+                // least one request-workflow permission, so a read-only VIEWER
+                // cannot write here. Each transition's own requiredPermissions
+                // are still checked inside WorkflowEngineService on top of this.
+                .requestMatchers(HttpMethod.POST, "/api/workflow/instances", "/api/workflow/instances/*/transition")
+                    .hasAnyAuthority("REQUEST_TRANSITION_SUBMIT", "REQUEST_TRANSITION_REVIEW", "REQUEST_TRANSITION_DECIDE", "REQUEST_TRANSITION_ARCHIVE")
                 // Full service-request model (SLA records & payments,
                 // RequestFinanceController): reading a request's SLA snapshot
                 // or payment history stays open to any authenticated user,
@@ -167,6 +173,8 @@ public class SecurityConfig {
                 // VIEWER could write. Gate them on the request-workflow
                 // permissions (held by OFFICER/MANAGER/ADMIN, never VIEWER).
                 .requestMatchers(HttpMethod.POST, "/api/requests", "/api/requests/*/documents")
+                    .hasAnyAuthority("REQUEST_TRANSITION_SUBMIT", "REQUEST_TRANSITION_REVIEW", "REQUEST_TRANSITION_DECIDE", "REQUEST_TRANSITION_ARCHIVE")
+                .requestMatchers(HttpMethod.PUT, "/api/requests/*")
                     .hasAnyAuthority("REQUEST_TRANSITION_SUBMIT", "REQUEST_TRANSITION_REVIEW", "REQUEST_TRANSITION_DECIDE", "REQUEST_TRANSITION_ARCHIVE")
                 .requestMatchers(HttpMethod.PATCH, "/api/requests/*/assign")
                     .hasAnyAuthority("REQUEST_TRANSITION_SUBMIT", "REQUEST_TRANSITION_REVIEW", "REQUEST_TRANSITION_DECIDE", "REQUEST_TRANSITION_ARCHIVE")

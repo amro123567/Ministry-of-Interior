@@ -83,6 +83,9 @@ export default function RequestDetailPage() {
   const [pendingReject, setPendingReject] = useState(false)
   const [assigneeId, setAssigneeId] = useState('')
   const [assignNote, setAssignNote] = useState('')
+  const [editing, setEditing] = useState(false)
+  const [editForm, setEditForm] = useState(null)
+  const [editOptions, setEditOptions] = useState({ documentTypes: [], offices: [], departments: [] })
 
   // ---- SLA record & payments (Step 7) ----------------------------------
   const [slaRecord, setSlaRecord] = useState(null)
@@ -116,7 +119,7 @@ export default function RequestDetailPage() {
   }, [id, t])
 
   useEffect(() => { load() }, [load])
-  useEffect(() => { if (hasPermission('USER_VIEW')) client.get('/users').then((r) => setUsers(r.data)) }, [hasPermission])
+  useEffect(() => { if (hasPermission('USER_VIEW')) client.get('/users').then((r) => setUsers(r.data)).catch(() => setUsers([])) }, [hasPermission])
 
   async function doTransition(to, reason) {
     setBusy(true); setError(null)
@@ -141,6 +144,49 @@ export default function RequestDetailPage() {
     } finally { setBusy(false) }
   }
 
+  const canEditDraft = ['REQUEST_TRANSITION_SUBMIT', 'REQUEST_TRANSITION_REVIEW', 'REQUEST_TRANSITION_DECIDE', 'REQUEST_TRANSITION_ARCHIVE']
+    .some((p) => hasPermission(p))
+
+  function startEditing() {
+    setError(null)
+    setEditForm({
+      documentTypeId: String(request.documentType.id),
+      officeId: String(request.office.id),
+      departmentId: request.departmentId ? String(request.departmentId) : '',
+      direction: request.direction || 'INCOMING',
+      priority: request.priority || 'NORMAL',
+      subject: request.subject || '',
+      notes: request.notes || '',
+    })
+    Promise.all([
+      client.get('/document-types').then((r) => r.data).catch(() => []),
+      client.get('/offices').then((r) => r.data).catch(() => []),
+      client.get('/departments').then((r) => r.data.filter((d) => d.active !== false)).catch(() => []),
+    ]).then(([documentTypes, offices, departments]) => setEditOptions({ documentTypes, offices, departments }))
+    setEditing(true)
+  }
+
+  async function saveDraft(e) {
+    e.preventDefault()
+    setBusy(true); setError(null)
+    try {
+      await client.put(`/requests/${id}`, {
+        citizenId: request.citizen.id,
+        documentTypeId: Number(editForm.documentTypeId),
+        officeId: Number(editForm.officeId),
+        departmentId: editForm.departmentId ? Number(editForm.departmentId) : null,
+        direction: editForm.direction,
+        priority: editForm.priority,
+        subject: editForm.subject.trim() || null,
+        notes: editForm.notes.trim() || null,
+      })
+      setEditing(false)
+      load()
+    } catch (err) {
+      setError(apiErrorMessage(err, t('requestDetail.editFailed', 'Could not save the changes.'), t))
+    } finally { setBusy(false) }
+  }
+
   async function handleUpload(e) {
     const file = e.target.files[0]
     if (!file) return
@@ -156,11 +202,15 @@ export default function RequestDetailPage() {
   }
 
   async function download(attachmentId, fileName) {
-    const res = await client.get(`/documents/${attachmentId}/download`, { responseType: 'blob' })
-    const url = URL.createObjectURL(res.data)
-    const a = document.createElement('a')
-    a.href = url; a.download = fileName; a.click()
-    URL.revokeObjectURL(url)
+    try {
+      const res = await client.get(`/documents/${attachmentId}/download`, { responseType: 'blob' })
+      const url = URL.createObjectURL(res.data)
+      const a = document.createElement('a')
+      a.href = url; a.download = fileName; a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(apiErrorMessage(err, t('requestDetail.downloadFailed', 'Could not download the file.'), t))
+    }
   }
 
   async function refreshSla() {
@@ -291,7 +341,7 @@ export default function RequestDetailPage() {
         </div>
       </div>
 
-      <div role="tablist" aria-label={t('requestDetail.sections')} className="flex gap-1 border-b border-border-subtle mb-4 overflow-x-auto">
+      <div role="tablist" aria-label={t('requestDetail.sections')} className="flex gap-1 border-b border-border-subtle mb-4 overflow-x-auto overflow-y-hidden">
         {[
           ['details', t('requestDetail.tabDetails')],
           ['finance', t('requestFinance.title')],
@@ -315,7 +365,60 @@ export default function RequestDetailPage() {
 
       {tab === 'details' && (
       <div className="card p-5 mb-4">
-        <h2 className="text-sm font-bold text-text-primary mb-4">{t('requestDetail.details')}</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-bold text-text-primary">{t('requestDetail.details')}</h2>
+          {request.status === 'DRAFT' && canEditDraft && !editing && (
+            <button type="button" className="btn-primary" onClick={startEditing}>{t('requestDetail.editDraft', 'Edit draft')}</button>
+          )}
+        </div>
+        {editing && editForm && request.status === 'DRAFT' && (
+          <form onSubmit={saveDraft} className="rounded-lg border border-border-subtle p-4 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls} htmlFor="ed-type">{t('requestDetail.documentType')}</label>
+              <select id="ed-type" required className={inputCls} value={editForm.documentTypeId} onChange={(e) => setEditForm({ ...editForm, documentTypeId: e.target.value })}>
+                {editOptions.documentTypes.map((d) => <option key={d.id} value={d.id}>{d.nameEn}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls} htmlFor="ed-office">{t('requestDetail.office')}</label>
+              <select id="ed-office" required className={inputCls} value={editForm.officeId} onChange={(e) => setEditForm({ ...editForm, officeId: e.target.value })}>
+                {editOptions.offices.map((o) => <option key={o.id} value={o.id}>{o.nameEn}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls} htmlFor="ed-dept">{t('requestDetail.department')}</label>
+              <select id="ed-dept" className={inputCls} value={editForm.departmentId} onChange={(e) => setEditForm({ ...editForm, departmentId: e.target.value })}>
+                <option value="">—</option>
+                {editOptions.departments.map((d) => <option key={d.id} value={d.id}>{d.nameEn}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls} htmlFor="ed-dir">{t('requestDetail.direction')}</label>
+              <select id="ed-dir" className={inputCls} value={editForm.direction} onChange={(e) => setEditForm({ ...editForm, direction: e.target.value })}>
+                <option value="INCOMING">{t('requestDetail.directionIncoming')}</option>
+                <option value="OUTGOING">{t('requestDetail.directionOutgoing')}</option>
+              </select>
+            </div>
+            <div>
+              <label className={labelCls} htmlFor="ed-prio">{t('requestDetail.priority')}</label>
+              <select id="ed-prio" className={inputCls} value={editForm.priority} onChange={(e) => setEditForm({ ...editForm, priority: e.target.value })}>
+                {['NORMAL', 'HIGH', 'URGENT'].map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls} htmlFor="ed-subject">{t('requestDetail.subject')}</label>
+              <input id="ed-subject" className={inputCls} maxLength={500} value={editForm.subject} onChange={(e) => setEditForm({ ...editForm, subject: e.target.value })} />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={labelCls} htmlFor="ed-notes">{t('requestDetail.notes')}</label>
+              <textarea id="ed-notes" rows={3} className={inputCls} value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} />
+            </div>
+            <div className="sm:col-span-2 flex justify-end gap-2">
+              <button type="button" className="btn-secondary" disabled={busy} onClick={() => setEditing(false)}>{t('common.cancel', 'Cancel')}</button>
+              <button type="submit" className="btn-primary" disabled={busy}>{t('requestDetail.saveChanges', 'Save changes')}</button>
+            </div>
+          </form>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
           <Field label={t('requestDetail.citizen')}>{request.citizen.firstNameEn} {request.citizen.lastNameEn} ({request.citizen.registryNumber})</Field>
           <Field label={t('requestDetail.documentType')}>{request.documentType.nameEn}</Field>

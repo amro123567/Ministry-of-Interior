@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ChevronDown, Eye, Search, SlidersHorizontal, UserCheck } from 'lucide-react'
@@ -34,6 +34,7 @@ export default function RequestsListPage() {
   const [offices, setOffices] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [exportError, setExportError] = useState(null)
   const [sort, setSort] = useState({ key: null, dir: 'asc' })
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -84,25 +85,34 @@ export default function RequestsListPage() {
     to: to || undefined,
   }), [status, search, assignedToMe, officeId, priority, direction, sla, from, to])
 
+  const latestLoad = useRef(0)
   const load = useCallback(() => {
+    // Only the most recent request may update the screen, so a slow earlier
+    // filter can't overwrite the results of a newer one.
+    const mine = ++latestLoad.current
     setLoading(true)
     setError(null)
     client.get('/requests', { params: filterParams })
-      .then((r) => { setRequests(r.data); setPage(1) })
-      .catch(() => setError(t('requests.couldNotLoad')))
-      .finally(() => setLoading(false))
+      .then((r) => { if (mine === latestLoad.current) { setRequests(r.data); setPage(1) } })
+      .catch(() => { if (mine === latestLoad.current) setError(t('requests.couldNotLoad')) })
+      .finally(() => { if (mine === latestLoad.current) setLoading(false) })
   }, [filterParams, t])
 
   useEffect(() => { load() }, [load])
 
   async function exportCsv() {
-    const res = await client.get('/requests/export', { params: filterParams, responseType: 'blob' })
-    const url = URL.createObjectURL(res.data)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'correspondence_requests.csv'
-    a.click()
-    URL.revokeObjectURL(url)
+    setExportError(null)
+    try {
+      const res = await client.get('/requests/export', { params: filterParams, responseType: 'blob' })
+      const url = URL.createObjectURL(res.data)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'correspondence_requests.csv'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setExportError(t('requests.exportFailed', 'Could not export the list.'))
+    }
   }
 
   function toggleSort(key) {
@@ -124,10 +134,12 @@ export default function RequestsListPage() {
   const currentPage = Math.min(page, pageCount)
   const visible = sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
-  function SortHeader({ k, label, align }) {
+  // A plain render helper (not a component) so the header buttons keep keyboard focus across re-renders.
+  function sortHeader(k, label, align) {
     const active = sort.key === k
     return (
       <th
+        key={k}
         scope="col"
         aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
         className={`th-cell ${align === 'center' ? '!text-center' : align === 'end' ? '!text-end' : ''}`}
@@ -275,6 +287,9 @@ export default function RequestsListPage() {
         <ActiveFilterChips chips={activeChips} onClear={clearFilters} />
       </section>
 
+      {exportError && (
+        <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">{exportError}</div>
+      )}
       {error && (
         <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">
           {error}
@@ -292,13 +307,13 @@ export default function RequestsListPage() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <SortHeader k="referenceNumber" label={t('requests.colReference')} />
-                    <SortHeader k="direction" label={t('requests.colDirection')} />
-                    <SortHeader k="citizenName" label={t('requests.colCitizen')} />
-                    <SortHeader k="documentTypeName" label={t('requests.colDocType')} />
-                    <SortHeader k="status" label={t('requests.colStatus')} align="center" />
-                    <SortHeader k="assignedToName" label={t('requests.colAssignedTo')} />
-                    <SortHeader k="dueAt" label={t('requests.colDue')} align="end" />
+                    {sortHeader('referenceNumber', t('requests.colReference'))}
+                    {sortHeader('direction', t('requests.colDirection'))}
+                    {sortHeader('citizenName', t('requests.colCitizen'))}
+                    {sortHeader('documentTypeName', t('requests.colDocType'))}
+                    {sortHeader('status', t('requests.colStatus'), "center")}
+                    {sortHeader('assignedToName', t('requests.colAssignedTo'))}
+                    {sortHeader('dueAt', t('requests.colDue'), "end")}
                     <th className="th-cell !text-end" aria-hidden="true"></th>
                   </tr>
                 </thead>

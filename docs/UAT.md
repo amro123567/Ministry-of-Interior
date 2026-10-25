@@ -1,6 +1,6 @@
 # User Acceptance Testing (UAT) — CTS
 
-**Date:** 2026-10-09  **Tester:** Mohammad Serhan  **Branch:** `spring-rewrite`
+**Date:** 2026-10-09  **Tester:** Mohammad Serhan  **Branch:** `main`
 **Environment:** Spring Boot backend + MySQL in Docker (port 8080); React front end on the **Vite dev server** (`http://localhost:5173`, API proxied). The Docker HTTPS build (`https://localhost:3443`, self-signed certificate) was not used because the test browser cannot open it. The front-end code is identical.
 **Data:** demo seed data plus earlier Postman runs (20 requests).
 **Scope (from the CPP):** correspondence registration, assignment, workflow transitions, reporting, plus RBAC, audit and SLA.

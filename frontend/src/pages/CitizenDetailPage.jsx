@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { format } from 'date-fns'
 import client from '../api/client.js'
+import { apiErrorMessage } from '../api/errors.js'
 import ParentLineagePicker from '../components/ParentLineagePicker.jsx'
 import FamilyHistorySection from '../components/FamilyHistorySection.jsx'
 import GuardianshipSection from '../components/GuardianshipSection.jsx'
@@ -74,9 +75,16 @@ export default function CitizenDetailPage() {
   // name, marital status, ...) -- can refresh this page's own citizen
   // state without duplicating the fetch.
   const loadCitizen = useCallback(() => {
+    setError(null)
     return client.get(`/citizens/${id}`)
       .then((r) => setCitizen(r.data))
-      .catch(() => setError(t('citizenDetail.couldNotLoad')))
+      .catch((err) => {
+        // Say why (not found / no permission / server error) instead of one generic line.
+        const status = err?.response?.status
+        const base = t('citizenDetail.couldNotLoad')
+        const detail = apiErrorMessage(err, null, t)
+        setError(detail && detail !== base ? `${base} (${status ?? ''} ${detail})`.replace('( ', '(') : status ? `${base} (${status})` : base)
+      })
   }, [id, t])
 
   useEffect(() => {
@@ -162,7 +170,7 @@ export default function CitizenDetailPage() {
         <Field label={t('citizenDetail.maritalStatus')} value={c.maritalStatus ? t(`citizens.maritalStatus.${c.maritalStatus}`, c.maritalStatus) : null} />
       </div>
 
-      <div role="tablist" aria-label={t('citizenDetail.sections')} className="flex gap-1 border-b border-border-subtle mb-4 overflow-x-auto">
+      <div role="tablist" aria-label={t('citizenDetail.sections')} className="flex gap-1 border-b border-border-subtle mb-4 overflow-x-auto overflow-y-hidden">
         {tabs.map(([key, label]) => (
           <button
             key={key}
