@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * CTS demo-data seeder -- registers 34 citizens in many different states and
- * exercises every part of the system through the real REST API:
+ * CTS demo-data seeder -- creates extra staff accounts (one admin, several
+ * managers, officers and viewers), registers 34 citizens in many different
+ * states and exercises every part of the system through the real REST API:
  *   citizens (4 marital states, alive/deceased, registered + unregistered
  *   parents, minors), family records (members joining / leaving), all 7
  *   certificate kinds with review validations and chain-of-custody events,
@@ -14,11 +15,29 @@
  * Needs Node 18+ and the backend reachable at http://localhost:8080 (docker
  * compose publishes it). Override with CTS_API=http://host:port/api.
  *
- * Safe to re-run: citizens are skipped when their registry number exists,
- * and every other step is attempted again and logged, never fatal.
+ * Run it once on a fresh database. Staff accounts and citizens that already
+ * exist are skipped, and if every citizen is already registered the script
+ * stops after the staff step instead of duplicating requests and certificates.
+ * To reseed from scratch:  docker compose down -v ; docker compose up --build -d
+ *
+ * Extra staff (password = <Role>1234!, e.g. officer2 / Officer1234!):
+ *   officer2-5, manager2-4, viewer2-5. The only admin stays "admin".
  */
 const API = process.env.CTS_API ?? 'http://localhost:8080/api'
 const PASS = { admin: 'Admin1234!', manager: 'Manager1234!', officer: 'Officer1234!' }
+const ROLE_PASS = { OFFICER: 'Officer1234!', MANAGER: 'Manager1234!', VIEWER: 'Viewer1234!' }
+
+// username, full name, role
+const STAFF = [
+  ['officer2', 'Rami Khoury', 'OFFICER'], ['officer3', 'Nour Haddad', 'OFFICER'],
+  ['officer4', 'Hassan Mansour', 'OFFICER'], ['officer5', 'Tala Fakhoury', 'OFFICER'],
+  ['manager2', 'Maya Saab', 'MANAGER'], ['manager3', 'Ziad Hamdan', 'MANAGER'],
+  ['manager4', 'Dina Rahme', 'MANAGER'],
+  ['viewer2', 'Karim Nasr', 'VIEWER'], ['viewer3', 'Lara Daher', 'VIEWER'],
+  ['viewer4', 'Fadi Aoun', 'VIEWER'], ['viewer5', 'Joumana Sarkis', 'VIEWER'],
+]
+const officers = ['officer']
+const managers = ['manager']
 
 const log = (...a) => console.log(...a)
 const stats = { ok: 0, fail: 0 }
@@ -37,10 +56,10 @@ async function call(role, method, path, body, { form } = {}) {
 async function attempt(label, fn) {
   try { const r = await fn(); stats.ok++; return r } catch (e) { stats.fail++; log(`  ! ${label}: ${e.message}`); return null }
 }
-async function login(role) {
-  const res = await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: role, password: PASS[role] }) })
-  if (!res.ok) throw new Error(`login ${role} failed (${res.status}) -- is the backend up and are the demo accounts unchanged?`)
-  tokens[role] = (await res.json()).accessToken
+async function login(key, username = key, password = PASS[key]) {
+  const res = await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) })
+  if (!res.ok) throw new Error(`login ${username} failed (${res.status}) -- is the backend up and are the demo accounts unchanged?`)
+  tokens[key] = (await res.json()).accessToken
 }
 const pick = (list, re, fallbackIndex = 0) => list.find((x) => re.test(`${x.code ?? ''} ${x.nameEn ?? x.name ?? ''}`)) ?? list[fallbackIndex % Math.max(list.length, 1)]
 const dt = (y, m, d) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
@@ -88,8 +107,28 @@ const P = [
 ]
 
 async function main() {
-  await Promise.all(Object.keys(PASS).map(login))
+  await Promise.all(Object.keys(PASS).map((k) => login(k)))
   log('Signed in as admin / manager / officer.')
+
+  // ------------------------------------------------------------- staff --
+  log('\nStaff accounts…')
+  const offices0 = (await attempt('offices', () => call('admin', 'GET', '/offices'))) ?? []
+  const existingUsers = (await attempt('users', () => call('admin', 'GET', '/users'))) ?? []
+  for (const [i, [username, fullName, roleName]] of STAFF.entries()) {
+    if (!existingUsers.some((u) => u.username === username)) {
+      const made = await attempt(`user ${username}`, () => call('admin', 'POST', '/users', {
+        username, password: ROLE_PASS[roleName], fullName, email: `${username}@moi.gov.lb`, roleName,
+        officeId: offices0.length ? offices0[i % offices0.length].id : null,
+      }))
+      if (made) log(`  + ${username}  ${fullName}  (${roleName})`)
+    }
+    if (roleName === 'VIEWER') continue
+    try {
+      await login(username, username, ROLE_PASS[roleName])
+      ;(roleName === 'OFFICER' ? officers : managers).push(username)
+    } catch (e) { log(`  ! ${e.message}`) }
+  }
+  log(`Working staff: ${officers.length} officers, ${managers.length} managers.`)
 
   const ref = {}
   for (const [k, p] of Object.entries({ offices: '/offices', docTypes: '/document-types', departments: '/departments', courts: '/courts', authorities: '/religious-authorities', mukhtars: '/mukhtars', users: '/users' })) {
@@ -107,6 +146,7 @@ async function main() {
   log(`\nRegistering ${P.length} citizens…`)
   const id = {}
   let n = 0
+  let newCitizens = 0
   for (const row of P) {
     const [key, fe, le, fa, la, dob, gender, religion, sect, marital, place, fk, mk, x = {}] = row
     const registryNumber = `REG-3${String(++n).padStart(5, '0')}`
@@ -121,8 +161,13 @@ async function main() {
       fatherId: fk ? id[fk] ?? null : null, motherId: mk ? id[mk] ?? null : null,
       fatherNameUnregistered: x.unregFather ?? null, motherNameUnregistered: x.unregMother ?? null,
     }
-    const created = await attempt(`citizen ${fe} ${le}`, () => call('admin', 'POST', '/citizens', body))
-    if (created) { id[key] = created.id; log(`  + ${registryNumber}  ${fe} ${le}`) }
+    const created = await attempt(`citizen ${fe} ${le}`, () => call('officer', 'POST', '/citizens', body))
+    if (created) { id[key] = created.id; newCitizens++; log(`  + ${registryNumber}  ${fe} ${le}`) }
+  }
+  if (newCitizens === 0 && Object.keys(id).length === P.length) {
+    log('\nAll demo citizens already exist, so the data was seeded before. Nothing more to add.')
+    log('To start over: docker compose down -v ; docker compose up --build -d, then run this script again.')
+    return
   }
   const have = (...keys) => keys.every((k) => id[k])
 
@@ -131,21 +176,21 @@ async function main() {
   const families = [
     ['FB-3001', 'antoine', [['marie', 'SPOUSE'], ['georges', 'CHILD'], ['rita', 'CHILD'], ['nadine', 'CHILD']]],
     ['FB-3002', 'georges', [['carla', 'SPOUSE'], ['elie', 'CHILD'], ['maya', 'CHILD']]],
-    ['FB-3003', 'omar', [['salma', 'PARENT'], ['layla', 'SIBLING'], ['hiba', 'NIECE']]],
+    ['FB-3003', 'omar', [['salma', 'OTHER'], ['layla', 'OTHER'], ['hiba', 'OTHER']]],
     ['FB-3004', 'ali', [['zeinab', 'SPOUSE'], ['hadi', 'CHILD'], ['jana', 'CHILD']]],
   ]
   for (const [book, head, members] of families) {
     if (!have(head)) continue
-    const rec = await attempt(`family ${book}`, () => call('admin', 'POST', '/family-records', { familyBookNumber: book, headOfHouseholdId: id[head], registrationOfficeId: office(0).id }))
+    const rec = await attempt(`family ${book}`, () => call('officer', 'POST', '/family-records', { familyBookNumber: book, headOfHouseholdId: id[head], registrationOfficeId: office(0).id }))
     if (!rec) continue
     for (const [m, relationship] of members) {
       if (!id[m]) continue
-      await attempt(`member ${m}`, () => call('admin', 'POST', `/family-records/${rec.id}/members`, { citizenId: id[m], relationship, joinedDate: dt(2020, 1, 15) }))
+      await attempt(`member ${m}`, () => call('officer', 'POST', `/family-records/${rec.id}/members`, { citizenId: id[m], relationship, joinedDate: dt(2020, 1, 15) }))
     }
     if (book === 'FB-3003') {
       const full = await attempt('family detail', () => call('admin', 'GET', `/family-records/${rec.id}`))
       const leaver = (full?.members ?? []).find((m) => m.citizenId === id.layla || m.citizen?.id === id.layla)
-      if (leaver) await attempt('member leaves', () => call('admin', 'PATCH', `/family-records/${rec.id}/members/${leaver.id}/leave`, { leftReason: 'Moved to a separate household after divorce', leftDate: dt(2023, 6, 1) }))
+      if (leaver) await attempt('member leaves', () => call('officer', 'PATCH', `/family-records/${rec.id}/members/${leaver.id}/leave`, { leftReason: 'Moved to a separate household after divorce', leftDate: dt(2023, 6, 1) }))
     }
   }
 
@@ -155,8 +200,8 @@ async function main() {
   const docs = []
   let di = 0
   const make = async (label, path, payload) => {
-    const r = await attempt(label, () => call('admin', 'POST', path, payload))
-    if (r) docs.push({ label, id: r.documentId ?? r.id, raw: r })
+    const r = await attempt(label, () => call('officer', 'POST', path, payload))
+    if (r) docs.push({ label, id: r.document?.id ?? r.documentId, raw: r })
     return r
   }
   for (const k of ['antoine', 'georges', 'rita', 'omar', 'layla', 'ali', 'hadi', 'samir', 'elie', 'maya', 'hiba', 'jana']) {
@@ -176,7 +221,7 @@ async function main() {
       husbandId: id[h], wifeId: id[w], ...issue('MARRIAGE_CERT', di), marriageDate: dt(year, 6, 12), marriagePlace: 'Beirut',
       courtId: court(di), religiousAuthorityId: authority(di), contractNumber: `MC-${year}-${di}`, dowryAmount: 5000, dowryCurrency: 'USD',
     })
-    if (m) marriages[h] = m.id
+    if (m) marriages[h] = m.document?.id ?? m.documentId
   }
   for (const [h, why, type] of [['karim', 'Irreconcilable differences', 'RELIGIOUS'], ['nadine', null, null]]) {
     if (!marriages[h]) continue
@@ -240,16 +285,18 @@ async function main() {
   log('\nGuardianships…')
   for (const [minor, guardian, type, end] of [['hiba', 'omar', 'PARTIAL', null], ['jana', 'zeinab', 'FULL', null], ['sara', 'yasmine', 'FULL', null], ['maya', 'rita', 'TEMPORARY', dt(2027, 1, 1)], ['elie', 'nadine', 'TEMPORARY', dt(2026, 12, 31)]]) {
     if (!have(minor, guardian)) continue
-    await attempt(`guardianship ${minor}`, () => call('admin', 'POST', '/guardianships', { minorCitizenId: id[minor], guardianCitizenId: id[guardian], guardianshipType: type, courtDecisionNumber: `GD-${minor.toUpperCase()}-26`, courtId: court(1), startDate: dt(2025, 9, 1), endDate: end }))
+    await attempt(`guardianship ${minor}`, () => call('officer', 'POST', '/guardianships', { minorCitizenId: id[minor], guardianCitizenId: id[guardian], guardianshipType: type, courtDecisionNumber: `GD-${minor.toUpperCase()}-26`, courtId: court(1), startDate: dt(2025, 9, 1), endDate: end }))
   }
 
   // ----------------------------------------------- document review & custody --
   log('\nDocument validations and custody…')
   let k = 0
-  for (const d of docs.slice(0, 18)) {
+  for (const d of docs.filter((x) => x.id).slice(0, 18)) {
     k++
     await attempt(`validate ${d.label}`, () => call('manager', 'POST', `/documents/${d.id}/validations`, { decision: k % 6 === 0 ? 'REJECTED' : 'APPROVED', comment: k % 6 === 0 ? 'Missing seal on the original' : 'Verified against the civil registry' }))
-    await attempt(`custody ${d.label}`, () => call('officer', 'POST', `/documents/${d.id}/custody`, { eventType: ['RECEIVED', 'STORED', 'TRANSFERRED', 'RELEASED', 'RETURNED'][k % 5], location: ['Front desk', 'Archive room B', 'Vault 2', 'Citizen counter'][k % 4], note: 'Seeded demo event' }))
+    // the chain of custody must start with RECEIVED; some documents then move on
+    const received = await attempt(`custody ${d.label}`, () => call('officer', 'POST', `/documents/${d.id}/custody`, { eventType: 'RECEIVED', location: 'Front desk', note: 'Received at the counter' }))
+    if (received && k % 2 === 0) await attempt(`custody (stored) ${d.label}`, () => call('officer', 'POST', `/documents/${d.id}/custody`, { eventType: 'STORED', location: ['Archive room B', 'Vault 2'][k % 4 === 0 ? 0 : 1], note: 'Filed in the archive' }))
   }
 
   // ------------------------------------------------------------- requests --
@@ -270,7 +317,9 @@ async function main() {
   for (const [key, final] of plan) {
     if (!id[key]) continue
     const i = r++
-    const created = await attempt(`request ${key}`, () => call('officer', 'POST', '/requests', {
+    const officerKey = officers[i % officers.length]
+    const managerKey = managers[i % managers.length]
+    const created = await attempt(`request ${key}`, () => call(officerKey, 'POST', '/requests', {
       citizenId: id[key], documentTypeId: docType(types[i % types.length]).id, officeId: office(i).id,
       departmentId: ref.departments.length ? ref.departments[i % ref.departments.length].id : null,
       direction: i % 3 === 2 ? 'OUTGOING' : 'INCOMING', priority: priorities[i % 4],
@@ -280,22 +329,23 @@ async function main() {
     const rid = created.id
     requests.push({ id: rid, final, key })
     const step = (role, to, extra = {}) => attempt(`${key}: ${to}`, () => call(role, 'PATCH', `/requests/${rid}/transition`, { toStatus: to, note: extra.note ?? null, rejectionReason: extra.reason ?? null })).then((x) => x ?? attempt(`${key}: ${to} (admin)`, () => call('admin', 'PATCH', `/requests/${rid}/transition`, { toStatus: to, note: extra.note ?? null, rejectionReason: extra.reason ?? null })))
-    if (final !== 'DRAFT') await step('officer', 'SUBMITTED', { note: 'Submitted for review' })
-    if (['UNDER_REVIEW', 'APPROVED', 'REJECTED', 'ARCHIVED'].includes(final)) await step('manager', 'UNDER_REVIEW', { note: 'Review started' })
-    if (['APPROVED', 'ARCHIVED'].includes(final)) await step('manager', 'APPROVED', { note: 'Approved' })
-    if (final === 'REJECTED') await step('manager', 'REJECTED', { reason: ['Incomplete supporting documents', 'Citizen record does not match the request', 'Outside the Directorate’s competence'][i % 3], note: 'Rejected' })
+    if (final !== 'DRAFT') await step(officerKey, 'SUBMITTED', { note: 'Submitted for review' })
+    if (['UNDER_REVIEW', 'APPROVED', 'REJECTED', 'ARCHIVED'].includes(final)) await step(managerKey, 'UNDER_REVIEW', { note: 'Review started' })
+    if (['APPROVED', 'ARCHIVED'].includes(final)) await step(managerKey, 'APPROVED', { note: 'Approved' })
+    if (final === 'REJECTED') await step(managerKey, 'REJECTED', { reason: ['Incomplete supporting documents', 'Citizen record does not match the request', 'Outside the Directorate’s competence'][i % 3], note: 'Rejected' })
     if (final === 'ARCHIVED') await step('admin', 'ARCHIVED', { note: 'Filed' })
     // assignment (open requests only -- closed ones are refused by design)
     if (['SUBMITTED', 'UNDER_REVIEW'].includes(final)) {
-      const assignee = [userId('officer'), userId('manager')][i % 2]
+      const pool = [...officers, ...managers]
+      const assignee = userId(pool[i % pool.length])
       if (assignee) await attempt(`assign ${key}`, () => call('admin', 'PATCH', `/requests/${rid}/assign`, { userId: assignee, note: 'Assigned by the Directorate' }))
-      if (i % 4 === 0 && userId('officer')) await attempt(`reassign ${key}`, () => call('admin', 'PATCH', `/requests/${rid}/assign`, { userId: userId('officer'), note: 'Reassigned to balance the workload' }))
+      if (i % 4 === 0 && userId(officerKey)) await attempt(`reassign ${key}`, () => call('admin', 'PATCH', `/requests/${rid}/assign`, { userId: userId(officerKey), note: 'Reassigned to balance the workload' }))
     }
     // attachment
     if (i % 3 === 0) {
       const form = new FormData()
       form.append('file', new Blob([`Supporting note for request ${rid}\nSeeded by seed-demo.mjs\n`], { type: 'text/plain' }), `supporting-note-${rid}.txt`)
-      await attempt(`attach ${key}`, () => call('officer', 'POST', `/requests/${rid}/documents`, null, { form }))
+      await attempt(`attach ${key}`, () => call(officerKey, 'POST', `/requests/${rid}/documents`, null, { form }))
     }
   }
 
@@ -305,7 +355,7 @@ async function main() {
   const payable = requests.filter((q) => ['APPROVED', 'ARCHIVED', 'UNDER_REVIEW'].includes(q.final)).slice(0, 8)
   const methods = ['CASH', 'BANK_TRANSFER', 'CHEQUE', 'WAIVED', 'CASH', 'BANK_TRANSFER', 'CASH', 'CHEQUE']
   for (const [i, q] of payable.entries()) {
-    const pay = await attempt(`payment ${q.key}`, () => call('admin', 'POST', '/payments', {
+    const pay = await attempt(`payment ${q.key}`, () => call('officer', 'POST', '/payments', {
       requestId: q.id, amount: methods[i] === 'WAIVED' ? 0.01 : [150000, 75000, 300000, 50, 100000][i % 5], currency: i % 4 === 1 ? 'USD' : 'LBP', method: methods[i], receiptNumber: `RC-3${String(i + 1).padStart(4, '0')}`,
     }))
     if (pay && !reversed && methods[i] === 'CHEQUE') {
@@ -326,7 +376,7 @@ async function main() {
   }
 
   log(`\nDone. ${Object.keys(id).length} citizens, ${requests.length} requests, ${docs.length} certificates. ${stats.ok} calls succeeded, ${stats.fail} were refused (listed above with "!").`)
-  log('Refresh the browser. Tip: re-run the script any time; existing citizens are skipped.')
+  log('Refresh the browser and sign in as any of the demo accounts.')
 }
 
 main().catch((e) => { console.error('\nSeeding stopped:', e.message); process.exit(1) })
