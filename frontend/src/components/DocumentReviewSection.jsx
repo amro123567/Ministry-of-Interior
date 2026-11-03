@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { format } from 'date-fns'
 import client from '../api/client.js'
 import { apiErrorMessage } from '../api/errors.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import { inputCls } from '../ui.js'
+import { fmtDate } from '../utils/dates.js'
 
 const CUSTODY_EVENTS = ['RECEIVED', 'TRANSFERRED', 'STORED', 'RELEASED', 'RETURNED']
 
@@ -14,7 +14,7 @@ const STATUS_STYLE = {
   REJECTED: 'border-badge-danger-bd bg-badge-danger-bg text-badge-danger-fg',
 }
 
-function when(d) { return d ? format(new Date(d), 'MMM d, yyyy HH:mm') : '' }
+function when(d) { return d ? fmtDate(d, 'MMM d, yyyy HH:mm') : '' }
 
 // Validation sign-offs and the physical chain of custody for one document (FR-11).
 // Anyone signed in can read it; validating needs CITIZEN_REGISTRY_DECIDE and recording

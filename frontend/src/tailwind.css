@@ -193,3 +193,23 @@
   html[dir='rtl'] select.field { background-position: left 0.75rem center; @apply pe-3 ps-9; }
   select.field:disabled { @apply cursor-not-allowed; }
 }
+
+/* Notification bell (components/NotificationBell.jsx). Always paired with
+   motion-reduce:animate-none at the call site. */
+@keyframes cts-pop-in {
+  from { opacity: 0; transform: translateY(-8px) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes cts-badge-pop {
+  0%   { transform: scale(0.4); }
+  60%  { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+@keyframes cts-bell-ring {
+  0%, 100% { transform: rotate(0); }
+  15% { transform: rotate(14deg); }
+  30% { transform: rotate(-12deg); }
+  45% { transform: rotate(8deg); }
+  60% { transform: rotate(-6deg); }
+  75% { transform: rotate(3deg); }
+}

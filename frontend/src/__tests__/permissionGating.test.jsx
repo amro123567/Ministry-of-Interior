@@ -63,8 +63,33 @@ describe('"New request" button on the requests list', () => {
   })
 
   it('is shown to an officer', async () => {
-    signInAs({ roles: ['OFFICER'], permissions: ['REQUEST_TRANSITION_SUBMIT'] })
+    signInAs({ roles: ['OFFICER'], permissions: ['REQUEST_CREATE', 'REQUEST_TRANSITION_SUBMIT'] })
     await renderList()
     expect(screen.getByRole('link', { name: en.requests.newRequest })).toHaveAttribute('href', '/requests/new')
+  })
+
+  it('is hidden from a manager: reviewing and deciding do not include creating', async () => {
+    signInAs({ roles: ['MANAGER'], permissions: ['REQUEST_ASSIGN', 'REQUEST_TRANSITION_REVIEW', 'REQUEST_TRANSITION_DECIDE', 'REPORTS_VIEW'] })
+    await renderList()
+    expect(screen.queryByRole('link', { name: en.requests.newRequest })).not.toBeInTheDocument()
+  })
+})
+
+describe('"Export CSV" button on the requests list', () => {
+  async function renderList() {
+    renderWithProviders(<RequestsListPage />, { route: '/requests' })
+    await waitFor(() => expect(client.get).toHaveBeenCalledWith('/requests', expect.anything()))
+  }
+
+  it('is hidden from an officer, because the export endpoint needs REPORTS_VIEW', async () => {
+    signInAs({ roles: ['OFFICER'], permissions: ['REQUEST_CREATE', 'REQUEST_TRANSITION_SUBMIT'] })
+    await renderList()
+    expect(screen.queryByRole('button', { name: en.requests.exportCsv })).not.toBeInTheDocument()
+  })
+
+  it('is shown to someone who may view reports', async () => {
+    signInAs({ roles: ['MANAGER'], permissions: ['REPORTS_VIEW'] })
+    await renderList()
+    expect(screen.getByRole('button', { name: en.requests.exportCsv })).toBeInTheDocument()
   })
 })

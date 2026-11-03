@@ -1,11 +1,11 @@
 import { useEffect, useState, useCallback } from 'react'
-import { format } from 'date-fns'
 import client from '../api/client.js'
 import ApprovalStatusBadge from './ApprovalStatusBadge.jsx'
 import DistrictScopedSelect from './DistrictScopedSelect.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import { inputCls, labelCls } from '../ui.js'
+import { fmtDate } from '../utils/dates.js'
 
 
 // Matches CitizenRegistryService.decideAmendment()'s AMENDABLE_FIELDS
@@ -206,7 +206,7 @@ export default function CivilStatusAmendmentSection({ citizenId, citizen, onDeci
                 {t('civilStatusAmendment.colLegalBasis')}: {a.legalBasis}
                 {a.requestedByName && ` · ${a.requestedByName}`}
                 {a.approvedByName && ` · ${a.approvedByName}`}
-                {a.amendmentDate && ` · ${format(new Date(a.amendmentDate), 'MMM d, yyyy')}`}
+                {a.amendmentDate && ` · ${fmtDate(a.amendmentDate, 'MMM d, yyyy')}`}
               </div>
               {a.status === 'PENDING' && canDecide && (
                 decidingId === a.id ? (

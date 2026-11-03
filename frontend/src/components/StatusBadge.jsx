@@ -31,7 +31,7 @@ export default function StatusBadge({ status }) {
   const { t } = useLanguage()
   return (
     <Badge tone={STATUS_TONES[status] || 'draft'}>
-      {t(`status.${status}`, status.replace('_', ' '))}
+      {t(`status.${status}`, String(status ?? '').replace(/_/g, ' '))}
     </Badge>
   )
 }

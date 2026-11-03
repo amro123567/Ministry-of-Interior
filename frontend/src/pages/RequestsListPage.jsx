@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { format } from 'date-fns'
 import { ChevronDown, Eye, Search, SlidersHorizontal, UserCheck } from 'lucide-react'
 import client from '../api/client.js'
 import StatusBadge, { SlaBadge } from '../components/StatusBadge.jsx'
@@ -10,6 +9,8 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { Badge, IconButton } from '../components/ui/index.jsx'
 import { ActiveFilterChips, FilterField } from '../components/FilterBar.jsx'
 import Pagination from '../components/Pagination.jsx'
+import { fmtDate } from '../utils/dates.js'
+import { downloadCsv } from '../api/download.js'
 
 const STATUSES = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'ARCHIVED']
 const PRIORITIES = ['NORMAL', 'HIGH', 'URGENT']
@@ -103,13 +104,7 @@ export default function RequestsListPage() {
   async function exportCsv() {
     setExportError(null)
     try {
-      const res = await client.get('/requests/export', { params: filterParams, responseType: 'blob' })
-      const url = URL.createObjectURL(res.data)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'correspondence_requests.csv'
-      a.click()
-      URL.revokeObjectURL(url)
+      await downloadCsv('/requests/export', filterParams, 'correspondence_requests.csv')
     } catch {
       setExportError(t('requests.exportFailed', 'Could not export the list.'))
     }
@@ -178,14 +173,17 @@ export default function RequestsListPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
         <h1 className="text-xl font-bold text-text-primary">{t('requests.title')}</h1>
         <div className="flex gap-2.5">
-          <button
-            type="button"
-            onClick={exportCsv}
-            className="btn-secondary"
-          >
-            {t('requests.exportCsv')}
-          </button>
-          {hasPermission('REQUEST_TRANSITION_SUBMIT', 'REQUEST_TRANSITION_REVIEW', 'REQUEST_TRANSITION_DECIDE', 'REQUEST_TRANSITION_ARCHIVE') && (
+          {/* The export endpoint needs REPORTS_VIEW, so only offer it to people who can use it. */}
+          {hasPermission('REPORTS_VIEW') && (
+            <button
+              type="button"
+              onClick={exportCsv}
+              className="btn-secondary"
+            >
+              {t('requests.exportCsv')}
+            </button>
+          )}
+          {hasPermission('REQUEST_CREATE') && (
             <Link
               to="/requests/new"
               className="btn-primary"
@@ -341,7 +339,7 @@ export default function RequestsListPage() {
                       <td className="td-cell">
                         {r.assignedToName ?? <span className="text-text-secondary">{t('requests.unassigned')}</span>}
                       </td>
-                      <td className="td-cell num-cell whitespace-nowrap">{r.dueAt ? format(new Date(r.dueAt), 'MMM d, yyyy') : '—'}</td>
+                      <td className="td-cell num-cell whitespace-nowrap">{r.dueAt ? fmtDate(r.dueAt, 'MMM d, yyyy') : '—'}</td>
                       <td className="td-cell">
                         <div className="flex justify-end">
                           <IconButton to={`/requests/${r.id}`} label={t('requests.open')}>
@@ -374,7 +372,7 @@ export default function RequestsListPage() {
                   <div className="text-sm text-text-primary mb-1.5">{r.citizenName}</div>
                   <div className="flex justify-between text-xs text-text-secondary mb-2">
                     <span>{r.documentTypeName}</span>
-                    <span>{r.dueAt ? format(new Date(r.dueAt), 'MMM d, yyyy') : '—'}</span>
+                    <span>{r.dueAt ? fmtDate(r.dueAt, 'MMM d, yyyy') : '—'}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-text-secondary">{r.assignedToName ?? t('requests.unassigned')}</span>

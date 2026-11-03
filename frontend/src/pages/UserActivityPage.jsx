@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useParams, useLocation } from 'react-router-dom'
-import { format } from 'date-fns'
 import client from '../api/client.js'
 import AccessTypeBadge from '../components/AccessTypeBadge.jsx'
 import LoginAttemptBadge from '../components/LoginAttemptBadge.jsx'
@@ -8,6 +7,7 @@ import { SkeletonLine } from '../components/Skeleton.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import { tdCls, thCls } from '../ui.js'
 import Pagination, { usePagination } from '../components/Pagination.jsx'
+import { fmtDate } from '../utils/dates.js'
 
 
 function Card({ title, children }) {
@@ -130,7 +130,7 @@ export default function UserActivityPage() {
               <tbody>
                 {att.pageItems.map((a) => (
                   <tr key={a.id} className="border-b border-row-divider last:border-0">
-                    <td className={`${tdCls} whitespace-nowrap`}>{format(new Date(a.attemptedAt), 'MMM d, yyyy HH:mm:ss')}</td>
+                    <td className={`${tdCls} whitespace-nowrap`}>{fmtDate(a.attemptedAt, 'MMM d, yyyy HH:mm:ss')}</td>
                     <td className={tdCls}><LoginAttemptBadge wasSuccessful={a.wasSuccessful} failureReason={a.failureReason} /></td>
                     <td className={`${tdCls} whitespace-nowrap`}>{a.ipAddress || '—'}</td>
                   </tr>
@@ -159,15 +159,15 @@ export default function UserActivityPage() {
               <tbody>
                 {ses.pageItems.map((s) => (
                   <tr key={s.id} className="border-b border-row-divider last:border-0">
-                    <td className={`${tdCls} whitespace-nowrap`}>{format(new Date(s.loginAt), 'MMM d, yyyy HH:mm:ss')}</td>
+                    <td className={`${tdCls} whitespace-nowrap`}>{fmtDate(s.loginAt, 'MMM d, yyyy HH:mm:ss')}</td>
                     <td className={`${tdCls} whitespace-nowrap`}>
-                      {s.logoutAt ? format(new Date(s.logoutAt), 'MMM d, yyyy HH:mm:ss') : (
+                      {s.logoutAt ? fmtDate(s.logoutAt, 'MMM d, yyyy HH:mm:ss') : (
                         <span className="inline-flex items-center rounded-full border border-badge-success-bd bg-badge-success-bg px-2.5 py-0.5 text-xs font-semibold text-badge-success-fg">
                           {t('userActivity.stillActive')}
                         </span>
                       )}
                     </td>
-                    <td className={`${tdCls} text-text-secondary whitespace-nowrap`}>{format(new Date(s.expiresAt), 'MMM d, yyyy HH:mm:ss')}</td>
+                    <td className={`${tdCls} text-text-secondary whitespace-nowrap`}>{fmtDate(s.expiresAt, 'MMM d, yyyy HH:mm:ss')}</td>
                     <td className={`${tdCls} whitespace-nowrap`}>{s.ipAddress || '—'}</td>
                   </tr>
                 ))}
@@ -201,7 +201,7 @@ export default function UserActivityPage() {
                       </Link>
                     </td>
                     <td className={tdCls}><AccessTypeBadge accessType={a.accessType} /></td>
-                    <td className={`${tdCls} text-text-secondary whitespace-nowrap`}>{format(new Date(a.accessedAt), 'MMM d, yyyy HH:mm')}</td>
+                    <td className={`${tdCls} text-text-secondary whitespace-nowrap`}>{fmtDate(a.accessedAt, 'MMM d, yyyy HH:mm')}</td>
                     <td className={`${tdCls} text-text-secondary max-w-[240px] truncate`} title={a.reason ?? ''}>{a.reason || '—'}</td>
                   </tr>
                 ))}

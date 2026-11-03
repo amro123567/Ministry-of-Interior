@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  CheckCheck, ChevronRight, Copy, Download, Eye, Inbox, MoreVertical, Search, Send, User, X,
+  ChevronRight, Copy, Download, Eye, Inbox, MoreVertical, Search, Send, User, X,
 } from 'lucide-react'
-import client from '../../api/client.js'
-import { useAuth } from '../../context/AuthContext.jsx'
 import { useLanguage } from '../../context/LanguageContext.jsx'
 import StatusBadge from '../StatusBadge.jsx'
 import { SkeletonLine } from '../Skeleton.jsx'
@@ -12,6 +10,7 @@ import Pagination, { usePagination } from '../Pagination.jsx'
 import {
   avatarTone, downloadTextFile, humanizeHours, initials, slaCountdown, toCsv,
 } from './dashboardUtils.js'
+import { todayISO } from '../../utils/dates.js'
 
 const PRIORITY_STYLE = {
   URGENT: 'border-crit/30 bg-crit-tint text-crit-ink',
@@ -92,18 +91,12 @@ function RowMenu({ row, t }) {
   )
 }
 
-export default function WaitingForReviewTable({ queue, rows, loading, onChanged }) {
+export default function WaitingForReviewTable({ queue, rows, loading }) {
   const { t } = useLanguage()
-  const { hasPermission } = useAuth()
-  const canDecide = hasPermission('REQUEST_TRANSITION_DECIDE')
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
   const [priority, setPriority] = useState('')
   const [docType, setDocType] = useState('')
-  const [selected, setSelected] = useState(() => new Set())
-  const [confirming, setConfirming] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [notice, setNotice] = useState(null)
 
   const docTypes = useMemo(() => [...new Set((rows ?? []).map((r) => r.documentTypeName).filter(Boolean))].sort(), [rows])
   const statuses = useMemo(() => [...new Set((rows ?? []).map((r) => r.status))], [rows])
@@ -121,12 +114,7 @@ export default function WaitingForReviewTable({ queue, rows, loading, onChanged 
 
   const { pageItems, pagination } = usePagination(visible)
   const anyFilter = Boolean(search || status || priority || docType)
-  const approvable = visible.filter((r) => selected.has(r.id) && r.status === 'UNDER_REVIEW')
-  const selectedVisible = visible.filter((r) => selected.has(r.id))
-  const allChecked = pageItems.length > 0 && pageItems.every((r) => selected.has(r.id))
 
-  const toggle = (id) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })
-  const toggleAll = () => setSelected(allChecked ? new Set() : new Set(pageItems.map((r) => r.id)))
   const clearFilters = () => { setSearch(''); setStatus(''); setPriority(''); setDocType('') }
 
   const exportCsv = () => {
@@ -134,19 +122,7 @@ export default function WaitingForReviewTable({ queue, rows, loading, onChanged 
       t('dashboard.table.colDue'), t('dashboard.table.colAssigned'), t('dashboard.table.colStatus'), t('dashboard.table.colPriority'), t('dashboard.table.colSla')]
     const records = visible.map((r) => [r.referenceNumber, r.subject, r.citizenName, r.documentTypeName, r.dueAt, r.assignedToName,
       t(`status.${r.status}`, r.status), t(`requests.priority.${r.priority || 'NORMAL'}`, r.priority || 'NORMAL'), r.slaStatus])
-    downloadTextFile(toCsv(headers, records), `cts-${queue.key}-${new Date().toISOString().slice(0, 10)}.csv`)
-  }
-
-  const batchApprove = async () => {
-    setBusy(true)
-    const results = await Promise.allSettled(approvable.map((r) =>
-      client.patch(`/requests/${r.id}/transition`, { toStatus: 'APPROVED', note: null, rejectionReason: null })))
-    const ok = results.filter((r) => r.status === 'fulfilled').length
-    setBusy(false)
-    setConfirming(false)
-    setSelected(new Set())
-    setNotice({ ok, failed: results.length - ok })
-    onChanged?.()
+    downloadTextFile(toCsv(headers, records), `cts-${queue.key}-${todayISO()}.csv`)
   }
 
   const th = 'sticky top-0 z-10 whitespace-nowrap border-b border-hairline bg-slate-50 px-4 py-3 text-start text-[11px] font-bold uppercase tracking-wider text-slate-600'
@@ -164,12 +140,6 @@ export default function WaitingForReviewTable({ queue, rows, loading, onChanged 
             <p className="mt-0.5 text-xs text-slate-600">{t(`dashboard.queue.${queue.key}.hint`)}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {canDecide && (
-              <button type="button" className="btn-success btn-sm" disabled={!approvable.length || busy} onClick={() => setConfirming(true)}
-                title={approvable.length ? undefined : t('dashboard.table.batchHint')}>
-                <CheckCheck size={15} aria-hidden="true" />{t('dashboard.table.batchApprove')}{approvable.length > 0 && ` (${approvable.length})`}
-              </button>
-            )}
             <button type="button" className="btn-secondary btn-sm" onClick={exportCsv} disabled={!visible.length}>
               <Download size={15} aria-hidden="true" />{t('dashboard.table.exportCsv')}
             </button>
@@ -209,31 +179,6 @@ export default function WaitingForReviewTable({ queue, rows, loading, onChanged 
             </button>
           )}
         </div>
-
-        {confirming && (
-          <div role="alertdialog" aria-label={t('dashboard.table.batchApprove')}
-            className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ok/40 bg-ok-tint px-4 py-3 text-sm">
-            <span className="font-semibold text-ok-ink">
-              {t('dashboard.table.confirmApprove')} <b>{approvable.length}</b> {t('dashboard.table.confirmApproveTail')}
-              {selectedVisible.length > approvable.length && (
-                <span className="ms-1 font-normal text-slate-700">({selectedVisible.length - approvable.length} {t('dashboard.table.skipped')})</span>
-              )}
-            </span>
-            <span className="flex gap-2">
-              <button type="button" className="btn-secondary btn-sm" onClick={() => setConfirming(false)} disabled={busy}>{t('common.cancel', 'Cancel')}</button>
-              <button type="button" className="btn-success btn-sm" onClick={batchApprove} disabled={busy}>
-                {busy ? t('dashboard.table.approving') : t('dashboard.table.confirm')}
-              </button>
-            </span>
-          </div>
-        )}
-        {notice && (
-          <div role="status" className={`mt-4 flex items-center justify-between gap-3 rounded-lg border px-4 py-2.5 text-sm font-semibold ${
-            notice.failed ? 'border-warn/40 bg-warn-tint text-warn-ink' : 'border-ok/40 bg-ok-tint text-ok-ink'}`}>
-            <span>{notice.ok} {t('dashboard.table.approvedCount')}{notice.failed > 0 && ` · ${notice.failed} ${t('dashboard.table.failedCount')}`}</span>
-            <button type="button" className="icon-btn" aria-label={t('dashboard.table.dismiss')} onClick={() => setNotice(null)}><X size={14} aria-hidden="true" /></button>
-          </div>
-        )}
       </div>
 
       {/* Table */}
@@ -249,12 +194,6 @@ export default function WaitingForReviewTable({ queue, rows, loading, onChanged 
           <table className="w-full min-w-[980px] border-collapse">
             <thead>
               <tr>
-                {canDecide && (
-                  <th className={`${th} w-10 !pe-0`}>
-                    <input type="checkbox" checked={allChecked} onChange={toggleAll} aria-label={t('dashboard.table.selectAll')}
-                      className="h-4 w-4 rounded border-slate-300 accent-brand" />
-                  </th>
-                )}
                 <th className={th}>{t('dashboard.table.colRequest')}</th>
                 <th className={th}>{t('dashboard.table.colCitizen')}</th>
                 <th className={th}>{t('dashboard.table.colSla')}</th>
@@ -267,13 +206,7 @@ export default function WaitingForReviewTable({ queue, rows, loading, onChanged 
               {pageItems.map((r) => {
                 const prio = r.priority || 'NORMAL'
                 return (
-                  <tr key={r.id} className={`border-b border-hairline last:border-0 transition-colors hover:bg-brand-tint/50 ${selected.has(r.id) ? 'bg-brand-tint/60' : ''}`}>
-                    {canDecide && (
-                      <td className="w-10 ps-4 pe-0 py-3 align-middle">
-                        <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggle(r.id)}
-                          aria-label={`${t('dashboard.table.select')} ${r.referenceNumber}`} className="h-4 w-4 rounded border-slate-300 accent-brand" />
-                      </td>
-                    )}
+                  <tr key={r.id} className="border-b border-hairline last:border-0 transition-colors hover:bg-brand-tint/50">
                     <td className="px-4 py-3 align-middle">
                       <Link to={`/requests/${r.id}`} className="text-sm font-bold text-navy hover:text-brand hover:underline">{r.referenceNumber}</Link>
                       <div className="mt-0.5 max-w-[260px] truncate text-xs text-slate-600" title={r.subject || r.documentTypeName}>

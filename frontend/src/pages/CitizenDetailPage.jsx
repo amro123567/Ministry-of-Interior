@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { format } from 'date-fns'
 import client from '../api/client.js'
 import { apiErrorMessage } from '../api/errors.js'
 import ParentLineagePicker from '../components/ParentLineagePicker.jsx'
@@ -13,6 +12,7 @@ import CitizenAuditSection from '../components/CitizenAuditSection.jsx'
 import { SkeletonLine } from '../components/Skeleton.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
+import { fmtDate } from '../utils/dates.js'
 
 const emptyParent = { mode: 'none', citizenId: null, citizenLabel: null, unregisteredName: null }
 
@@ -165,7 +165,7 @@ export default function CitizenDetailPage() {
 
       <div className="card p-5 mb-4 grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Field label={t('citizenDetail.registryNumber')} value={c.registryNumber} />
-        <Field label={t('citizenDetail.dateOfBirth')} value={c.dateOfBirth ? format(new Date(c.dateOfBirth), 'MMM d, yyyy') : null} />
+        <Field label={t('citizenDetail.dateOfBirth')} value={c.dateOfBirth ? fmtDate(c.dateOfBirth, 'MMM d, yyyy') : null} />
         <Field label={t('citizenDetail.registeredOffice')} value={c.officeName} />
         <Field label={t('citizenDetail.maritalStatus')} value={c.maritalStatus ? t(`citizens.maritalStatus.${c.maritalStatus}`, c.maritalStatus) : null} />
       </div>
@@ -196,7 +196,7 @@ export default function CitizenDetailPage() {
         <Field label={t('citizenDetail.sijillReference')} value={c.sijillReference} />
         <Field
           label={t('citizenDetail.dateOfBirth')}
-          value={c.dateOfBirth ? format(new Date(c.dateOfBirth), 'MMM d, yyyy') : null}
+          value={c.dateOfBirth ? fmtDate(c.dateOfBirth, 'MMM d, yyyy') : null}
         />
         <Field label={t('citizenDetail.placeOfBirth')} value={c.placeOfBirth} />
         <Field label={t('citizenDetail.gender')} value={c.gender} />

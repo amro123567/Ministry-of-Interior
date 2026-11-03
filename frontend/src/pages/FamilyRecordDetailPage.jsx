@@ -1,12 +1,12 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { format } from 'date-fns'
 import client from '../api/client.js'
 import CitizenSearchPicker from '../components/CitizenSearchPicker.jsx'
 import { SkeletonLine } from '../components/Skeleton.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import { inputCls, labelCls } from '../ui.js'
+import { fmtDate, todayISO } from '../utils/dates.js'
 
 const emptyPick = { citizenId: null, citizenLabel: null }
 
@@ -28,13 +28,13 @@ export default function FamilyRecordDetailPage() {
   const [adding, setAdding] = useState(false)
   const [newMember, setNewMember] = useState(emptyPick)
   const [relationship, setRelationship] = useState('CHILD')
-  const [joinedDate, setJoinedDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [joinedDate, setJoinedDate] = useState(() => todayISO())
   const [addError, setAddError] = useState(null)
   const [busy, setBusy] = useState(false)
 
   const [leavingMemberId, setLeavingMemberId] = useState(null)
   const [leftReason, setLeftReason] = useState('')
-  const [leftDate, setLeftDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [leftDate, setLeftDate] = useState(() => todayISO())
   const [leaveError, setLeaveError] = useState(null)
 
   const load = useCallback(() => {
@@ -50,7 +50,7 @@ export default function FamilyRecordDetailPage() {
   function startAdding() {
     setNewMember(emptyPick)
     setRelationship('CHILD')
-    setJoinedDate(new Date().toISOString().slice(0, 10))
+    setJoinedDate(todayISO())
     setAddError(null)
     setAdding(true)
   }
@@ -81,7 +81,7 @@ export default function FamilyRecordDetailPage() {
   function startLeaving(memberId) {
     setLeavingMemberId(memberId)
     setLeftReason('')
-    setLeftDate(new Date().toISOString().slice(0, 10))
+    setLeftDate(todayISO())
     setLeaveError(null)
   }
 
@@ -203,8 +203,8 @@ export default function FamilyRecordDetailPage() {
                 </span>
               </div>
               <div className="text-xs text-text-secondary mt-0.5">
-                {t('familyRecord.colJoined')}: {m.joinedDate ? format(new Date(m.joinedDate), 'MMM d, yyyy') : '—'}
-                {m.leftDate && ` · ${t('familyRecord.colLeft')}: ${format(new Date(m.leftDate), 'MMM d, yyyy')} (${m.leftReason})`}
+                {t('familyRecord.colJoined')}: {m.joinedDate ? fmtDate(m.joinedDate, 'MMM d, yyyy') : '—'}
+                {m.leftDate && ` · ${t('familyRecord.colLeft')}: ${fmtDate(m.leftDate, 'MMM d, yyyy')} (${m.leftReason})`}
               </div>
 
               {!m.leftDate && hasPermission('CITIZEN_MANAGE') && (

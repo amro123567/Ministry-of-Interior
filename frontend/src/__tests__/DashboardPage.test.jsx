@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen, within, waitFor } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import client from '../api/client.js'
 import DashboardPage from '../pages/DashboardPage.jsx'
@@ -45,6 +45,12 @@ describe('Dashboard work queue', () => {
     expect(within(region).queryByRole('button', { name: /Batch approve/ })).toBeNull() // reviewing is not deciding
   })
 
+  it('shows whoever archives the approved and rejected requests that are ready to close', async () => {
+    renderAs(['REQUEST_TRANSITION_ARCHIVE'])
+    const region = await queueRegion(en.dashboard.queue.archive.title)
+    expect(refsIn(region)).toEqual(['REQ-DONE']) // only the approved one; open requests are not archivable yet
+  })
+
   it('shows officers only their own assigned requests', async () => {
     renderAs(['REQUEST_TRANSITION_SUBMIT'])
     await queueRegion(en.dashboard.queue.mine.title)
@@ -68,20 +74,11 @@ describe('Dashboard work queue', () => {
     expect(refsIn(region)).toEqual(['REQ-ON'])
   })
 
-  it('approves selected under-review requests in one batch, after confirmation', async () => {
-    const user = userEvent.setup()
-    client.patch.mockResolvedValue({ data: {} })
+  it('has no row selection or batch actions, even for people who may approve', async () => {
     renderAs(['REQUEST_TRANSITION_DECIDE'])
     const region = await queueRegion(en.dashboard.queue.review.title)
-    const batch = within(region).getByRole('button', { name: /Batch approve/ })
-    expect(batch).toBeDisabled()
-    await user.click(within(region).getByRole('checkbox', { name: /Select REQ-LATE/ }))
-    await user.click(within(region).getByRole('checkbox', { name: /Select REQ-ON/ })) // submitted, not approvable: skipped
-    await user.click(within(region).getByRole('button', { name: /Batch approve \(1\)/ }))
-    expect(client.patch).not.toHaveBeenCalled() // nothing happens until confirmed
-    await user.click(within(region).getByRole('button', { name: en.dashboard.table.confirm }))
-    await waitFor(() => expect(client.patch).toHaveBeenCalledTimes(1))
-    expect(client.patch).toHaveBeenCalledWith('/requests/2/transition', { toStatus: 'APPROVED', note: null, rejectionReason: null })
+    expect(within(region).queryAllByRole('checkbox')).toHaveLength(0)
+    expect(within(region).queryByRole('button', { name: /Batch approve/ })).toBeNull()
   })
 })
 

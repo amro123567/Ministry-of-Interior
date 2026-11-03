@@ -20,6 +20,9 @@ export default function Breadcrumb() {
     trail.push({ label: `#${idOf('/requests/')}` })
   } else if (path.startsWith('/requests')) {
     trail.push({ label: t('nav.correspondence') })
+  } else if (path.startsWith('/citizens/new')) {
+    trail.push({ label: t('nav.citizens'), to: '/citizens' })
+    trail.push({ label: t('citizenCreate.title') })
   } else if (idOf('/citizens/')) {
     trail.push({ label: t('nav.citizens'), to: '/citizens' })
     trail.push({ label: `#${idOf('/citizens/')}` })

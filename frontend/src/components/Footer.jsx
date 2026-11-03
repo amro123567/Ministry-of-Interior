@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import {
   BookOpen, CalendarClock, FileText, Headset, LayoutGrid, LifeBuoy, Mail, MessageSquareWarning,
-  Phone, ShieldCheck, Ticket, Users, Workflow, BarChart3, Activity,
+  Phone, ShieldCheck, Ticket, Users, Workflow, BarChart3,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
@@ -15,7 +15,6 @@ import LangToggle from './LangToggle.jsx'
 // have no destination yet (the repo has no manual / ticketing / policy pages), so they
 // stay inert instead of navigating anywhere.
 const SUPPORT_PHONE = '+961 1 000 000'
-const APP_VERSION = '2.4.1'
 const URLS = {
   manual: '#', ticketing: '#', sla: '#', feedback: '#', ticket: '#',
   privacy: '#', terms: '#', security: '#',
@@ -62,10 +61,6 @@ export default function Footer() {
             </div>
             <p className="text-base font-bold leading-snug text-white">{ministryName}</p>
             <p className="mt-1 text-sm text-slate-400">{t('footer.system')} (CTS)</p>
-            <span className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
-              <Activity className="h-3.5 w-3.5" aria-hidden="true" />
-              {t('footer.statusOperational')} <bdi dir="ltr">v{APP_VERSION}</bdi>
-            </span>
           </div>
 
           {/* 2 - Core modules */}

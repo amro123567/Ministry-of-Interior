@@ -5,6 +5,7 @@ import Breadcrumb from './components/Breadcrumb.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { useLanguage } from './context/LanguageContext.jsx'
+import usePageTitle from './usePageTitle.js'
 import LoginPage from './pages/LoginPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import RequestsListPage from './pages/RequestsListPage.jsx'
@@ -27,6 +28,7 @@ import NotFoundPage from './pages/NotFoundPage.jsx'
 export default function App() {
   const location = useLocation()
   const { t } = useLanguage()
+  usePageTitle() // keeps the browser tab title in step with the current page and language
   const isLoginRoute = location.pathname === '/login'
 
   // The login page keeps its own full-bleed, centered layout (no sidebar,
@@ -65,7 +67,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/requests" element={<ProtectedRoute><RequestsListPage /></ProtectedRoute>} />
-          <Route path="/requests/new" element={<ProtectedRoute permissions={['REQUEST_TRANSITION_SUBMIT', 'REQUEST_TRANSITION_REVIEW', 'REQUEST_TRANSITION_DECIDE', 'REQUEST_TRANSITION_ARCHIVE']}><RequestCreatePage /></ProtectedRoute>} />
+          <Route path="/requests/new" element={<ProtectedRoute permissions={['REQUEST_CREATE']}><RequestCreatePage /></ProtectedRoute>} />
           <Route path="/requests/:id" element={<ProtectedRoute><RequestDetailPage /></ProtectedRoute>} />
           {/* No permissions prop -- CitizenController only requires
               authentication on the backend (SecurityConfig's

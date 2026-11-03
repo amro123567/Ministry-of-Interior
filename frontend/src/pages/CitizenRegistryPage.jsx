@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { format } from 'date-fns'
 import { Eye, Search } from 'lucide-react'
 import client from '../api/client.js'
 import { SkeletonTableRows } from '../components/Skeleton.jsx'
@@ -8,6 +7,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import { ActiveFilterChips, FilterField } from '../components/FilterBar.jsx'
 import Pagination from '../components/Pagination.jsx'
+import { fmtDate } from '../utils/dates.js'
 
 const MARITAL = ['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED']
 const SORTERS = {
@@ -244,7 +244,7 @@ export default function CitizenRegistryPage() {
                         </div>
                       </td>
                       <td className="td-cell num-cell whitespace-nowrap">
-                        {c.dateOfBirth ? format(new Date(c.dateOfBirth), 'MMM d, yyyy') : '—'}
+                        {c.dateOfBirth ? fmtDate(c.dateOfBirth, 'MMM d, yyyy') : '—'}
                       </td>
                       <td className="td-cell text-text-primary">{c.officeName ?? '—'}</td>
                       <td className="td-cell">
@@ -287,7 +287,7 @@ export default function CitizenRegistryPage() {
                   <div className="text-sm text-text-primary mb-1.5">{displayName(c)}</div>
                   <div className="flex justify-between text-xs text-text-secondary">
                     <span>{c.officeName ?? '—'}</span>
-                    <span>{c.dateOfBirth ? format(new Date(c.dateOfBirth), 'MMM d, yyyy') : '—'}</span>
+                    <span>{c.dateOfBirth ? fmtDate(c.dateOfBirth, 'MMM d, yyyy') : '—'}</span>
                   </div>
                 </Link>
               ))}

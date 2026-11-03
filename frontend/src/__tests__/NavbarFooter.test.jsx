@@ -69,7 +69,7 @@ describe('Footer', () => {
     signInAs({ username: 'Serhan Aoun', roles: ['VIEWER'], permissions: ['REPORTS_VIEW'] })
     shell(<Footer />)
     expect(screen.getAllByText(/Ministry of Interior and Municipalities/).length).toBeGreaterThan(1)
-    expect(screen.getByText(/Operational/)).toHaveTextContent('v2.4.1')
+    expect(screen.queryByText(/Operational/)).toBeNull() // no status pill / version badge
     const modules = screen.getByRole('navigation', { name: en.footer.modulesNav })
     expect(within(modules).getByRole('link', { name: en.nav.dashboard })).toHaveAttribute('href', '/')
     expect(within(modules).getByRole('link', { name: en.footer.correspondenceRegistry })).toHaveAttribute('href', '/requests')

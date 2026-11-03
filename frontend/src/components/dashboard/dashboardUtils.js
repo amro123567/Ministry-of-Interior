@@ -1,6 +1,8 @@
 // Pure helpers for the dashboard. Everything here is derived from rows the API
 // already returns -- nothing is estimated or invented.
 
+import { saveBlob } from '../../api/download.js'
+
 export const DAY = 86400000
 export const ACTIVE_STATUSES = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW']
 export const CHART_STATUSES = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'ARCHIVED']
@@ -79,19 +81,28 @@ const startOfDay = (ms) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); ret
  * counting each bucket per *current* status. Rows outside the window are ignored.
  */
 export function bucketByPeriod(rows, mode, now = Date.now(), lang = 'en') {
-  const step = mode === 'weekly' ? 7 * DAY : DAY
+  const stepDays = mode === 'weekly' ? 7 : 1
   const count = mode === 'weekly' ? 8 : 14
-  const end = startOfDay(now) + DAY // exclusive end of "today"
+  // Bucket edges are calendar midnights, not multiples of 24h: a day with a daylight-saving
+  // change is 23 or 25 hours long, and fixed-length steps drift an hour off after it.
+  const dayStart = new Date(startOfDay(now))
+  const edge = (daysFromTodayEnd) => {
+    const d = new Date(dayStart)
+    d.setDate(d.getDate() + 1 + daysFromTodayEnd) // 1 = the exclusive end of "today"
+    return d.getTime()
+  }
   const fmt = new Intl.DateTimeFormat(lang === 'ar' ? 'ar' : 'en', { month: 'short', day: 'numeric' })
   const buckets = Array.from({ length: count }, (_, i) => {
-    const start = end - (count - i) * step
+    const start = edge(-(count - i) * stepDays)
     return { start, label: fmt.format(new Date(start)), total: 0, ...Object.fromEntries(CHART_STATUSES.map((s) => [s, 0])) }
   })
   for (const r of rows) {
     const d = parseDate(r.createdAt)
     if (!d) continue
-    const idx = Math.floor((d.getTime() - (end - count * step)) / step)
-    if (idx < 0 || idx >= count) continue
+    const t = d.getTime()
+    if (t < buckets[0].start || t >= edge(0)) continue
+    let idx = count - 1
+    while (idx > 0 && t < buckets[idx].start) idx--
     const key = CHART_STATUSES.includes(r.status) ? r.status : null
     if (key) buckets[idx][key] += 1
     buckets[idx].total += 1
@@ -152,13 +163,7 @@ export function toCsv(headers, records) {
 
 /** Download text as a UTF-8 CSV file (with BOM so Excel reads Arabic correctly). */
 export function downloadTextFile(text, filename) {
-  const blob = new Blob(['﻿', text], { type: 'text/csv;charset=utf-8' })
-  const href = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = href
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(href)
+  saveBlob(new Blob(['﻿', text], { type: 'text/csv;charset=utf-8' }), filename)
 }
 
 // ---- management insights ---------------------------------------------------

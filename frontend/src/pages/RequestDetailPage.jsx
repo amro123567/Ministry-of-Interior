@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
-import { format } from 'date-fns'
 import client from '../api/client.js'
 import { apiErrorMessage } from '../api/errors.js'
 import StatusBadge, { SlaBadge, SlaRecordBadge } from '../components/StatusBadge.jsx'
@@ -8,6 +7,8 @@ import PaymentStatusBadge from '../components/PaymentStatusBadge.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import { inputCls, labelCls } from '../ui.js'
+import { fmtDate } from '../utils/dates.js'
+import { downloadFile } from '../api/download.js'
 
 
 // The status changes offered on this page come from the backend (GET /requests/{id}/transitions),
@@ -119,7 +120,7 @@ export default function RequestDetailPage() {
   }, [id, t])
 
   useEffect(() => { load() }, [load])
-  useEffect(() => { if (hasPermission('USER_VIEW')) client.get('/users').then((r) => setUsers(r.data)).catch(() => setUsers([])) }, [hasPermission])
+  useEffect(() => { if (hasPermission('REQUEST_ASSIGN') && hasPermission('USER_VIEW')) client.get('/users').then((r) => setUsers(r.data)).catch(() => setUsers([])) }, [hasPermission])
 
   async function doTransition(to, reason) {
     setBusy(true); setError(null)
@@ -144,8 +145,7 @@ export default function RequestDetailPage() {
     } finally { setBusy(false) }
   }
 
-  const canEditDraft = ['REQUEST_TRANSITION_SUBMIT', 'REQUEST_TRANSITION_REVIEW', 'REQUEST_TRANSITION_DECIDE', 'REQUEST_TRANSITION_ARCHIVE']
-    .some((p) => hasPermission(p))
+  const canEditDraft = hasPermission('REQUEST_CREATE')
 
   function startEditing() {
     setError(null)
@@ -203,11 +203,7 @@ export default function RequestDetailPage() {
 
   async function download(attachmentId, fileName) {
     try {
-      const res = await client.get(`/documents/${attachmentId}/download`, { responseType: 'blob' })
-      const url = URL.createObjectURL(res.data)
-      const a = document.createElement('a')
-      a.href = url; a.download = fileName; a.click()
-      URL.revokeObjectURL(url)
+      await downloadFile(`/documents/${attachmentId}/download`, undefined, fileName)
     } catch (err) {
       setError(apiErrorMessage(err, t('requestDetail.downloadFailed', 'Could not download the file.'), t))
     }
@@ -407,7 +403,7 @@ export default function RequestDetailPage() {
             </div>
             <div>
               <label className={labelCls} htmlFor="ed-subject">{t('requestDetail.subject')}</label>
-              <input id="ed-subject" className={inputCls} maxLength={500} value={editForm.subject} onChange={(e) => setEditForm({ ...editForm, subject: e.target.value })} />
+              <input id="ed-subject" className={inputCls} maxLength={255} value={editForm.subject} onChange={(e) => setEditForm({ ...editForm, subject: e.target.value })} />
             </div>
             <div className="sm:col-span-2">
               <label className={labelCls} htmlFor="ed-notes">{t('requestDetail.notes')}</label>
@@ -431,13 +427,13 @@ export default function RequestDetailPage() {
           <Field label={t('requestDetail.priority')}>{request.priority}</Field>
           <Field label={t('requestDetail.assignedTo')}>{request.assignedToName ?? '—'}</Field>
           <Field label={t('requestDetail.createdBy')}>{request.createdByName}</Field>
-          <Field label={t('requestDetail.due')}>{request.dueAt ? format(new Date(request.dueAt), 'MMM d, yyyy p') : '—'}</Field>
+          <Field label={t('requestDetail.due')}>{request.dueAt ? fmtDate(request.dueAt, 'MMM d, yyyy p') : '—'}</Field>
           {request.rejectionReason && <Field label={t('requestDetail.rejectionReason')}>{request.rejectionReason}</Field>}
           {request.notes && <Field label={t('requestDetail.notes')}>{request.notes}</Field>}
         </div>
 
 
-        {hasPermission('USER_VIEW') && !CLOSED_STATUSES.includes(request.status) && (
+        {hasPermission('REQUEST_ASSIGN') && !CLOSED_STATUSES.includes(request.status) && (
           <div className="rounded-lg border border-border-subtle p-4 mt-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
               <div>
@@ -482,8 +478,8 @@ export default function RequestDetailPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
           <Field label={t('requestFinance.slaStatus')}><SlaRecordBadge slaStatus={slaRecord?.slaStatus} /></Field>
           <Field label={t('requestFinance.dueDate')}>{request.dueAt
-            ? format(new Date(request.dueAt), 'MMM d, yyyy')
-            : (slaRecord?.dueDate ? format(new Date(slaRecord.dueDate), 'MMM d, yyyy') : '—')}</Field>
+            ? fmtDate(request.dueAt, 'MMM d, yyyy')
+            : (slaRecord?.dueDate ? fmtDate(slaRecord.dueDate, 'MMM d, yyyy') : '—')}</Field>
           <Field label={t('requestFinance.daysRemaining')}>{slaRecord?.daysRemaining ?? '—'}</Field>
           <Field label={t('requestFinance.overdueByDays')}>{slaRecord?.overdueByDays ?? '—'}</Field>
         </div>
@@ -564,11 +560,11 @@ export default function RequestDetailPage() {
                   <div className="text-xs text-text-secondary mt-1">
                     {p.receiptNumber && <>{t('requestFinance.receiptNumber')}: {p.receiptNumber} · </>}
                     {p.collectedByName && <>{t('requestFinance.collectedBy')} {p.collectedByName} · </>}
-                    {format(new Date(p.paidAt), 'MMM d, yyyy p')}
+                    {fmtDate(p.paidAt, 'MMM d, yyyy p')}
                   </div>
                   {p.status === 'REVERSED' && (
                     <div className="text-xs text-badge-danger-fg mt-1">
-                      {t('requestFinance.reversedBy')} {p.reversedByName} · {format(new Date(p.reversedAt), 'MMM d, yyyy p')}
+                      {t('requestFinance.reversedBy')} {p.reversedByName} · {fmtDate(p.reversedAt, 'MMM d, yyyy p')}
                       {p.reversalReason && ` — ${p.reversalReason}`}
                     </div>
                   )}
@@ -598,7 +594,7 @@ export default function RequestDetailPage() {
       {tab === 'attachments' && (
       <div className="card p-5 mb-4">
         <h2 className="text-sm font-bold text-text-primary mb-4">{t('requestDetail.documents')}</h2>
-        {hasPermission('REQUEST_TRANSITION_SUBMIT', 'REQUEST_TRANSITION_REVIEW', 'REQUEST_TRANSITION_DECIDE', 'REQUEST_TRANSITION_ARCHIVE') && (
+        {hasPermission('REQUEST_CREATE') && (
           <label className="inline-flex cursor-pointer items-center rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-border-subtle mb-4">
             {t('requestDetail.uploadDocument')}
             <input type="file" onChange={handleUpload} className="hidden" />
@@ -626,7 +622,7 @@ export default function RequestDetailPage() {
             {assignments.map((a) => (
               <li key={a.id} className="py-3">
                 <div className="text-sm font-semibold text-text-primary">{t('requestDetail.assignedToLabel')} {a.assignedToName}</div>
-                <div className="text-xs text-text-secondary mt-0.5">{a.assignedByName} · {format(new Date(a.assignedAt), 'MMM d, yyyy p')}</div>
+                <div className="text-xs text-text-secondary mt-0.5">{a.assignedByName} · {fmtDate(a.assignedAt, 'MMM d, yyyy p')}</div>
                 {a.note && <div className="text-sm text-text-secondary mt-1">{a.note}</div>}
               </li>
             ))}
@@ -642,7 +638,7 @@ export default function RequestDetailPage() {
               <div className="text-sm font-semibold text-text-primary">
                 {h.fromStatus ? `${t(`status.${h.fromStatus}`, h.fromStatus)} → ${t(`status.${h.toStatus}`, h.toStatus)}` : `${t('requestDetail.created')} (${t(`status.${h.toStatus}`, h.toStatus)})`}
               </div>
-              <div className="text-xs text-text-secondary mt-0.5">{h.changedByName} · {format(new Date(h.changedAt), 'MMM d, yyyy p')}</div>
+              <div className="text-xs text-text-secondary mt-0.5">{h.changedByName} · {fmtDate(h.changedAt, 'MMM d, yyyy p')}</div>
               {h.note && <div className="text-sm text-text-secondary mt-1">{h.note}</div>}
             </li>
           ))}
@@ -655,7 +651,7 @@ export default function RequestDetailPage() {
             {auditEntries.map((a) => (
               <li key={a.id} className="py-3">
                 <div className="text-sm font-semibold text-text-primary">{a.action}</div>
-                <div className="text-xs text-text-secondary mt-0.5">{a.actorName} · {format(new Date(a.occurredAt), 'MMM d, yyyy p')}</div>
+                <div className="text-xs text-text-secondary mt-0.5">{a.actorName} · {fmtDate(a.occurredAt, 'MMM d, yyyy p')}</div>
                 {a.details && <div className="text-sm text-text-secondary mt-1">{a.details}</div>}
               </li>
             ))}

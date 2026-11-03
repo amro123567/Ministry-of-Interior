@@ -4,6 +4,7 @@ import { LayoutGrid, Mail, CirclePlus, IdCard, Workflow, Users, ScrollText, BarC
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import LangToggle from './LangToggle.jsx'
+import NotificationBell from './NotificationBell.jsx'
 
 // Single horizontal header: brand, permission-gated nav links, an inline
 // expandable search pill, the EN | AR switch and the user menu in one 64px bar.
@@ -76,7 +77,7 @@ export default function Navbar() {
   const links = [
     { to: '/', end: true, label: t('nav.dashboard'), icon: LayoutGrid },
     { to: '/requests', end: false, label: t('nav.correspondence'), icon: Mail },
-    ...(hasPermission('REQUEST_TRANSITION_SUBMIT', 'REQUEST_TRANSITION_REVIEW', 'REQUEST_TRANSITION_DECIDE', 'REQUEST_TRANSITION_ARCHIVE') ? [{ to: '/requests/new', end: false, label: t('nav.newRequest'), icon: CirclePlus }] : []),
+    ...(hasPermission('REQUEST_CREATE') ? [{ to: '/requests/new', end: false, label: t('nav.newRequest'), icon: CirclePlus }] : []),
     { to: '/citizens', end: false, label: t('nav.citizens'), icon: IdCard },
     // Ungated like the three links above -- the backend leaves both
     // /api/workflow/instances and its transition endpoint open to any
@@ -196,6 +197,8 @@ export default function Navbar() {
             </button>
             {searchOpen && <div className={`${popover} w-72 p-2`}>{renderSearch({ autoFocus: true })}</div>}
           </div>
+
+          <NotificationBell />
 
           <LangToggle tone="dark" className="hidden sm:inline-flex" />
 

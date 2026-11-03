@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { format } from 'date-fns'
 import client from '../api/client.js'
 import { kindByApiSegment } from '../documentKinds.js'
 import { SkeletonLine } from '../components/Skeleton.jsx'
 import DocumentReviewSection from '../components/DocumentReviewSection.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
+import { fmtDate } from '../utils/dates.js'
 
-function fmt(d) { return d ? format(new Date(d), 'MMM d, yyyy') : null }
+function fmt(d) { return d ? fmtDate(d, 'MMM d, yyyy') : null }
 
 function Field({ label, value }) {
   return (

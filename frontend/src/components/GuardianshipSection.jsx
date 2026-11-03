@@ -1,12 +1,12 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { format } from 'date-fns'
 import client from '../api/client.js'
 import CitizenSearchPicker from './CitizenSearchPicker.jsx'
 import DistrictScopedSelect from './DistrictScopedSelect.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import { inputCls, labelCls } from '../ui.js'
+import { fmtDate, todayISO } from '../utils/dates.js'
 
 const emptyGuardian = { citizenId: null, citizenLabel: null }
 
@@ -31,7 +31,7 @@ export default function GuardianshipSection({ citizenId }) {
   const [type, setType] = useState('FULL')
   const [courtDecisionNumber, setCourtDecisionNumber] = useState('')
   const [courtId, setCourtId] = useState('')
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [startDate, setStartDate] = useState(() => todayISO())
   const [endDate, setEndDate] = useState('')
   const [formError, setFormError] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -51,7 +51,7 @@ export default function GuardianshipSection({ citizenId }) {
     setType('FULL')
     setCourtDecisionNumber('')
     setCourtId('')
-    setStartDate(new Date().toISOString().slice(0, 10))
+    setStartDate(todayISO())
     setEndDate('')
     setFormError(null)
     setAdding(true)
@@ -172,8 +172,8 @@ export default function GuardianshipSection({ citizenId }) {
               </div>
               <div className="text-xs text-text-secondary mt-0.5">
                 {g.courtName ?? '—'} · {t('guardianship.courtDecisionNumber')} {g.courtDecisionNumber} ·{' '}
-                {g.startDate ? format(new Date(g.startDate), 'MMM d, yyyy') : '—'}
-                {g.endDate && ` ${t('common.to')} ${format(new Date(g.endDate), 'MMM d, yyyy')}`}
+                {g.startDate ? fmtDate(g.startDate, 'MMM d, yyyy') : '—'}
+                {g.endDate && ` ${t('common.to')} ${fmtDate(g.endDate, 'MMM d, yyyy')}`}
               </div>
             </li>
           ))}

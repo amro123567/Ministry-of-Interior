@@ -1,11 +1,11 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { format } from 'date-fns'
 import client from '../api/client.js'
 import { kindByTypeCode } from '../documentKinds.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import { Badge } from './ui/index.jsx'
+import { fmtDate } from '../utils/dates.js'
 
 const DOC_STATUS_STYLES = {
   DRAFT: 'draft',
@@ -91,7 +91,7 @@ export default function DocumentsSection({ citizenId, citizenLabel }) {
                     <DocStatusBadge status={d.status} t={t} />
                   </div>
                   <div className="text-xs text-text-secondary mt-0.5">
-                    {d.issueDate ? format(new Date(d.issueDate), 'MMM d, yyyy') : '—'}
+                    {d.issueDate ? fmtDate(d.issueDate, 'MMM d, yyyy') : '—'}
                     {d.issuingOfficeName && ` · ${d.issuingOfficeName}`}
                   </div>
                   {kind?.hasDetailRoute && (
@@ -105,7 +105,7 @@ export default function DocumentsSection({ citizenId, citizenLabel }) {
                         <div><span className="font-semibold text-text-secondary">{t('documentRegistry.cardNumber')}:</span> {card.cardNumber}</div>
                         <div><span className="font-semibold text-text-secondary">{t('documentRegistry.cardStatus')}:</span> {card.status}</div>
                         {card.chipSerialNumber && <div><span className="font-semibold text-text-secondary">{t('documentRegistry.chipSerialNumber')}:</span> {card.chipSerialNumber}</div>}
-                        {d.expiryDate && <div><span className="font-semibold text-text-secondary">{t('documentRegistry.expiryDate')}:</span> {format(new Date(d.expiryDate), 'MMM d, yyyy')}</div>}
+                        {d.expiryDate && <div><span className="font-semibold text-text-secondary">{t('documentRegistry.expiryDate')}:</span> {fmtDate(d.expiryDate, 'MMM d, yyyy')}</div>}
                       </div>
                     ) : (
                       <button type="button" onClick={() => setExpandedCardId(d.id)} className="mt-1 block text-xs font-semibold text-primary hover:underline">

@@ -22,8 +22,8 @@ export default function RequestsOverviewChart({ rows }) {
   const total = data.reduce((n, b) => n + b.total, 0)
 
   return (
-    <section className="dash-card p-5 sm:p-6" aria-labelledby="overview-title">
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+    <section className="dash-card flex h-full min-h-[27rem] flex-col p-5 sm:p-6" aria-labelledby="overview-title">
+      <div className="mb-4 flex min-h-[3.25rem] flex-wrap items-start justify-between gap-3">
         <div>
           <h2 id="overview-title" className="text-base font-bold text-navy">{t('dashboard.overview.title')}</h2>
           <p className="mt-0.5 text-xs text-slate-600">{t('dashboard.overview.hint')}</p>

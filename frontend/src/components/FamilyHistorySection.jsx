@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { format } from 'date-fns'
 import client from '../api/client.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
+import { fmtDate } from '../utils/dates.js'
 
 // Shows every family-record membership a citizen has ever had (GET
 // /api/citizens/{id}/family-history returns across *every* family, not
@@ -67,8 +67,8 @@ export default function FamilyHistorySection({ citizenId, citizenLabel }) {
                     {t(`familyRecord.relationshipLabel.${m.relationship}`, m.relationship)}
                   </span>
                   <span className="text-xs text-text-secondary ms-2">
-                    {m.joinedDate ? format(new Date(m.joinedDate), 'MMM d, yyyy') : '—'}
-                    {m.leftDate && ` ${t('common.to')} ${format(new Date(m.leftDate), 'MMM d, yyyy')} (${m.leftReason})`}
+                    {m.joinedDate ? fmtDate(m.joinedDate, 'MMM d, yyyy') : '—'}
+                    {m.leftDate && ` ${t('common.to')} ${fmtDate(m.leftDate, 'MMM d, yyyy')} (${m.leftReason})`}
                   </span>
                 </div>
                 <Link to={`/family-records/${m.familyRecordId}`} className="text-sm font-semibold text-primary hover:underline whitespace-nowrap">

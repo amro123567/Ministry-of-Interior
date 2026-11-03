@@ -103,9 +103,12 @@ export default function ActivityFeed({ rows }) {
   const tabs = canAudit ? ['bottlenecks', 'activity'] : ['bottlenecks']
 
   return (
-    <section className="dash-card flex flex-col p-5 sm:p-6" aria-labelledby="feed-title">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 id="feed-title" className="text-base font-bold text-navy">{t('dashboard.feed.title')}</h2>
+    <section className="dash-card flex h-full min-h-[27rem] flex-col p-5 sm:p-6" aria-labelledby="feed-title">
+      <div className="mb-4 flex min-h-[3.25rem] flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 id="feed-title" className="text-base font-bold text-navy">{t('dashboard.feed.title')}</h2>
+          <p className="mt-0.5 text-xs text-slate-600">{t('dashboard.feed.hint')}</p>
+        </div>
         <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-ok-ink">
           <span className="h-2 w-2 rounded-full bg-ok" aria-hidden="true" />{t('dashboard.feed.live')}
         </span>

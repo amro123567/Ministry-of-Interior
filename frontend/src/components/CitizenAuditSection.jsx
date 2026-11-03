@@ -1,11 +1,11 @@
 import { useEffect, useState, useCallback } from 'react'
-import { format } from 'date-fns'
 import client from '../api/client.js'
 import AccessTypeBadge from './AccessTypeBadge.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import { tdCls, thCls } from '../ui.js'
 import Pagination, { usePagination } from './Pagination.jsx'
+import { fmtDate } from '../utils/dates.js'
 
 
 // Frontend for the two citizen-scoped tiers of Item 6's audit domain
@@ -90,7 +90,7 @@ export default function CitizenAuditSection({ citizenId }) {
                         <span className="text-text-primary">{c.newValue || '—'}</span>
                       </td>
                       <td className={`${tdCls} whitespace-nowrap`}>{c.changedByName}</td>
-                      <td className={`${tdCls} text-text-secondary whitespace-nowrap`}>{format(new Date(c.changedAt), 'MMM d, yyyy HH:mm')}</td>
+                      <td className={`${tdCls} text-text-secondary whitespace-nowrap`}>{fmtDate(c.changedAt, 'MMM d, yyyy HH:mm')}</td>
                       <td className={`${tdCls} text-text-secondary max-w-[220px] truncate`} title={c.reason ?? ''}>{c.reason || '—'}</td>
                     </tr>
                   ))}
@@ -119,7 +119,7 @@ export default function CitizenAuditSection({ citizenId }) {
                     <tr key={a.id}>
                       <td className={`${tdCls} font-semibold text-text-primary whitespace-nowrap`}>{a.accessedByName}</td>
                       <td className={tdCls}><AccessTypeBadge accessType={a.accessType} /></td>
-                      <td className={`${tdCls} text-text-secondary whitespace-nowrap`}>{format(new Date(a.accessedAt), 'MMM d, yyyy HH:mm')}</td>
+                      <td className={`${tdCls} text-text-secondary whitespace-nowrap`}>{fmtDate(a.accessedAt, 'MMM d, yyyy HH:mm')}</td>
                       <td className={`${tdCls} text-text-secondary max-w-[220px] truncate`} title={a.reason ?? ''}>{a.reason || '—'}</td>
                     </tr>
                   ))}

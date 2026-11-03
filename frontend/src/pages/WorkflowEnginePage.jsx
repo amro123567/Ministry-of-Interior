@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, ArrowRight, CheckCircle2, Flag, GitBranch, Inbox, KeyRound, MessageSquare, Paperclip, Play, Search, Workflow } from 'lucide-react'
-import { format } from 'date-fns'
 import client from '../api/client.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import WorkflowDiagram from '../components/WorkflowDiagram.jsx'
 import { inputCls, labelCls } from '../ui.js'
+import { fmtDate } from '../utils/dates.js'
 
 
 // A state is shown as a neutral chip with its configured colour as a small dot -- colour carries
@@ -738,7 +738,7 @@ export default function WorkflowEnginePage() {
                         <span className="text-slate-300">→</span>
                         <StateChip state={stateByCode(h.toStateCode)} lang={lang} />
                         <span className="text-xs text-text-secondary">
-                          {h.actorName ?? t('workflowEngine.unknownActor')} · {format(new Date(h.occurredAt), 'MMM d, yyyy HH:mm')}
+                          {h.actorName ?? t('workflowEngine.unknownActor')} · {fmtDate(h.occurredAt, 'MMM d, yyyy HH:mm')}
                         </span>
                       </div>
                       {h.comment && <div className="text-xs text-text-secondary mt-1">{h.comment}</div>}

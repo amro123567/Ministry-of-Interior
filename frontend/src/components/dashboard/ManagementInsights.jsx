@@ -58,7 +58,7 @@ export default function ManagementInsights({ summary, rows }) {
   const loadMax = load ? Math.max(1, ...load.list.map((p) => p.active)) : 1
 
   return (
-    <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="management-insights">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="management-insights">
       {/* SLA posture + priority */}
       <section className="dash-card p-5 sm:p-6" aria-labelledby="ins-sla">
         <h2 id="ins-sla" className="text-base font-bold text-navy">{t('dashboard.insights.slaTitle')}</h2>

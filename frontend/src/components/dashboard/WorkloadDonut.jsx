@@ -34,8 +34,8 @@ export default function WorkloadDonut({ rows }) {
   const nameOf = (d) => (d.name === '__other__' ? t('dashboard.workload.other') : d.name)
 
   return (
-    <section className="dash-card flex flex-col p-5 sm:p-6" aria-labelledby="workload-title">
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+    <section className="dash-card flex h-full min-h-[27rem] flex-col p-5 sm:p-6" aria-labelledby="workload-title">
+      <div className="mb-4 flex min-h-[3.25rem] flex-wrap items-start justify-between gap-3">
         <div>
           <h2 id="workload-title" className="text-base font-bold text-navy">{t('dashboard.workload.title')}</h2>
           <p className="mt-0.5 text-xs text-slate-600">{t(by === 'office' ? 'dashboard.workload.hintOffice' : 'dashboard.workload.hintType')}</p>

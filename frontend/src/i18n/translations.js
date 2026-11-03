@@ -20,6 +20,10 @@ export const translations = {
       menu: 'Menu',
       noResults: 'No results.',
     },
+    app: {
+      title: 'CTS | Ministry of Interior',
+      titleSuffix: 'CTS – Ministry of Interior',
+    },
     nav: {
       brand: 'CTS',
       dashboard: 'Dashboard',
@@ -34,12 +38,33 @@ export const translations = {
       searchPlaceholder: 'Search correspondence…',
       search: 'Search…',
     },
+    notifications: {
+      title: 'My assigned work',
+      none: 'No assigned work',
+      overdue: 'overdue',
+      due: 'Due',
+      empty: 'You\'re all caught up',
+      emptyHint: 'No open work is assigned to you right now.',
+      viewAll: 'View all assigned to me',
+      statOverdue: 'Overdue',
+      statDueSoon: 'Due soon',
+      statOnTrack: 'On track',
+      overdueBy: 'Overdue by',
+      overdueToday: 'Overdue',
+      dueIn: 'Due in',
+      dueToday: 'Due today',
+      noDeadline: 'No deadline',
+      dayUnit: 'd',
+      filterAll: 'All',
+      filterEmpty: 'No requests in this group.',
+      assignedBy: 'Assigned by',
+      openSuffix: ' open',
+    },
     footer: {
       system: 'Correspondence Tracking System',
       support: 'Support',
       helpDesk: 'Help Desk',
       rights: 'All rights reserved.',
-      statusOperational: 'Operational',
       modules: 'Core Modules',
       correspondenceRegistry: 'Correspondence Registry',
       workflowManagement: 'Workflow Management',
@@ -81,6 +106,7 @@ export const translations = {
     dashboard: {
       queue: {
         seeAll: 'See all',
+        archive: { title: 'Ready to archive', hint: 'Approved and rejected requests waiting to be archived.', empty: 'Nothing is waiting to be archived.' },
         review: { title: 'Waiting for review', hint: 'Submitted and under-review requests, most urgent first.', empty: 'Nothing is waiting for review.' },
         mine: { title: 'My queue', hint: 'Open requests assigned to you, most urgent first.', empty: 'No open requests are assigned to you.' },
         watch: { title: 'Needs attention', hint: 'Requests that are overdue or due soon.', empty: 'Nothing is overdue or due soon.' },
@@ -97,6 +123,12 @@ export const translations = {
         teamEmpty: 'No active requests are assigned yet.', late: 'late', unassigned: 'active requests have no assignee.',
       },
       greeting: { morning: 'Good morning', afternoon: 'Good afternoon', evening: 'Good evening' },
+      sections: {
+        attention: 'Your work', attentionHint: 'What needs action from you, most urgent first.',
+        glance: 'At a glance', glanceHint: 'Key figures for all open correspondence.',
+        risk: 'Deadlines & workload', riskHint: 'Where the risk sits and who is carrying it.',
+        trends: 'Trends & activity', trendsHint: 'Volume over time, status mix and recent changes.',
+      },
       refresh: 'Refresh', newRequest: 'New request', openReports: 'Reports',
       kpi: {
         vsLastWeek: 'vs last week', newThisWeek: 'new this week', volumeTrend: 'Requests received per week, last 8 weeks',
@@ -113,6 +145,7 @@ export const translations = {
       },
       feed: {
         title: 'Bottleneck feed', live: 'Live', bottlenecks: 'Bottlenecks', activity: 'Activity',
+        hint: 'Overdue and due-soon requests, most urgent first.',
         noBottlenecks: 'No overdue or due-soon requests.', noActivity: 'No recent activity.',
       },
       table: {
@@ -921,6 +954,10 @@ export const translations = {
       menu: 'القائمة',
       noResults: 'لا توجد نتائج.',
     },
+    app: {
+      title: 'نظام تتبع المراسلات | وزارة الداخلية',
+      titleSuffix: 'نظام تتبع المراسلات – وزارة الداخلية',
+    },
     nav: {
       brand: 'نظام المراسلات',
       dashboard: 'لوحة التحكم',
@@ -935,12 +972,33 @@ export const translations = {
       searchPlaceholder: 'ابحث في المراسلات…',
       search: 'بحث…',
     },
+    notifications: {
+      title: 'الأعمال المسندة إليّ',
+      none: 'لا توجد أعمال مسندة',
+      overdue: 'متأخرة',
+      due: 'الاستحقاق',
+      empty: 'لا شيء متبقٍّ لديك',
+      emptyHint: 'لا توجد أعمال مفتوحة مسندة إليك حاليًا.',
+      viewAll: 'عرض كل المسندة إليّ',
+      statOverdue: 'متأخرة',
+      statDueSoon: 'تستحق قريبًا',
+      statOnTrack: 'ضمن المهلة',
+      overdueBy: 'متأخرة منذ',
+      overdueToday: 'متأخرة',
+      dueIn: 'تستحق خلال',
+      dueToday: 'تستحق اليوم',
+      noDeadline: 'بلا موعد نهائي',
+      dayUnit: ' يوم',
+      filterAll: 'الكل',
+      filterEmpty: 'لا توجد طلبات في هذه المجموعة.',
+      assignedBy: 'أسندها',
+      openSuffix: ' مفتوحة',
+    },
     footer: {
       system: 'نظام تتبع المراسلات',
       support: 'الدعم الفني',
       helpDesk: 'مكتب المساعدة',
       rights: 'جميع الحقوق محفوظة.',
-      statusOperational: 'يعمل بشكل طبيعي',
       modules: 'الوحدات الأساسية',
       correspondenceRegistry: 'سجل المراسلات',
       workflowManagement: 'إدارة سير العمل',
@@ -982,6 +1040,7 @@ export const translations = {
     dashboard: {
       queue: {
         seeAll: 'عرض الكل',
+        archive: { title: 'جاهزة للأرشفة', hint: 'الطلبات الموافق عليها والمرفوضة بانتظار الأرشفة.', empty: 'لا توجد طلبات بانتظار الأرشفة.' },
         review: { title: 'بانتظار المراجعة', hint: 'الطلبات المقدّمة وقيد المراجعة، الأكثر إلحاحاً أولاً.', empty: 'لا توجد طلبات بانتظار المراجعة.' },
         mine: { title: 'طلباتي', hint: 'الطلبات المفتوحة المسندة إليك، الأكثر إلحاحاً أولاً.', empty: 'لا توجد طلبات مفتوحة مسندة إليك.' },
         watch: { title: 'تحتاج إلى انتباه', hint: 'الطلبات المتأخرة أو التي يقترب موعدها.', empty: 'لا توجد طلبات متأخرة أو يقترب موعدها.' },
@@ -998,6 +1057,12 @@ export const translations = {
         teamEmpty: 'لا توجد طلبات نشطة مسندة بعد.', late: 'متأخرة', unassigned: 'طلبات نشطة بلا موظف مسؤول.',
       },
       greeting: { morning: 'صباح الخير', afternoon: 'مساء الخير', evening: 'مساء الخير' },
+      sections: {
+        attention: 'عملك', attentionHint: 'ما يحتاج إلى إجراء منك، الأكثر إلحاحًا أولًا.',
+        glance: 'نظرة سريعة', glanceHint: 'أهم الأرقام لكل المراسلات المفتوحة.',
+        risk: 'المواعيد وأعباء العمل', riskHint: 'أين تتركز المخاطر ومن يحمل العبء.',
+        trends: 'الاتجاهات والنشاط', trendsHint: 'الحجم عبر الزمن وتوزيع الحالات وآخر التغييرات.',
+      },
       refresh: 'تحديث', newRequest: 'طلب جديد', openReports: 'التقارير',
       kpi: {
         vsLastWeek: 'مقارنة بالأسبوع الماضي', newThisWeek: 'جديدة هذا الأسبوع', volumeTrend: 'الطلبات المستلمة أسبوعياً، آخر 8 أسابيع',
@@ -1014,6 +1079,7 @@ export const translations = {
       },
       feed: {
         title: 'مؤشر الاختناقات', live: 'مباشر', bottlenecks: 'الاختناقات', activity: 'النشاط',
+        hint: 'الطلبات المتأخرة أو التي يقترب موعدها، الأكثر إلحاحًا أولًا.',
         noBottlenecks: 'لا توجد طلبات متأخرة أو يقترب موعدها.', noActivity: 'لا يوجد نشاط حديث.',
       },
       table: {

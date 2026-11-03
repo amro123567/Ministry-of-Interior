@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { format } from 'date-fns'
 import { Download, Search } from 'lucide-react'
 import client from '../api/client.js'
 import { SkeletonTableRows } from '../components/Skeleton.jsx'
@@ -9,6 +8,7 @@ import { downloadCsv } from '../api/download.js'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import { ActiveFilterChips, FilterField } from '../components/FilterBar.jsx'
 import Pagination, { usePagination } from '../components/Pagination.jsx'
+import { fmtDate } from '../utils/dates.js'
 
 
 // Soft-pill tints keyed by keyword rather than an exact action list, since
@@ -86,7 +86,7 @@ function LoginAttemptsTab() {
             ) : attemptRows.map((a) => (
               <tr key={a.id} className="data-row">
                 <td className="td-cell whitespace-nowrap">
-                  {format(new Date(a.attemptedAt), 'MMM d, yyyy HH:mm:ss')}
+                  {fmtDate(a.attemptedAt, 'MMM d, yyyy HH:mm:ss')}
                 </td>
                 <td className="td-cell text-text-primary whitespace-nowrap">{a.usernameAttempted}</td>
                 <td className="td-cell"><LoginAttemptBadge wasSuccessful={a.wasSuccessful} failureReason={a.failureReason} /></td>
@@ -269,7 +269,7 @@ export default function AuditLogPage() {
                     ) : entryRows.map((e) => (
                       <tr key={e.id} className="data-row">
                         <td className="td-cell whitespace-nowrap">
-                          {format(new Date(e.occurredAt), 'MMM d, yyyy HH:mm:ss')}
+                          {fmtDate(e.occurredAt, 'MMM d, yyyy HH:mm:ss')}
                         </td>
                         <td className="td-cell"><ActionBadge action={e.action} /></td>
                         <td className="td-cell text-text-primary whitespace-nowrap">{e.entityType} #{e.entityId}</td>

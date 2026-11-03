@@ -20,13 +20,59 @@ export function clearTokens() {
   sessionStorage.removeItem('cts_user')
 }
 
-client.interceptors.request.use((config) => {
-  const { accessToken } = getTokens()
+// Reads the `exp` claim of a JWT without verifying it (the server does that).
+// Returns true when the token is already expired, or will be within `skewSeconds`.
+export function isTokenExpired(token, skewSeconds = 15) {
+  try {
+    const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    const { exp } = JSON.parse(atob(part))
+    return typeof exp === 'number' && exp * 1000 <= Date.now() + skewSeconds * 1000
+  } catch {
+    return false // not a JWT we can read: let the server decide
+  }
+}
+
+let refreshing = null
+
+// One refresh at a time: concurrent requests (the dashboard fires several, the
+// notification bell polls) all wait on the same call, so the rotating refresh
+// token is only spent once.
+function refreshTokens() {
+  if (!refreshing) {
+    const { refreshToken } = getTokens()
+    refreshing = axios.post('/api/auth/refresh', { refreshToken })
+      .then((res) => {
+        setTokens(res.data.accessToken, res.data.refreshToken)
+        return res.data.accessToken
+      })
+      .finally(() => { refreshing = null })
+  }
+  return refreshing
+}
+
+function signOutToLogin() {
+  clearTokens()
+  window.location.href = '/login'
+}
+
+// The backend answers a request with an expired access token using 403 (not 401),
+// so waiting for a 401 never triggers a refresh. Check the token's own expiry
+// instead and refresh *before* sending, which keeps a signed-in user signed in
+// for as long as their refresh token lives.
+client.interceptors.request.use(async (config) => {
+  let { accessToken, refreshToken } = getTokens()
+  const isAuthCall = String(config.url || '').includes('/auth/')
+  if (accessToken && refreshToken && !isAuthCall && isTokenExpired(accessToken)) {
+    try {
+      accessToken = await refreshTokens()
+    } catch (err) {
+      signOutToLogin()
+      return Promise.reject(err)
+    }
+  }
   if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`
   return config
 })
-
-let refreshing = null
 
 client.interceptors.response.use(
   (response) => response,
@@ -36,21 +82,15 @@ client.interceptors.response.use(
       original._retry = true
       const { refreshToken } = getTokens()
       if (!refreshToken) {
-        clearTokens()
-        window.location.href = '/login'
+        signOutToLogin()
         return Promise.reject(error)
       }
       try {
-        refreshing = refreshing || axios.post('/api/auth/refresh', { refreshToken })
-        const res = await refreshing
-        refreshing = null
-        setTokens(res.data.accessToken, res.data.refreshToken)
-        original.headers.Authorization = `Bearer ${res.data.accessToken}`
+        const accessToken = await refreshTokens()
+        original.headers.Authorization = `Bearer ${accessToken}`
         return client(original)
       } catch (refreshError) {
-        refreshing = null
-        clearTokens()
-        window.location.href = '/login'
+        signOutToLogin()
         return Promise.reject(refreshError)
       }
     }

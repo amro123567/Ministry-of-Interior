@@ -18,9 +18,13 @@ import {
 const OPEN = ['SUBMITTED', 'UNDER_REVIEW']
 
 // What the signed-in person should look at first, decided by what they are allowed to do:
-// reviewers see what is waiting for review, officers see what is assigned to them, and
+// the archiver sees what is ready to archive, reviewers see what is waiting for review, officers see what is assigned to them, and
 // read-only users see the most urgent requests in the system.
 function queueFor(hasPermission) {
+  // Archiving is the last step of the path: whoever holds it (ADMIN) sees what is ready to close.
+  if (hasPermission('REQUEST_TRANSITION_ARCHIVE')) {
+    return { key: 'archive', params: {}, keep: (r) => r.status === 'APPROVED' || r.status === 'REJECTED', more: '/requests?status=APPROVED' }
+  }
   if (hasPermission('REQUEST_TRANSITION_REVIEW', 'REQUEST_TRANSITION_DECIDE')) {
     return { key: 'review', params: {}, keep: (r) => OPEN.includes(r.status), more: '/requests?status=SUBMITTED' }
   }
@@ -28,6 +32,21 @@ function queueFor(hasPermission) {
     return { key: 'mine', params: { assignedToMe: true }, keep: (r) => r.status !== 'ARCHIVED' && r.status !== 'REJECTED' && r.status !== 'APPROVED', more: '/requests?mine=1' }
   }
   return { key: 'watch', params: {}, keep: (r) => r.slaStatus !== 'ON_TRACK', more: '/requests?sla=OVERDUE' }
+}
+
+// A labelled band that groups related cards, so the page reads top-to-bottom as:
+// what needs me -> the numbers -> where the risk is -> trends.
+function Section({ id, title, hint, children }) {
+  return (
+    <section aria-labelledby={id} className="mb-8">
+      <div className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+        <h2 id={id} className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">{title}</h2>
+        {hint && <p className="text-xs text-slate-400">{hint}</p>}
+        <span className="hidden h-px min-w-8 flex-1 bg-hairline sm:block" aria-hidden="true" />
+      </div>
+      {children}
+    </section>
+  )
 }
 
 export default function DashboardPage() {
@@ -71,7 +90,7 @@ export default function DashboardPage() {
   const greet = t(`dashboard.greeting.${hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening'}`)
   const firstName = String(user?.fullName || user?.username || '').trim().split(/\s+/)[0]
   const today = new Intl.DateTimeFormat(lang === 'ar' ? 'ar' : 'en', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date())
-  const canCreate = hasPermission('REQUEST_TRANSITION_SUBMIT', 'REQUEST_TRANSITION_REVIEW', 'REQUEST_TRANSITION_DECIDE', 'REQUEST_TRANSITION_ARCHIVE')
+  const canCreate = hasPermission('REQUEST_CREATE')
   const heading = (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
@@ -121,54 +140,60 @@ export default function DashboardPage() {
     <div>
       {heading}
 
-      {/* KPI row */}
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        <KpiCard
-          testId="kpi-active" icon={Layers} tone="brand" label={t('dashboard.totalRequests')} value={active} to="/requests"
-          visual={spark ? (c) => <Sparkline values={spark} stroke={c} label={t('dashboard.kpi.volumeTrend')} /> : null}
-          footer={week && (week.pct != null
-            ? <><TrendPill pct={week.pct} suffix={` ${t('dashboard.kpi.vsLastWeek')}`} /></>
-            : <span><b className="text-navy">{week.cur}</b> {t('dashboard.kpi.newThisWeek')}</span>)}
-        />
-        <KpiCard
-          testId="kpi-overdue" icon={AlertTriangle} tone="crit" label={t('dashboard.overdue')} value={summary.overdueCount}
-          to="/requests?sla=OVERDUE" emphasis={summary.overdueCount > 0}
-          footer={active > 0 && (
-            <span className="dash-chip border-crit/30 bg-crit-tint text-crit-ink">{overduePct}% {t('dashboard.kpi.ofActive')}</span>
-          )}
-        />
-        <KpiCard
-          testId="kpi-due-soon" icon={Clock} tone="warn" label={t('dashboard.dueSoon')} value={summary.dueSoonCount}
-          to="/requests?sla=DUE_SOON"
-          footer={nextDue
-            ? <span>{t('dashboard.kpi.nextDue')} <b className="text-navy">{nextDue.referenceNumber}</b> · {nextDueLabel.value}{t(`dashboard.table.unit.${nextDueLabel.unit}`)}</span>
-            : <span>{t('dashboard.kpi.nothingDueSoon')}</span>}
-        />
-        <KpiCard
-          testId="kpi-resolution" icon={GaugeIcon} tone="active" label={t('dashboard.avgResolution')}
-          value={summary.closedThisWeek ? avg.value : '—'} unit={summary.closedThisWeek ? t(`dashboard.table.unit.${avg.unit}`) : null}
-          visual={health != null ? (c) => <Gauge percent={health} stroke={c} label={`${t('dashboard.kpi.slaHealth')} ${health}%`} /> : null}
-          footer={<span><b className="text-navy">{summary.closedThisWeek}</b> {t('dashboard.closedThisWeek').toLowerCase()}{health != null && <> · <b className="text-navy">{health}%</b> {t('dashboard.kpi.slaHealth')}</>}</span>}
-        />
-        <KpiCard
-          testId="kpi-approval" icon={CheckCircle2} tone="ok" label={t('dashboard.kpi.approvalRate')}
-          value={rate == null ? '—' : rate} unit={rate == null ? null : '%'}
-          visual={rate != null ? (c) => <Gauge percent={rate} stroke={c} label={`${t('dashboard.kpi.approvalRate')} ${rate}%`} /> : null}
-          footer={<span><b className="text-ok-ink">{approved}</b> {t('status.APPROVED')} · <b className="text-crit-ink">{rejected}</b> {t('status.REJECTED')}</span>}
-        />
-      </div>
+      <Section id="dash-attention" title={t('dashboard.sections.attention')} hint={t('dashboard.sections.attentionHint')}>
+        <WaitingForReviewTable queue={queue} rows={queueRows} loading={queueRows === null} />
+      </Section>
 
-      <ManagementInsights summary={summary} rows={allRows} />
+      <Section id="dash-glance" title={t('dashboard.sections.glance')} hint={t('dashboard.sections.glanceHint')}>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <KpiCard
+            testId="kpi-active" icon={Layers} tone="brand" label={t('dashboard.totalRequests')} value={active} to="/requests"
+            visual={spark ? (c) => <Sparkline values={spark} stroke={c} label={t('dashboard.kpi.volumeTrend')} /> : null}
+            footer={week && (week.pct != null
+              ? <><TrendPill pct={week.pct} suffix={` ${t('dashboard.kpi.vsLastWeek')}`} /></>
+              : <span><b className="text-navy">{week.cur}</b> {t('dashboard.kpi.newThisWeek')}</span>)}
+          />
+          <KpiCard
+            testId="kpi-overdue" icon={AlertTriangle} tone="crit" label={t('dashboard.overdue')} value={summary.overdueCount}
+            to="/requests?sla=OVERDUE" emphasis={summary.overdueCount > 0}
+            footer={active > 0 && (
+              <span className="dash-chip border-crit/30 bg-crit-tint text-crit-ink">{overduePct}% {t('dashboard.kpi.ofActive')}</span>
+            )}
+          />
+          <KpiCard
+            testId="kpi-due-soon" icon={Clock} tone="warn" label={t('dashboard.dueSoon')} value={summary.dueSoonCount}
+            to="/requests?sla=DUE_SOON"
+            footer={nextDue
+              ? <span>{t('dashboard.kpi.nextDue')} <b className="text-navy">{nextDue.referenceNumber}</b> · {nextDueLabel.value}{t(`dashboard.table.unit.${nextDueLabel.unit}`)}</span>
+              : <span>{t('dashboard.kpi.nothingDueSoon')}</span>}
+          />
+          <KpiCard
+            testId="kpi-resolution" icon={GaugeIcon} tone="active" label={t('dashboard.avgResolution')}
+            value={summary.closedThisWeek ? avg.value : '—'} unit={summary.closedThisWeek ? t(`dashboard.table.unit.${avg.unit}`) : null}
+            visual={health != null ? (c) => <Gauge percent={health} stroke={c} label={`${t('dashboard.kpi.slaHealth')} ${health}%`} /> : null}
+            footer={<span><b className="text-navy">{summary.closedThisWeek}</b> {t('dashboard.closedThisWeek').toLowerCase()}{health != null && <> · <b className="text-navy">{health}%</b> {t('dashboard.kpi.slaHealth')}</>}</span>}
+          />
+          <KpiCard
+            testId="kpi-approval" icon={CheckCircle2} tone="ok" label={t('dashboard.kpi.approvalRate')}
+            value={rate == null ? '—' : rate} unit={rate == null ? null : '%'}
+            visual={rate != null ? (c) => <Gauge percent={rate} stroke={c} label={`${t('dashboard.kpi.approvalRate')} ${rate}%`} /> : null}
+            footer={<span><b className="text-ok-ink">{approved}</b> {t('status.APPROVED')} · <b className="text-crit-ink">{rejected}</b> {t('status.REJECTED')}</span>}
+          />
+        </div>
+      </Section>
 
-      <div className="mb-6">
-        <WaitingForReviewTable queue={queue} rows={queueRows} loading={queueRows === null} onChanged={reload} />
-      </div>
+      <Section id="dash-risk" title={t('dashboard.sections.risk')} hint={t('dashboard.sections.riskHint')}>
+        <ManagementInsights summary={summary} rows={allRows} />
+      </Section>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-12">
-        <div className="lg:col-span-2 xl:col-span-6"><RequestsOverviewChart rows={allRows} /></div>
-        <div className="xl:col-span-3"><WorkloadDonut rows={allRows} /></div>
-        <div className="xl:col-span-3"><ActivityFeed rows={allRows} /></div>
-      </div>
+      <Section id="dash-trends" title={t('dashboard.sections.trends')} hint={t('dashboard.sections.trendsHint')}>
+        {/* Three equal columns; every card stretches to the tallest one. */}
+        <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-3">
+          <RequestsOverviewChart rows={allRows} />
+          <WorkloadDonut rows={allRows} />
+          <ActivityFeed rows={allRows} />
+        </div>
+      </Section>
     </div>
   )
 }

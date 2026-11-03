@@ -39,10 +39,15 @@ export function AuthProvider({ children }) {
     // even if the backend is unreachable or slow — the server-side call
     // below is best-effort and must never block the user from logging out.
     const refreshToken = sessionStorage.getItem('cts_refresh_token')
+    const accessToken = sessionStorage.getItem('cts_access_token')
     clearTokens()
     setUser(null)
     if (refreshToken) {
-      client.post('/auth/logout', { refreshToken }).catch(() => { /* best-effort */ })
+      // The tokens are already cleared, so the request interceptor has nothing to
+      // attach; pass the access token explicitly so the server can tell who is
+      // signing out and revoke this session's refresh token.
+      const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined
+      client.post('/auth/logout', { refreshToken }, { headers }).catch(() => { /* best-effort */ })
     }
   }, [])
 

@@ -73,6 +73,9 @@ export default function RequestCreatePage() {
   const { hasPermission } = useAuth()
   const navigate = useNavigate()
   const [citizens, setCitizens] = useState([])
+  // The chosen citizen is remembered on its own: the dropdown only lists the current search
+  // results, so editing the search box must not make the selection vanish from the form or the review.
+  const [pickedCitizen, setPickedCitizen] = useState(null)
   const [documentTypes, setDocumentTypes] = useState([])
   const [offices, setOffices] = useState([])
   const [departments, setDepartments] = useState([])
@@ -103,10 +106,13 @@ export default function RequestCreatePage() {
   }, [])
 
   useEffect(() => {
+    let stale = false
     const handle = setTimeout(() => {
-      client.get('/citizens', { params: { q: citizenQuery || undefined } }).then((r) => setCitizens(r.data)).catch(() => setCitizens([]))
+      client.get('/citizens', { params: { q: citizenQuery || undefined } })
+        .then((r) => { if (!stale) setCitizens(r.data) })
+        .catch(() => { if (!stale) setCitizens([]) })
     }, 250)
-    return () => clearTimeout(handle)
+    return () => { stale = true; clearTimeout(handle) }
   }, [citizenQuery])
 
   async function handleCreateCitizen(e) {
@@ -115,6 +121,7 @@ export default function RequestCreatePage() {
     try {
       const res = await client.post('/citizens', newCitizen)
       setCitizens((c) => [res.data, ...c])
+      setPickedCitizen(res.data)
       setForm((f) => ({ ...f, citizenId: res.data.id }))
       setShowNewCitizen(false)
     } catch (err) {
@@ -201,7 +208,13 @@ export default function RequestCreatePage() {
     }
   }
 
-  const selectedCitizen = citizens.find((c) => String(c.id) === String(form.citizenId))
+  const selectedCitizen = String(pickedCitizen?.id) === String(form.citizenId)
+    ? pickedCitizen
+    : citizens.find((c) => String(c.id) === String(form.citizenId))
+  // Search results, plus the chosen citizen when it is no longer among them.
+  const citizenOptions = selectedCitizen && !citizens.some((c) => String(c.id) === String(selectedCitizen.id))
+    ? [selectedCitizen, ...citizens]
+    : citizens
   const selectedType = documentTypes.find((d) => String(d.id) === String(form.documentTypeId))
   const selectedOffice = offices.find((o) => String(o.id) === String(form.officeId))
 
@@ -256,7 +269,10 @@ export default function RequestCreatePage() {
           <div>
             <select
               value={form.citizenId}
-              onChange={(e) => setForm({ ...form, citizenId: e.target.value })}
+              onChange={(e) => {
+                setForm({ ...form, citizenId: e.target.value })
+                setPickedCitizen(citizens.find((c) => String(c.id) === e.target.value) ?? null)
+              }}
               required
               aria-required="true"
               aria-invalid={Boolean(errors.citizenId)}
@@ -264,7 +280,7 @@ export default function RequestCreatePage() {
               className={`${inputCls} select-field ${errors.citizenId ? '!border-required' : ''}`}
             >
               <option value="">{t('requestCreate.selectCitizen')}</option>
-              {citizens.map((c) => (
+              {citizenOptions.map((c) => (
                 <option key={c.id} value={c.id}>{c.firstNameEn} {c.lastNameEn} — {c.registryNumber}</option>
               ))}
             </select>
