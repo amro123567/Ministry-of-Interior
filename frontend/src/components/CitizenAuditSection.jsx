@@ -8,8 +8,7 @@ import Pagination, { usePagination } from './Pagination.jsx'
 import { fmtDate } from '../utils/dates.js'
 
 
-// Frontend for the two citizen-scoped tiers of Item 6's audit domain
-// (CitizenAuditController) -- GET /api/audit/citizen/{id} (tier 2:
+// The two citizen-scoped audit views (CitizenAuditController) -- GET /api/audit/citizen/{id} (tier 2:
 // field-level "what changed on this citizen, from what to what, why") and
 // GET /api/audit/access/citizen/{id} (tier 3: "who read this citizen's
 // record"). Both endpoints, like every /api/audit/** route, are gated by
@@ -18,8 +17,6 @@ import { fmtDate } from '../utils/dates.js'
 // is nothing behind either fetch they're allowed to see, unlike the
 // CITIZEN_MANAGE-gated *edit* affordance on the lineage panel above,
 // which still shows the read-only data underneath to everyone.
-// Frontend integration pass Step 8 -- the final item on that checklist;
-// needed no backend changes, same reuse pattern as every step before it.
 export default function CitizenAuditSection({ citizenId }) {
   const { t } = useLanguage()
   const { hasPermission } = useAuth()

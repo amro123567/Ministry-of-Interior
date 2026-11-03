@@ -21,7 +21,7 @@ Source: the git history of `github.com/amro123567/Ministry-of-Interior` (branch 
 |---|---|
 | Backend (JUnit, in-memory H2) | 122 tests, 0 failures |
 | API (Postman / newman) | 44 requests, 51 assertions, 0 failed |
-| Front end (Vitest + Testing Library) | 50 tests |
+| Front end (Vitest + Testing Library) | 166 tests |
 | User acceptance | 10 scenarios, all pass after one fix (`docs/UAT.md`) |
 
 ## Remaining

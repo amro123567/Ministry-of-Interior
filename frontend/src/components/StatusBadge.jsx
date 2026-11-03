@@ -44,8 +44,7 @@ export default function StatusBadge({ status }) {
 // actually noteworthy about an *open* request's risk. It never sees
 // MET/BREACHED (those only exist on the persisted SlaRecord, not this live
 // field) -- see SlaRecordBadge below for the full 5-value badge used on
-// the request detail page's SLA/payments panel (frontend integration pass
-// Step 7).
+// the request detail page's SLA/payments panel.
 export function SlaBadge({ slaStatus }) {
   const { t } = useLanguage()
   if (slaStatus === 'OVERDUE') {

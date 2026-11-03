@@ -1,13 +1,9 @@
 import { useLanguage } from '../context/LanguageContext.jsx'
 import { Badge } from './ui/index.jsx'
 
-// PAID/REVERSED/VOIDED (PaymentStatus) -- its own file, matching how
-// ApprovalStatusBadge is a small shared-enum badge of its own rather than
-// folded into StatusBadge (which is dedicated to correspondence-request
-// status). Used on the request detail page's SLA/payments panel (frontend
-// integration pass Step 7). VOIDED has no writer in this codebase yet
-// (RequestFinanceService only ever sets PAID or REVERSED) but is included
-// since it's a real value of the ERD's enum_payment_status.
+// Badge for PaymentStatus (PAID, REVERSED, VOIDED), used on the request
+// detail page's SLA/payments panel. VOIDED is never set by
+// RequestFinanceService today but is a valid value of the enum.
 const STYLES = {
   PAID: 'success',
   REVERSED: 'danger',

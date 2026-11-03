@@ -55,13 +55,9 @@ function Stepper({ status, t }) {
   )
 }
 
-// The request detail page -- restyled to the same Tailwind conventions as
-// every other screen (it was the last of two pages still on the pre-
-// Tailwind CSS classes; see PROJECT_STATE's Item 6 discrepancy note) while
-// adding this item's actual scope: a panel for the persisted SlaRecord
-// snapshot and the request's payment history (RequestFinanceController,
-// frontend integration pass Step 7). Every other section's behavior is
-// unchanged from before this restyle.
+// The request detail page: request data, workflow actions, assignment,
+// documents, history, and a panel for the persisted SLA record and the
+// request's payment history (RequestFinanceController).
 // The backend refuses to assign a closed request, so the form is not offered for one.
 const CLOSED_STATUSES = ['APPROVED', 'REJECTED', 'ARCHIVED']
 
@@ -88,7 +84,7 @@ export default function RequestDetailPage() {
   const [editForm, setEditForm] = useState(null)
   const [editOptions, setEditOptions] = useState({ documentTypes: [], offices: [], departments: [] })
 
-  // ---- SLA record & payments (Step 7) ----------------------------------
+  // ---- SLA record & payments ----
   const [slaRecord, setSlaRecord] = useState(null)
   const [payments, setPayments] = useState([])
   const [financeError, setFinanceError] = useState(null)
@@ -457,7 +453,7 @@ export default function RequestDetailPage() {
       </div>
       )}
 
-      {/* ---- SLA & payments (Step 7) ---- */}
+      {/* ---- SLA & payments ---- */}
       {tab === 'finance' && (
       <div className="card p-5 mb-4">
         <div className="flex items-center justify-between mb-4">

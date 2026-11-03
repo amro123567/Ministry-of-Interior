@@ -1,12 +1,9 @@
 import { useLanguage } from '../context/LanguageContext.jsx'
 import { Badge } from './ui/index.jsx'
 
-// A LoginAttemptDto is either successful (failureReason is null) or one of
-// the 4 LoginFailureReason values -- shown as a single badge rather than a
-// boolean pill plus a separate reason column, since "why it failed" is the
-// whole point of looking at this table. Used by AuditLogPage's Login
-// Attempts tab (global, most-recent-50) and UserActivityPage (scoped to
-// one employee's own username) -- frontend integration pass Step 8.
+// A login attempt either succeeded or failed with one of the
+// LoginFailureReason values; both are shown as a single badge. Used by the
+// audit log's Login Attempts tab and the per-user activity page.
 export default function LoginAttemptBadge({ wasSuccessful, failureReason }) {
   const { t } = useLanguage()
   if (wasSuccessful) {

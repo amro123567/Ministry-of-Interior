@@ -117,7 +117,7 @@ cd backend
 mvn test
 ```
 
-Frontend — 50 component tests (Vitest + React Testing Library): login, route
+Frontend — 166 tests (Vitest + React Testing Library): login, route
 and button permission gating, dashboard, request and document forms, citizen
 and admin pages, navigation and the workflow page.
 

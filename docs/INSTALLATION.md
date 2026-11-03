@@ -105,7 +105,7 @@ Open **http://localhost:5173** (plain HTTP). The development server forwards `/a
 
 ```powershell
 cd backend ; mvn test                      # 122 backend tests, no MySQL needed
-cd ..\frontend ; npm install ; npm test    # 50 component tests
+cd ..\frontend ; npm install ; npm test    # 166 frontend tests
 npx newman run docs/postman/CTS_API_Collection.json   # API tests, backend must be running
 ```
 

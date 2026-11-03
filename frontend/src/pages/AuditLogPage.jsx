@@ -31,14 +31,10 @@ function ActionBadge({ action }) {
   return <Badge tone={actionTint(action)}>{action}</Badge>
 }
 
-// The session/login half of Item 7's session-hardening work (SessionSecurityController)
-// -- GET /api/audit/login-attempts with no username filter returns the 50
-// most recent attempts system-wide, mirroring the entity log tab's own
-// "50 most recent" scope. Kept as its own tab on this page rather than a
-// new top-level nav link, matching every choice in frontend integration
-// pass Step 8 (see PROJECT_STATE.md's Navbar zero-slack note) -- this
-// page is already AUDIT_VIEW-gated at the route level (App.jsx), so no
-// extra permission check is needed inside it.
+// GET /api/audit/login-attempts with no username filter returns the 50
+// most recent attempts system-wide. It is a tab on this page rather than a
+// separate nav link; the page is already AUDIT_VIEW-gated at the route
+// level (App.jsx), so no extra permission check is needed here.
 function LoginAttemptsTab() {
   const { t } = useLanguage()
   const [attempts, setAttempts] = useState([])

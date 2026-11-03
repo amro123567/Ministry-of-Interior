@@ -126,14 +126,9 @@ export default function App() {
             path="/admin/users"
             element={<ProtectedRoute permissions={['USER_MANAGE']}><AdminUsersPage /></ProtectedRoute>}
           />
-          {/* Gated on AUDIT_VIEW, not USER_MANAGE -- this reads the same
-              /api/audit/** endpoints as /admin/audit below (backend-only
-              gate is AUDIT_VIEW; see UserActivityPage's own comment), so
-              the route matches what the API actually requires rather than
-              piggybacking on the USER_MANAGE gate of the page that links
-              to it. Deliberately not in Navbar's links -- reached only via
-              AdminUsersPage's "View activity" link, frontend integration
-              pass Step 8. */}
+          {/* Gated on AUDIT_VIEW, matching the /api/audit/** endpoints it
+              reads. Not in the navbar: reached from the "View activity"
+              link on the admin users page. */}
           <Route
             path="/admin/users/:id/activity"
             element={<ProtectedRoute permissions={['AUDIT_VIEW']}><UserActivityPage /></ProtectedRoute>}

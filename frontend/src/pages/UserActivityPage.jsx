@@ -20,10 +20,8 @@ function Card({ title, children }) {
 }
 
 // The "what has this employee been doing" screen -- reached only from a
-// link on AdminUsersPage, never from the Navbar (frontend integration
-// pass Step 8, same zero-slack-nav constraint as CitizenAuditSection and
-// AuditLogPage's new tab). Surfaces the 3 employee-scoped reads that Item
-// 7's session hardening and Item 6's audit domain added:
+// link on AdminUsersPage, never from the Navbar. Surfaces three
+// employee-scoped reads:
 // GET /api/audit/login-attempts?username= (this user's own sign-in
 // history -- the only one of the three keyed by username, not id, since
 // LoginAttempt is recorded before a userId can always be resolved -- see

@@ -51,8 +51,8 @@ function Section({ title, children }) {
 // there's no global list/search for any of those four, only
 // GET /api/family-records/{id} by id and these citizen-scoped reads).
 // CitizenAuditSection at the bottom is the odd one out: it's gated on
-// AUDIT_VIEW rather than CITIZEN_MANAGE/read-access like everything above
-// (frontend integration pass Step 8), so it renders nothing at all for
+// AUDIT_VIEW rather than CITIZEN_MANAGE/read-access like everything above,
+// so it renders nothing at all for
 // the majority of users who can see this whole page but hold no audit
 // permission.
 export default function CitizenDetailPage() {

@@ -8,14 +8,8 @@ import { inputCls, labelCls } from '../ui.js'
 import Pagination, { usePagination } from '../components/Pagination.jsx'
 
 
-// Tailwind restyle folded into frontend integration pass Step 8, the same
-// opportunistic cleanup RequestDetailPage got in Step 7 -- this was the
-// last screen in the app still on the pre-Tailwind `card`/`table`/
-// `detail-grid`/`btn` classes (see PROJECT_STATE.md's "Known visual
-// inconsistency" note), so Step 8 closes that gap out entirely rather
-// than leaving it for a 9th step that was never going to come. Functional
-// changes are just the new "View activity" column/link -- everything
-// else here is the same GET /api/users + POST /api/users flow as before.
+// User administration: lists users (GET /api/users), creates them
+// (POST /api/users) and links each row to that user's activity page.
 export default function AdminUsersPage() {
   const { t } = useLanguage()
   const { hasPermission, user: me } = useAuth()

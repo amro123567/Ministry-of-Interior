@@ -33,13 +33,10 @@ function DeceasedBadge({ deceased, t }) {
   )
 }
 
-// Read-only search/browse over GET /api/citizens?q=... -- the first
-// frontend screen for the full-requirements migration punch list's
-// citizen-registry domain (Item 2). Deliberately read-only for now:
-// registering a new citizen and correcting lineage are their own,
-// separate increments. Every row this returns also writes a
-// RecordAccessLog row on the backend (Item 6, tier 3) -- see
-// CitizenController.search()'s own Javadoc.
+// Search and browse over GET /api/citizens?q=... Registering a citizen and
+// correcting lineage live on their own pages. Every row returned also
+// writes a RecordAccessLog row on the backend -- see
+// CitizenController.search()'s Javadoc.
 export default function CitizenRegistryPage() {
   const { t } = useLanguage()
   const { hasPermission } = useAuth()

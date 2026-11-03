@@ -1,14 +1,9 @@
 import { useLanguage } from '../context/LanguageContext.jsx'
 import { Badge } from './ui/index.jsx'
 
-// Tints for entity.AccessType (VIEW_RECORD, VIEW_DOCUMENT, SEARCH_RESULT,
-// EXPORT) -- a small, closed enum (unlike the global audit log's free-form
-// action strings, see AuditLogPage's ACTION_TINT_RULES), so a direct
-// lookup table is simpler than a keyword-matching rule list. Used by
-// CitizenAuditSection (per-citizen "who read this record") and
-// UserActivityPage (per-employee "what has this employee been looking
-// at") -- both consume RecordAccessLogDto from the same
-// CitizenAuditController endpoints, frontend integration pass Step 8.
+// Tints for AccessType (VIEW_RECORD, VIEW_DOCUMENT, SEARCH_RESULT, EXPORT).
+// The enum is small and closed, so a lookup table is enough. Used by the
+// citizen audit section and the per-user activity page.
 const ACCESS_TYPE_STYLES = {
   VIEW_RECORD: 'info',
   VIEW_DOCUMENT: 'info',
