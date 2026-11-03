@@ -423,7 +423,10 @@ export default function RequestDetailPage() {
           <Field label={t('requestDetail.priority')}>{request.priority}</Field>
           <Field label={t('requestDetail.assignedTo')}>{request.assignedToName ?? '—'}</Field>
           <Field label={t('requestDetail.createdBy')}>{request.createdByName}</Field>
-          <Field label={t('requestDetail.due')}>{request.dueAt ? fmtDate(request.dueAt, 'MMM d, yyyy p') : '—'}</Field>
+          <Field label={t('requestDetail.createdOn')}>{fmtDate(request.createdAt, 'MMM d, yyyy HH:mm', '—')}</Field>
+          {request.submittedAt && <Field label={t('requestDetail.submittedOn')}>{fmtDate(request.submittedAt, 'MMM d, yyyy HH:mm')}</Field>}
+          <Field label={t('requestDetail.due')}>{request.dueAt ? fmtDate(request.dueAt, 'MMM d, yyyy HH:mm') : '—'}</Field>
+          {request.closedAt && <Field label={t('requestDetail.closedOn')}>{fmtDate(request.closedAt, 'MMM d, yyyy HH:mm')}</Field>}
           {request.rejectionReason && <Field label={t('requestDetail.rejectionReason')}>{request.rejectionReason}</Field>}
           {request.notes && <Field label={t('requestDetail.notes')}>{request.notes}</Field>}
         </div>
@@ -556,11 +559,11 @@ export default function RequestDetailPage() {
                   <div className="text-xs text-text-secondary mt-1">
                     {p.receiptNumber && <>{t('requestFinance.receiptNumber')}: {p.receiptNumber} · </>}
                     {p.collectedByName && <>{t('requestFinance.collectedBy')} {p.collectedByName} · </>}
-                    {fmtDate(p.paidAt, 'MMM d, yyyy p')}
+                    {fmtDate(p.paidAt, 'MMM d, yyyy HH:mm')}
                   </div>
                   {p.status === 'REVERSED' && (
                     <div className="text-xs text-badge-danger-fg mt-1">
-                      {t('requestFinance.reversedBy')} {p.reversedByName} · {fmtDate(p.reversedAt, 'MMM d, yyyy p')}
+                      {t('requestFinance.reversedBy')} {p.reversedByName} · {fmtDate(p.reversedAt, 'MMM d, yyyy HH:mm')}
                       {p.reversalReason && ` — ${p.reversalReason}`}
                     </div>
                   )}
@@ -618,7 +621,7 @@ export default function RequestDetailPage() {
             {assignments.map((a) => (
               <li key={a.id} className="py-3">
                 <div className="text-sm font-semibold text-text-primary">{t('requestDetail.assignedToLabel')} {a.assignedToName}</div>
-                <div className="text-xs text-text-secondary mt-0.5">{a.assignedByName} · {fmtDate(a.assignedAt, 'MMM d, yyyy p')}</div>
+                <div className="text-xs text-text-secondary mt-0.5">{a.assignedByName} · {fmtDate(a.assignedAt, 'MMM d, yyyy HH:mm')}</div>
                 {a.note && <div className="text-sm text-text-secondary mt-1">{a.note}</div>}
               </li>
             ))}
@@ -634,7 +637,7 @@ export default function RequestDetailPage() {
               <div className="text-sm font-semibold text-text-primary">
                 {h.fromStatus ? `${t(`status.${h.fromStatus}`, h.fromStatus)} → ${t(`status.${h.toStatus}`, h.toStatus)}` : `${t('requestDetail.created')} (${t(`status.${h.toStatus}`, h.toStatus)})`}
               </div>
-              <div className="text-xs text-text-secondary mt-0.5">{h.changedByName} · {fmtDate(h.changedAt, 'MMM d, yyyy p')}</div>
+              <div className="text-xs text-text-secondary mt-0.5">{h.changedByName} · {fmtDate(h.changedAt, 'MMM d, yyyy HH:mm')}</div>
               {h.note && <div className="text-sm text-text-secondary mt-1">{h.note}</div>}
             </li>
           ))}
@@ -647,7 +650,7 @@ export default function RequestDetailPage() {
             {auditEntries.map((a) => (
               <li key={a.id} className="py-3">
                 <div className="text-sm font-semibold text-text-primary">{a.action}</div>
-                <div className="text-xs text-text-secondary mt-0.5">{a.actorName} · {fmtDate(a.occurredAt, 'MMM d, yyyy p')}</div>
+                <div className="text-xs text-text-secondary mt-0.5">{a.actorName} · {fmtDate(a.occurredAt, 'MMM d, yyyy HH:mm')}</div>
                 {a.details && <div className="text-sm text-text-secondary mt-1">{a.details}</div>}
               </li>
             ))}

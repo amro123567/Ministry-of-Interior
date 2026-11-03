@@ -253,7 +253,7 @@ export default function ReportsPage() {
                   <tr key={row.documentTypeName} className="data-row">
                     <td className="td-cell font-medium text-navy">{row.documentTypeName}</td>
                     <td className="td-cell"><BarCell value={row.total} max={maxType} /></td>
-                    <td className="td-cell num-cell">{row.avgResolutionHours}h</td>
+                    <td className="td-cell num-cell">{row.avgResolutionHours > 0 ? `${row.avgResolutionHours}h` : '<1h'}</td>
                   </tr>
                 ))}
               </tbody>

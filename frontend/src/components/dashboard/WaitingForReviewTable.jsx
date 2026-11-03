@@ -22,6 +22,7 @@ const SLA_STYLE = {
   soon: { bar: 'bg-warn', text: 'text-warn-ink' },
   ok: { bar: 'bg-ok', text: 'text-slate-700' },
   none: { bar: 'bg-slate-300', text: 'text-slate-600' },
+  closed: { bar: 'bg-slate-300', text: 'text-slate-600' },
 }
 
 function Pill({ active, onClick, children, count }) {
@@ -39,6 +40,7 @@ function SlaCell({ row, t }) {
   const sla = slaCountdown(row)
   const style = SLA_STYLE[sla.state]
   if (sla.state === 'none') return <span className="text-xs text-slate-600">{t('dashboard.table.noDeadline')}</span>
+  if (sla.state === 'closed') return <span className="text-xs text-slate-600">{t('dashboard.table.closedRequest')}</span>
   const h = humanizeHours(sla.hours)
   const label = `${h.value}${t(`dashboard.table.unit.${h.unit}`)}`
   return (

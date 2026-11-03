@@ -1,4 +1,5 @@
 import { format, parseISO, isValid } from 'date-fns'
+import { ar } from 'date-fns/locale/ar'
 
 /**
  * Parses an API date. Date-only values ("1990-05-10") become local midnight
@@ -15,7 +16,10 @@ export function toDate(value) {
 /** Formats an API date, or returns `fallback` ('' by default) when it is missing or invalid. Never throws. */
 export function fmtDate(value, pattern = 'MMM d, yyyy', fallback = '') {
   const d = toDate(value)
-  return d ? format(d, pattern) : fallback
+  if (!d) return fallback
+  // month names follow the interface language (LanguageContext keeps <html lang> in step)
+  const locale = typeof document !== 'undefined' && document.documentElement.lang === 'ar' ? ar : undefined
+  return format(d, pattern, { locale })
 }
 
 /** Today's date as YYYY-MM-DD in the user's own time zone (toISOString() would give the UTC date). */

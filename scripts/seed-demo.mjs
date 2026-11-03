@@ -63,6 +63,10 @@ async function login(key, username = key, password = PASS[key]) {
 }
 const pick = (list, re, fallbackIndex = 0) => list.find((x) => re.test(`${x.code ?? ''} ${x.nameEn ?? x.name ?? ''}`)) ?? list[fallbackIndex % Math.max(list.length, 1)]
 const dt = (y, m, d) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+const plusDays = (iso, n) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10)
+const today = new Date().toISOString().slice(0, 10)
+// recent issue dates, spread over the last ~100 days and never in the future
+const recentDate = (i) => plusDays(today, -(3 + ((i * 7) % 100)))
 
 // ---------------------------------------------------------------- people --
 // key, EN first/last, AR first/last, birth, gender, religion, sect, marital, place, [fatherKey, motherKey], extras
@@ -102,7 +106,7 @@ const P = [
   ['tony', 'Tony', 'Khalil', 'طوني', 'خليل', dt(2001, 6, 30), 'M', 'Christian', 'Maronite', 'SINGLE', 'Jbeil', null, null, { transfer: 'REJECT' }],
   ['yasmine', 'Yasmine', 'Nasr', 'ياسمين', 'نصر', dt(1950, 12, 12), 'F', 'Christian', 'Maronite', 'WIDOWED', 'Beirut'],
   ['michel', 'Michel', 'Daher', 'ميشال', 'ضاهر', dt(1944, 4, 9), 'M', 'Christian', 'Maronite', 'WIDOWED', 'Beirut', null, null, { dies: dt(2022, 9, 27) }],
-  ['sara', 'Sara', 'Ibrahim', 'سارة', 'ابراهيم', dt(2007, 2, 14), 'F', 'Christian', 'Maronite', 'SINGLE', 'Beirut', null, null, { unregFather: 'Fadi Ibrahim', unregMother: 'Mona Ibrahim' }],
+  ['sara', 'Sara', 'Ibrahim', 'سارة', 'ابراهيم', dt(2010, 2, 14), 'F', 'Christian', 'Maronite', 'SINGLE', 'Beirut', null, null, { unregFather: 'Fadi Ibrahim', unregMother: 'Mona Ibrahim' }],
   ['ziad', 'Ziad', 'Barakat', 'زياد', 'بركات', dt(1999, 8, 1), 'M', 'Muslim', 'Sunni', 'SINGLE', 'Saida', null, null, { unregFather: 'Hussein Barakat' }],
 ]
 
@@ -196,7 +200,7 @@ async function main() {
 
   // ------------------------------------------------------- certificates --
   log('\nCertificates…')
-  const issue = (code, i) => ({ documentTypeId: docType(code).id, documentNumber: `${code.slice(0, 3)}-3${String(i).padStart(4, '0')}`, issueDate: dt(2024, 1 + (i % 11), 5 + (i % 20)), issuingOfficeId: office(i).id })
+  const issue = (code, i) => ({ documentTypeId: docType(code).id, documentNumber: `${code.slice(0, 3)}-3${String(i).padStart(4, '0')}`, issueDate: recentDate(i), issuingOfficeId: office(i).id })
   const docs = []
   let di = 0
   const make = async (label, path, payload) => {
@@ -236,7 +240,7 @@ async function main() {
     if (!id[key]) continue
     di++
     const p = P.find((r) => r[0] === key)[13]
-    await make(`death ${key}`, '/documents/death-certificates', { citizenId: id[key], ...issue('DEATH_CERT', di), deathDate: p.dies, deathPlace: 'Beirut', deathCause: cause, certifyingPhysician: 'Dr. Hanna Karam', burialPlace: 'Local cemetery', burialDate: p.dies })
+    await make(`death ${key}`, '/documents/death-certificates', { citizenId: id[key], ...issue('DEATH_CERT', di), issueDate: plusDays(p.dies, 3), deathDate: p.dies, deathPlace: 'Beirut', deathCause: cause, certifyingPhysician: 'Dr. Hanna Karam', burialPlace: 'Local cemetery', burialDate: p.dies })
   }
   for (const k of ['georges', 'rita', 'omar', 'ali', 'samir', 'lina', 'vartan', 'karim']) {
     if (!id[k]) continue

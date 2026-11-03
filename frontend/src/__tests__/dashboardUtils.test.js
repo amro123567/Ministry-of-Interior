@@ -90,6 +90,10 @@ describe('slaCountdown / humanizeHours', () => {
     expect(slaCountdown({ dueAt: new Date(now - 3600000).toISOString() }, now).state).toBe('overdue')
     expect(slaCountdown({ dueAt: new Date(now + 3600000).toISOString() }, now).state).toBe('soon')
     expect(slaCountdown({ dueAt: new Date(now + 5 * DAY).toISOString() }, now).state).toBe('ok')
+    // a finished request has no running countdown, even when its due date has passed
+    for (const status of ['APPROVED', 'REJECTED', 'ARCHIVED']) {
+      expect(slaCountdown({ status, dueAt: new Date(now - DAY).toISOString() }, now).state).toBe('closed')
+    }
     expect(slaCountdown({}, now).state).toBe('none')
   })
   it('keeps the used share of the window between 0 and 100', () => {

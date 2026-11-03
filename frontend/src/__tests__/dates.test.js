@@ -13,6 +13,17 @@ describe('fmtDate', () => {
     expect(toDate(iso).getTime()).toBe(Date.parse(iso))
   })
 
+  it('uses Arabic month names when the interface language is Arabic', () => {
+    document.documentElement.lang = 'ar'
+    try {
+      expect(fmtDate('2026-11-03', 'MMMM')).not.toBe('November')
+      expect(fmtDate('2026-11-03', 'MMMM')).toMatch(/[\u0600-\u06FF]/)
+    } finally {
+      document.documentElement.lang = 'en'
+    }
+    expect(fmtDate('2026-11-03', 'MMMM')).toBe('November')
+  })
+
   it('returns the fallback instead of throwing for missing or unreadable values', () => {
     expect(fmtDate(null)).toBe('')
     expect(fmtDate(undefined)).toBe('')

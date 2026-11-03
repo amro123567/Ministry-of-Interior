@@ -33,10 +33,11 @@ export function avatarTone(name) {
 
 /**
  * SLA countdown for one row.
- * Returns { state: 'overdue'|'soon'|'ok'|'none', hours, pct } where pct is the
+ * Returns { state: 'overdue'|'soon'|'ok'|'closed'|'none', hours, pct } where pct is the
  * share of the SLA window already used (createdAt -> dueAt), clamped to 0..100.
  */
 export function slaCountdown(row, now = Date.now()) {
+  if (['APPROVED', 'REJECTED', 'ARCHIVED'].includes(row.status)) return { state: 'closed', hours: 0, pct: 100 }
   const due = parseDate(row.dueAt)
   if (!due) return { state: 'none', hours: 0, pct: 0 }
   const created = parseDate(row.createdAt)
