@@ -34,6 +34,9 @@ class RequestWorkflowIntegrationTest {
     @Autowired ObjectMapper objectMapper;
     @Autowired com.moi.cts.service.ReferenceNumberService referenceNumberService;
     @Autowired com.moi.cts.repository.CorrespondenceRequestRepository requestRepository;
+    @Autowired com.moi.cts.repository.AppUserRepository userRepository;
+    @Autowired com.moi.cts.repository.RoleRepository roleRepository;
+    @Autowired org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     private String tokenFor(String username, String password) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/auth/login")
@@ -183,6 +186,7 @@ class RequestWorkflowIntegrationTest {
     void fullLifecycleCreateSubmitReviewApproveArchiveSucceeds() throws Exception {
         String officerToken = tokenFor("officer", "Officer1234!");
         String managerToken = tokenFor("manager", "Manager1234!");
+        String adminToken = tokenFor("admin", "Admin1234!");
 
         long citizenId = createCitizen(officerToken, "REG-900001", "Test", "Person");
         long docTypeId = firstDocumentTypeId(officerToken);
@@ -198,7 +202,8 @@ class RequestWorkflowIntegrationTest {
         transition(managerToken, requestId, "APPROVED", null).andExpect(status().isOk());
         assertStatus(officerToken, requestId, "APPROVED");
 
-        transition(officerToken, requestId, "ARCHIVED", null).andExpect(status().isOk());
+        // Archiving is the last step of the path and belongs to ADMIN, not the officer who prepared the case.
+        transition(adminToken, requestId, "ARCHIVED", null).andExpect(status().isOk());
         assertStatus(officerToken, requestId, "ARCHIVED");
 
         // the full history trail is queryable
@@ -291,8 +296,14 @@ class RequestWorkflowIntegrationTest {
     }
 
     @Test
-    void csvExportContainsTheSeededReferenceNumbers() throws Exception {
-        String token = tokenFor("viewer", "Viewer1234!");
+    void csvExportContainsTheSeededReferenceNumbersAndIsClosedToViewersAndOfficers() throws Exception {
+        // Exporting everything is reporting: it needs REPORTS_VIEW (MANAGER, ADMIN), not just a sign-in.
+        mockMvc.perform(get("/api/requests/export").header("Authorization", "Bearer " + tokenFor("viewer", "Viewer1234!")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/requests/export").header("Authorization", "Bearer " + tokenFor("officer", "Officer1234!")))
+                .andExpect(status().isForbidden());
+
+        String token = tokenFor("manager", "Manager1234!");
         MvcResult result = mockMvc.perform(get("/api/requests/export").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("correspondence_requests.csv")))
@@ -585,7 +596,7 @@ class RequestWorkflowIntegrationTest {
     }
 
     @Test
-    void registryTransferCannotBeApprovedByItsOwnRequesterAndMovesTheCitizenOnApproval() throws Exception {
+    void registryTransferIsRequestedByTheOfficerDecidedByTheManagerAndNeverByItsOwnRequester() throws Exception {
         String officerToken = tokenFor("officer", "Officer1234!");
         String managerToken = tokenFor("manager", "Manager1234!");
         String adminToken = tokenFor("admin", "Admin1234!");
@@ -593,30 +604,26 @@ class RequestWorkflowIntegrationTest {
         long tripoliOfficeId = officeIdByCode(officerToken, "TRP");
         long citizenId = createCitizenAtOffice(officerToken, "REG-910009", "Transfer", "Subject", beirutOfficeId);
 
-        // Requested by MANAGER rather than OFFICER: OFFICER holds
-        // CITIZEN_MANAGE but not CITIZEN_REGISTRY_DECIDE (see DataSeeder),
-        // so an OFFICER decide-attempt would be rejected at the permission
-        // layer (403) before ever reaching the SI-12 self-approval check
-        // this test exists to exercise. MANAGER holds both, so its own
-        // self-decide attempt below is rejected by that business rule (400),
-        // not by a permission it doesn't have.
+        // The front-line OFFICER requests the transfer (CITIZEN_MANAGE)...
         MvcResult result = mockMvc.perform(post("/api/registry-transfers")
-                        .header("Authorization", "Bearer " + managerToken)
+                        .header("Authorization", "Bearer " + officerToken)
                         .contentType("application/json")
                         .content("{\"citizenId\":" + citizenId + ",\"toOfficeId\":" + tripoliOfficeId + "}"))
                 .andExpect(status().isOk())
                 .andReturn();
         long transferId = objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asLong();
 
-        // SI-12: the requester cannot also be the approver.
-        mockMvc.perform(patch("/api/registry-transfers/" + transferId + "/decide")
-                        .header("Authorization", "Bearer " + managerToken)
-                        .contentType("application/json")
-                        .content("{\"decision\":\"APPROVE\"}"))
-                .andExpect(status().isBadRequest());
+        // ...and cannot decide it: the decision (CITIZEN_REGISTRY_DECIDE) belongs to the MANAGER only.
+        for (String token : new String[] {officerToken, adminToken}) {
+            mockMvc.perform(patch("/api/registry-transfers/" + transferId + "/decide")
+                            .header("Authorization", "Bearer " + token)
+                            .contentType("application/json")
+                            .content("{\"decision\":\"APPROVE\"}"))
+                    .andExpect(status().isForbidden());
+        }
 
         mockMvc.perform(patch("/api/registry-transfers/" + transferId + "/decide")
-                        .header("Authorization", "Bearer " + adminToken)
+                        .header("Authorization", "Bearer " + managerToken)
                         .contentType("application/json")
                         .content("{\"decision\":\"APPROVE\"}"))
                 .andExpect(status().isOk())
@@ -625,10 +632,26 @@ class RequestWorkflowIntegrationTest {
         // Approval has a real effect: the citizen's registered office moved.
         mockMvc.perform(get("/api/citizens/" + citizenId).header("Authorization", "Bearer " + officerToken))
                 .andExpect(jsonPath("$.officeName").value("Tripoli Civil Status Office"));
+
+        // SI-12 still holds for anyone who ends up with both permissions (two roles): requester != approver.
+        String dualToken = tokenForDualRoleUser("dual.transfer");
+        long selfCitizenId = createCitizenAtOffice(officerToken, "REG-910019", "Self", "Decide", beirutOfficeId);
+        MvcResult own = mockMvc.perform(post("/api/registry-transfers")
+                        .header("Authorization", "Bearer " + dualToken)
+                        .contentType("application/json")
+                        .content("{\"citizenId\":" + selfCitizenId + ",\"toOfficeId\":" + tripoliOfficeId + "}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        long ownTransferId = objectMapper.readTree(own.getResponse().getContentAsString()).get("id").asLong();
+        mockMvc.perform(patch("/api/registry-transfers/" + ownTransferId + "/decide")
+                        .header("Authorization", "Bearer " + dualToken)
+                        .contentType("application/json")
+                        .content("{\"decision\":\"APPROVE\"}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
-    void civilStatusAmendmentRequiresALegalBasisAndCannotBeSelfApproved() throws Exception {
+    void civilStatusAmendmentRequiresALegalBasisIsDecidedByTheManagerAndCannotBeSelfApproved() throws Exception {
         String officerToken = tokenFor("officer", "Officer1234!");
         String managerToken = tokenFor("manager", "Manager1234!");
         String adminToken = tokenFor("admin", "Admin1234!");
@@ -641,13 +664,9 @@ class RequestWorkflowIntegrationTest {
                         .content("{\"citizenId\":" + citizenId + ",\"fieldChanged\":\"sect\",\"newValue\":\"Druze\"}"))
                 .andExpect(status().isBadRequest());
 
-        // Requested by MANAGER, not OFFICER -- see the registry-transfer
-        // test above for why (OFFICER no longer holds CITIZEN_REGISTRY_
-        // DECIDE, so it can't be used to exercise the self-approval
-        // business rule below without the permission layer intercepting
-        // first).
+        // The OFFICER files the amendment; only the MANAGER may decide it.
         MvcResult result = mockMvc.perform(post("/api/civil-status-amendments")
-                        .header("Authorization", "Bearer " + managerToken)
+                        .header("Authorization", "Bearer " + officerToken)
                         .contentType("application/json")
                         .content("{\"citizenId\":" + citizenId + ",\"fieldChanged\":\"sect\",\"newValue\":\"Druze\","
                                 + "\"legalBasis\":\"Court decision 2026-0099\"}"))
@@ -655,15 +674,16 @@ class RequestWorkflowIntegrationTest {
                 .andReturn();
         long amendmentId = objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asLong();
 
-        // SI-12: the same actor cannot approve their own amendment request.
-        mockMvc.perform(patch("/api/civil-status-amendments/" + amendmentId + "/decide")
-                        .header("Authorization", "Bearer " + managerToken)
-                        .contentType("application/json")
-                        .content("{\"decision\":\"APPROVE\"}"))
-                .andExpect(status().isBadRequest());
+        for (String token : new String[] {officerToken, adminToken}) {
+            mockMvc.perform(patch("/api/civil-status-amendments/" + amendmentId + "/decide")
+                            .header("Authorization", "Bearer " + token)
+                            .contentType("application/json")
+                            .content("{\"decision\":\"APPROVE\"}"))
+                    .andExpect(status().isForbidden());
+        }
 
         mockMvc.perform(patch("/api/civil-status-amendments/" + amendmentId + "/decide")
-                        .header("Authorization", "Bearer " + adminToken)
+                        .header("Authorization", "Bearer " + managerToken)
                         .contentType("application/json")
                         .content("{\"decision\":\"APPROVE\"}"))
                 .andExpect(status().isOk());
@@ -671,6 +691,23 @@ class RequestWorkflowIntegrationTest {
         // The whitelist auto-apply on approval actually changed the record.
         mockMvc.perform(get("/api/citizens/" + citizenId).header("Authorization", "Bearer " + officerToken))
                 .andExpect(jsonPath("$.sect").value("Druze"));
+
+        // SI-12 for someone holding both permissions (two roles): cannot approve their own request.
+        String dualToken = tokenForDualRoleUser("dual.amend");
+        long otherCitizenId = createCitizen(officerToken, "REG-910020", "Amend", "Self");
+        MvcResult own = mockMvc.perform(post("/api/civil-status-amendments")
+                        .header("Authorization", "Bearer " + dualToken)
+                        .contentType("application/json")
+                        .content("{\"citizenId\":" + otherCitizenId + ",\"fieldChanged\":\"sect\",\"newValue\":\"Druze\","
+                                + "\"legalBasis\":\"Court decision 2026-0100\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        long ownId = objectMapper.readTree(own.getResponse().getContentAsString()).get("id").asLong();
+        mockMvc.perform(patch("/api/civil-status-amendments/" + ownId + "/decide")
+                        .header("Authorization", "Bearer " + dualToken)
+                        .contentType("application/json")
+                        .content("{\"decision\":\"APPROVE\"}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -1173,6 +1210,7 @@ class RequestWorkflowIntegrationTest {
     void slaRecordTracksTheLiveStatusWhileOpenAndBecomesMetOnceClosedBeforeTheDueDate() throws Exception {
         String officerToken = tokenFor("officer", "Officer1234!");
         String managerToken = tokenFor("manager", "Manager1234!");
+        String adminToken = tokenFor("admin", "Admin1234!");
         long citizenId = createCitizen(officerToken, "REG-900101", "Sla", "Open");
         long requestId = createRequest(officerToken, citizenId, firstDocumentTypeId(officerToken), firstOfficeId(officerToken));
 
@@ -1189,7 +1227,7 @@ class RequestWorkflowIntegrationTest {
         transition(officerToken, requestId, "SUBMITTED", null).andExpect(status().isOk());
         transition(managerToken, requestId, "UNDER_REVIEW", null).andExpect(status().isOk());
         transition(managerToken, requestId, "APPROVED", null).andExpect(status().isOk());
-        transition(officerToken, requestId, "ARCHIVED", null).andExpect(status().isOk());
+        transition(adminToken, requestId, "ARCHIVED", null).andExpect(status().isOk());
 
         mockMvc.perform(post("/api/sla-records/" + requestId + "/refresh").header("Authorization", "Bearer " + officerToken))
                 .andExpect(status().isOk())
@@ -1261,11 +1299,9 @@ class RequestWorkflowIntegrationTest {
     @Test
     void reversingAPaymentMarksItReversedAndRejectsBeingReversedTwice() throws Exception {
         String officerToken = tokenFor("officer", "Officer1234!");
-        // Reversal requires PAYMENT_REVERSE, which OFFICER does not hold (see
-        // recordingAPaymentRequiresPaymentRecordAndReversingRequiresPaymentReverse
-        // below) -- MANAGER holds it, same as every other "decide/correct"
-        // action in this suite.
-        String managerToken = tokenFor("manager", "Manager1234!");
+        // Reversal requires PAYMENT_REVERSE, which only ADMIN holds: the officer collects the fee and
+        // a different person (the admin, at the closing stage) is the one who can undo it.
+        String adminToken = tokenFor("admin", "Admin1234!");
         long citizenId = createCitizen(officerToken, "REG-900106", "Pay", "Reverse");
         long requestId = createRequest(officerToken, citizenId, firstDocumentTypeId(officerToken), firstOfficeId(officerToken));
 
@@ -1278,7 +1314,7 @@ class RequestWorkflowIntegrationTest {
         long paymentId = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asLong();
 
         mockMvc.perform(patch("/api/payments/" + paymentId + "/reverse")
-                        .header("Authorization", "Bearer " + managerToken)
+                        .header("Authorization", "Bearer " + adminToken)
                         .contentType("application/json")
                         .content("{\"reversalReason\":\"Refunded to citizen in error\"}"))
                 .andExpect(status().isOk())
@@ -1287,7 +1323,7 @@ class RequestWorkflowIntegrationTest {
                 .andExpect(jsonPath("$.reversalReason").value("Refunded to citizen in error"));
 
         mockMvc.perform(patch("/api/payments/" + paymentId + "/reverse")
-                        .header("Authorization", "Bearer " + managerToken)
+                        .header("Authorization", "Bearer " + adminToken)
                         .contentType("application/json")
                         .content("{\"reversalReason\":\"Trying again\"}"))
                 .andExpect(status().isBadRequest());
@@ -1297,6 +1333,7 @@ class RequestWorkflowIntegrationTest {
     void recordingAPaymentRequiresPaymentRecordAndReversingRequiresPaymentReverse() throws Exception {
         String officerToken = tokenFor("officer", "Officer1234!");
         String managerToken = tokenFor("manager", "Manager1234!");
+        String adminToken = tokenFor("admin", "Admin1234!");
         String viewerToken = tokenFor("viewer", "Viewer1234!");
         long citizenId = createCitizen(officerToken, "REG-900108", "Pay", "Perm");
         long requestId = createRequest(officerToken, citizenId, firstDocumentTypeId(officerToken), firstOfficeId(officerToken));
@@ -1324,9 +1361,16 @@ class RequestWorkflowIntegrationTest {
                         .content("{\"reversalReason\":\"Should be refused\"}"))
                 .andExpect(status().isForbidden());
 
-        // MANAGER holds PAYMENT_REVERSE and can complete the reversal.
+        // MANAGER does not hold it either: reversing a payment is a closing-stage correction for ADMIN.
         mockMvc.perform(patch("/api/payments/" + paymentId + "/reverse")
                         .header("Authorization", "Bearer " + managerToken)
+                        .contentType("application/json")
+                        .content("{\"reversalReason\":\"Should be refused too\"}"))
+                .andExpect(status().isForbidden());
+
+        // ADMIN holds PAYMENT_REVERSE and can complete the reversal.
+        mockMvc.perform(patch("/api/payments/" + paymentId + "/reverse")
+                        .header("Authorization", "Bearer " + adminToken)
                         .contentType("application/json")
                         .content("{\"reversalReason\":\"Refunded to citizen in error\"}"))
                 .andExpect(status().isOk())
@@ -1848,6 +1892,23 @@ class RequestWorkflowIntegrationTest {
     }
 
     // ---- helpers ----------------------------------------------------------
+
+    /**
+     * A test-only account holding BOTH the OFFICER and MANAGER roles. No seeded role can request and decide
+     * the same thing any more, so this is how the "requester cannot approve their own request" rules are reached.
+     */
+    private String tokenForDualRoleUser(String username) throws Exception {
+        com.moi.cts.entity.AppUser u = new com.moi.cts.entity.AppUser();
+        u.setUsername(username);
+        u.setPasswordHash(passwordEncoder.encode("Dual1234!"));
+        u.setFullName("Dual Role " + username);
+        u.setEmail(username + "@moi.gov.lb");
+        u.setRoles(new java.util.HashSet<>(java.util.List.of(
+                roleRepository.findByName(com.moi.cts.entity.RoleName.OFFICER).orElseThrow(),
+                roleRepository.findByName(com.moi.cts.entity.RoleName.MANAGER).orElseThrow())));
+        userRepository.save(u);
+        return tokenFor(username, "Dual1234!");
+    }
 
     private long workflowStateIdByCode(String token, String code) throws Exception {
         MvcResult result = mockMvc.perform(get("/api/workflow/states").header("Authorization", "Bearer " + token))

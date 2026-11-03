@@ -28,6 +28,11 @@ import java.util.Locale;
 @Service
 public class RequestService {
 
+    /** A user can be given work only if they hold at least one of these (a read-only VIEWER holds none). */
+    private static final java.util.Set<String> WORK_PERMISSIONS = java.util.Set.of(
+            "REQUEST_CREATE", "REQUEST_TRANSITION_SUBMIT", "REQUEST_TRANSITION_REVIEW",
+            "REQUEST_TRANSITION_DECIDE", "REQUEST_TRANSITION_ARCHIVE");
+
     private final CorrespondenceRequestRepository requestRepository;
     private final CitizenRepository citizenRepository;
     private final DocumentTypeRepository documentTypeRepository;
@@ -267,7 +272,7 @@ public class RequestService {
         // status -- a request can be pre-assigned while still DRAFT, or
         // reassigned later while it is still open. Status changes go through transition() only,
         // which is where the legal-transition matrix is enforced.
-        CorrespondenceRequest req = find(id);
+        CorrespondenceRequest req = findForUpdate(id);
         // Once a request is decided or archived it is closed to further work, so it
         // cannot be (re)assigned. Open states (DRAFT, SUBMITTED, UNDER_REVIEW) can.
         if (req.getStatus() == RequestStatus.APPROVED || req.getStatus() == RequestStatus.REJECTED
@@ -277,6 +282,13 @@ public class RequestService {
         }
         AppUser assignee = userRepository.findById(request.userId())
                 .orElseThrow(() -> new NotFoundException("User not found: " + request.userId()));
+        if (!assignee.isEnabled()) {
+            throw new BadRequestException(assignee.getFullName() + " is deactivated and cannot be assigned work.");
+        }
+        if (!canWorkRequests(assignee)) {
+            throw new BadRequestException(assignee.getFullName()
+                    + " holds no request-workflow permission, so cannot be assigned work.");
+        }
         AppUser assignedBy = currentUser(actor);
         req.setAssignedTo(assignee);
         requestRepository.save(req);
@@ -303,8 +315,10 @@ public class RequestService {
     public List<AvailableRequestTransitionDto> availableTransitions(Long id, AppUserPrincipal actor) {
         CorrespondenceRequest req = find(id);
         java.util.Set<String> permissions = permissionCodes(actor);
+        boolean actorSubmitted = actor.getId().equals(submitterId(id));
         return workflowTransitionRepository.findActiveFromStateCode(req.getStatus().name()).stream()
                 .filter(t -> isRequestStatus(t.getToState().getCode()))
+                .filter(t -> !(actorSubmitted && needsAnotherUser(RequestStatus.valueOf(t.getToState().getCode()))))
                 .filter(t -> t.isPermittedFor(permissions))
                 .map(t -> new AvailableRequestTransitionDto(t.getToState().getCode(), t.getActionCode(),
                         t.getLabelEn(), t.getLabelAr(), t.isRequiresComment()))
@@ -329,7 +343,7 @@ public class RequestService {
 
     @Transactional
     public RequestDetailDto transition(Long id, TransitionRequest request, AppUserPrincipal actor) {
-        CorrespondenceRequest req = find(id);
+        CorrespondenceRequest req = findForUpdate(id);
         RequestStatus from = req.getStatus();
         RequestStatus to = parseStatus(request.toStatus());
 
@@ -352,6 +366,14 @@ public class RequestService {
             throw new IllegalTransitionException("This transition requires the " + needed + " permission.");
         }
 
+        // Four-eyes: whoever submitted a request may not start its review or decide it.
+        // (The role design already keeps submitting and deciding apart; this also covers a
+        // user who holds both sets of permissions, e.g. through more than one role.)
+        if (needsAnotherUser(to) && actor.getId().equals(submitterId(id))) {
+            throw new IllegalTransitionException(
+                    "You submitted this request, so another user must review and decide it.");
+        }
+
         if (to == RequestStatus.REJECTED
                 && (request.rejectionReason() == null || request.rejectionReason().isBlank())) {
             throw new BadRequestException("A rejection reason is required.");
@@ -365,9 +387,21 @@ public class RequestService {
 
         AppUser actorUser = currentUser(actor);
         req.setStatus(to);
-        if (to == RequestStatus.SUBMITTED) req.setSubmittedAt(Instant.now());
+        if (to == RequestStatus.SUBMITTED) {
+            Instant now = Instant.now();
+            req.setSubmittedAt(now);
+            // The SLA clock starts when the request is submitted, not when the draft was created,
+            // so a draft that waited a few days does not arrive already late.
+            if (req.getDocumentType() != null) {
+                req.setDueAt(now.plus(req.getDocumentType().getSlaDays(), ChronoUnit.DAYS));
+            }
+        }
         if (to == RequestStatus.REJECTED) req.setRejectionReason(request.rejectionReason());
-        if (to == RequestStatus.APPROVED || to == RequestStatus.REJECTED || to == RequestStatus.ARCHIVED) {
+        // The request closes when it is decided. Archiving afterwards is filing, not closing, so it
+        // must not move the close time (that would turn an on-time decision into a late one).
+        if (to == RequestStatus.APPROVED || to == RequestStatus.REJECTED) {
+            req.setClosedAt(Instant.now());
+        } else if (to == RequestStatus.ARCHIVED && req.getClosedAt() == null) {
             req.setClosedAt(Instant.now());
         }
         requestRepository.save(req);
@@ -395,6 +429,33 @@ public class RequestService {
             throw new BadRequestException("Unknown priority: " + raw);
         }
         return p;
+    }
+
+    /** Locks the row for the rest of the transaction so concurrent changes to one request are serialized. */
+    private CorrespondenceRequest findForUpdate(Long id) {
+        return requestRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new NotFoundException("Request not found: " + id));
+    }
+
+    /** The user who most recently moved this request to SUBMITTED, or null if it was never submitted. */
+    private Long submitterId(Long requestId) {
+        return historyRepository.findByRequestIdOrderByChangedAtAsc(requestId).stream()
+                .filter(h -> h.getToStatus() == RequestStatus.SUBMITTED)
+                .reduce((first, latest) -> latest)
+                .map(h -> h.getChangedBy() == null ? null : h.getChangedBy().getId())
+                .orElse(null);
+    }
+
+    /** Four-eyes: moves the person who submitted a request may not make on it themselves. */
+    private static boolean needsAnotherUser(RequestStatus to) {
+        return to == RequestStatus.UNDER_REVIEW || to == RequestStatus.APPROVED || to == RequestStatus.REJECTED;
+    }
+
+    private boolean canWorkRequests(AppUser user) {
+        return user.getRoles().stream()
+                .flatMap(r -> r.getPermissions().stream())
+                .map(Permission::getCode)
+                .anyMatch(WORK_PERMISSIONS::contains);
     }
 
     private CorrespondenceRequest find(Long id) {

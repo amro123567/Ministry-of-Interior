@@ -1,6 +1,7 @@
 package com.moi.cts.service;
 
 import com.moi.cts.entity.Notification;
+import com.moi.cts.exception.ApiExceptions.NotFoundException;
 import com.moi.cts.repository.NotificationRepository;
 import org.springframework.stereotype.Service;
 
@@ -27,10 +28,12 @@ public class NotificationService {
                 .toList();
     }
 
-    public void markRead(Long notificationId) {
-        notificationRepository.findById(notificationId).ifPresent(n -> {
-            n.setReadFlag(true);
-            notificationRepository.save(n);
-        });
+    /** Marks one of the caller's OWN notifications as read; anyone else's is reported as not found. */
+    public void markRead(Long notificationId, Long actorId) {
+        Notification n = notificationRepository.findById(notificationId)
+                .filter(x -> x.getRecipient() != null && x.getRecipient().getId().equals(actorId))
+                .orElseThrow(() -> new NotFoundException("Notification not found: " + notificationId));
+        n.setReadFlag(true);
+        notificationRepository.save(n);
     }
 }

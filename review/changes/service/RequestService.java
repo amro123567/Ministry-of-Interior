@@ -1,0 +1,509 @@
+package com.moi.cts.service;
+
+import com.moi.cts.dto.RequestDtos.*;
+import com.moi.cts.dto.UpdateDraftRequest;
+import com.moi.cts.entity.*;
+import com.moi.cts.exception.ApiExceptions.BadRequestException;
+import com.moi.cts.exception.ApiExceptions.IllegalTransitionException;
+import com.moi.cts.exception.ApiExceptions.NotFoundException;
+import com.moi.cts.repository.*;
+import com.moi.cts.security.AppUserPrincipal;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Locale;
+
+/**
+ * Owns the correspondence workflow. Which status changes are legal, and which
+ * permission each needs, is read from the admin-configurable workflow engine
+ * catalog (WorkflowState / WorkflowTransition), so editing the catalog changes
+ * what requests may do. The service-layer check replaces the old SQLite/MySQL
+ * trg_request_legal_transition trigger (see README "What changed and why").
+ */
+@Service
+public class RequestService {
+
+    /** A user can be given work only if they hold at least one of these (a read-only VIEWER holds none). */
+    private static final java.util.Set<String> WORK_PERMISSIONS = java.util.Set.of(
+            "REQUEST_CREATE", "REQUEST_TRANSITION_SUBMIT", "REQUEST_TRANSITION_REVIEW",
+            "REQUEST_TRANSITION_DECIDE", "REQUEST_TRANSITION_ARCHIVE");
+
+    private final CorrespondenceRequestRepository requestRepository;
+    private final CitizenRepository citizenRepository;
+    private final DocumentTypeRepository documentTypeRepository;
+    private final OfficeRepository officeRepository;
+    private final DepartmentRepository departmentRepository;
+    private final AppUserRepository userRepository;
+    private final RequestStateHistoryRepository historyRepository;
+    private final RequestAssignmentHistoryRepository assignmentHistoryRepository;
+    private final WorkflowTransitionRepository workflowTransitionRepository;
+    private final NotificationRepository notificationRepository;
+    private final AuditService auditService;
+    private final CitizenService citizenService;
+    private final ReferenceNumberService referenceNumberService;
+
+    public RequestService(CorrespondenceRequestRepository requestRepository, CitizenRepository citizenRepository,
+                           DocumentTypeRepository documentTypeRepository, OfficeRepository officeRepository,
+                           DepartmentRepository departmentRepository, AppUserRepository userRepository, RequestStateHistoryRepository historyRepository,
+                           RequestAssignmentHistoryRepository assignmentHistoryRepository,
+                           WorkflowTransitionRepository workflowTransitionRepository,
+                           NotificationRepository notificationRepository, AuditService auditService,
+                           CitizenService citizenService, ReferenceNumberService referenceNumberService) {
+        this.requestRepository = requestRepository;
+        this.citizenRepository = citizenRepository;
+        this.documentTypeRepository = documentTypeRepository;
+        this.officeRepository = officeRepository;
+        this.departmentRepository = departmentRepository;
+        this.userRepository = userRepository;
+        this.citizenService = citizenService;
+        this.referenceNumberService = referenceNumberService;
+        this.historyRepository = historyRepository;
+        this.assignmentHistoryRepository = assignmentHistoryRepository;
+        this.workflowTransitionRepository = workflowTransitionRepository;
+        this.notificationRepository = notificationRepository;
+        this.auditService = auditService;
+    }
+
+    public List<RequestSummaryDto> list(String status, String search, Boolean assignedToMe, Long actorUserId) {
+        return list(new RequestFilter(status, search, assignedToMe, null, null, null, null, null, null), actorUserId);
+    }
+
+    /**
+     * Filtered list. Every filter is optional and they combine with AND.
+     * Dates compare against createdAt and are read as UTC calendar days
+     * (from = start of that day, to = end of that day, both inclusive). The SLA
+     * filter is applied after the query because the SLA status is computed on
+     * the entity (see CorrespondenceRequest.getSlaStatus) rather than stored.
+     */
+    public List<RequestSummaryDto> list(RequestFilter f, Long actorUserId) {
+        return findMatching(f, actorUserId).stream().map(this::toSummary).toList();
+    }
+
+    /** Entities matching the filter; shared by the list endpoint and the CSV export so they never disagree. */
+    public List<CorrespondenceRequest> findMatching(RequestFilter f, Long actorUserId) {
+        Specification<CorrespondenceRequest> spec = Specification.where(null);
+        if (f.status() != null && !f.status().isBlank()) {
+            RequestStatus s = parseStatus(f.status());
+            spec = spec.and((root, q, cb) -> cb.equal(root.get("status"), s));
+        }
+        if (f.search() != null && !f.search().isBlank()) {
+            String like = "%" + f.search().trim().toLowerCase(Locale.ROOT) + "%";
+            spec = spec.and((root, q, cb) -> {
+                var citizen = root.join("citizen");
+                return cb.or(
+                        cb.like(cb.lower(root.get("referenceNumber")), like),
+                        cb.like(cb.lower(cb.coalesce(root.<String>get("subject"), "")), like),
+                        cb.like(cb.lower(citizen.<String>get("firstNameEn")), like),
+                        cb.like(cb.lower(cb.coalesce(citizen.<String>get("lastNameEn"), "")), like),
+                        cb.like(cb.lower(citizen.<String>get("registryNumber")), like));
+            });
+        }
+        if (Boolean.TRUE.equals(f.assignedToMe()) && actorUserId != null) {
+            spec = spec.and((root, q, cb) -> cb.equal(root.get("assignedTo").get("id"), actorUserId));
+        }
+        if (f.officeId() != null) {
+            Long officeId = f.officeId();
+            spec = spec.and((root, q, cb) -> cb.equal(root.get("office").get("id"), officeId));
+        }
+        if (f.priority() != null && !f.priority().isBlank()) {
+            String priority = f.priority().trim().toUpperCase(Locale.ROOT);
+            if (!List.of("NORMAL", "HIGH", "URGENT").contains(priority)) {
+                throw new BadRequestException("Unknown priority: " + f.priority());
+            }
+            spec = spec.and((root, q, cb) -> cb.equal(root.get("priority"), priority));
+        }
+        if (f.direction() != null && !f.direction().isBlank()) {
+            CorrespondenceDirection direction;
+            try {
+                direction = CorrespondenceDirection.valueOf(f.direction().trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Unknown direction: " + f.direction());
+            }
+            spec = spec.and((root, q, cb) -> cb.equal(root.get("direction"), direction));
+        }
+        if (f.from() != null) {
+            Instant start = f.from().atStartOfDay(ZoneOffset.UTC).toInstant();
+            spec = spec.and((root, q, cb) -> cb.greaterThanOrEqualTo(root.<Instant>get("createdAt"), start));
+        }
+        if (f.to() != null) {
+            Instant endExclusive = f.to().plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+            spec = spec.and((root, q, cb) -> cb.lessThan(root.<Instant>get("createdAt"), endExclusive));
+        }
+        if (f.from() != null && f.to() != null && f.to().isBefore(f.from())) {
+            throw new BadRequestException("The 'to' date cannot be before the 'from' date.");
+        }
+        SlaStatus slaWanted = null;
+        if (f.sla() != null && !f.sla().isBlank()) {
+            try {
+                slaWanted = SlaStatus.valueOf(f.sla().trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Unknown SLA status: " + f.sla());
+            }
+        }
+        final SlaStatus sla = slaWanted;
+        return requestRepository.findAll(spec).stream()
+                .filter(r -> sla == null || r.getSlaStatus() == sla)
+                .toList();
+    }
+
+    /** SLA-status list views for {@link com.moi.cts.controller.SlaController}. */
+    public List<RequestSummaryDto> listBySlaStatus(SlaStatus target) {
+        return requestRepository.findAll().stream()
+                .filter(r -> r.getSlaStatus() == target)
+                .map(this::toSummary)
+                .toList();
+    }
+
+    public RequestDetailDto get(Long id) {
+        return toDetail(find(id));
+    }
+
+    public List<HistoryDto> history(Long id) {
+        find(id);
+        return historyRepository.findByRequestIdOrderByChangedAtAsc(id).stream()
+                .map(h -> new HistoryDto(h.getId(),
+                        h.getFromStatus() != null ? h.getFromStatus().name() : null,
+                        h.getToStatus().name(), h.getChangedBy().getFullName(), h.getNote(), h.getChangedAt()))
+                .toList();
+    }
+
+    /** Reassignment history, mirroring history() for workflow state. */
+    public List<AssignmentHistoryDto> assignmentHistory(Long id) {
+        find(id);
+        return assignmentHistoryRepository.findByRequestIdOrderByAssignedAtDesc(id).stream()
+                .map(h -> new AssignmentHistoryDto(h.getId(), h.getAssignedTo().getFullName(),
+                        h.getAssignedBy().getFullName(), h.getNote(), h.getAssignedAt()))
+                .toList();
+    }
+
+    @Transactional
+    public RequestDetailDto create(CreateRequestRequest request, AppUserPrincipal actor) {
+        Citizen citizen = citizenRepository.findById(request.citizenId())
+                .orElseThrow(() -> new NotFoundException("Citizen not found: " + request.citizenId()));
+        DocumentType docType = documentTypeRepository.findById(request.documentTypeId())
+                .orElseThrow(() -> new NotFoundException("Document type not found: " + request.documentTypeId()));
+        Office office = officeRepository.findById(request.officeId())
+                .orElseThrow(() -> new NotFoundException("Office not found: " + request.officeId()));
+        Department department = request.departmentId() == null ? null
+                : departmentRepository.findById(request.departmentId())
+                        .orElseThrow(() -> new NotFoundException("Department not found: " + request.departmentId()));
+        CorrespondenceDirection direction = CorrespondenceDirection.INCOMING;
+        if (request.direction() != null && !request.direction().isBlank()) {
+            try {
+                direction = CorrespondenceDirection.valueOf(request.direction().trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Unknown direction: " + request.direction());
+            }
+        }
+        AppUser createdBy = currentUser(actor);
+
+        CorrespondenceRequest req = new CorrespondenceRequest();
+        req.setReferenceNumber(referenceNumberService.next(Instant.now()));
+        req.setCitizen(citizen);
+        req.setDocumentType(docType);
+        req.setOffice(office);
+        req.setCreatedBy(createdBy);
+        req.setStatus(RequestStatus.DRAFT);
+        req.setPriority(normalizePriority(request.priority()));
+        req.setNotes(request.notes());
+        req.setDirection(direction);
+        req.setSubject(request.subject() == null || request.subject().isBlank() ? null : request.subject().trim());
+        req.setDepartment(department);
+        req.setDueAt(Instant.now().plus(docType.getSlaDays(), ChronoUnit.DAYS));
+        req = requestRepository.save(req);
+
+        recordHistory(req, null, RequestStatus.DRAFT, createdBy, "Created");
+        auditService.log("CorrespondenceRequest", req.getId(), "CREATE", createdBy,
+                "reference=" + req.getReferenceNumber() + " direction=" + direction);
+        return toDetail(req);
+    }
+
+    @Transactional
+    public RequestDetailDto updateDraft(Long id, UpdateDraftRequest request, AppUserPrincipal actor) {
+        CorrespondenceRequest req = find(id);
+        if (req.getStatus() != RequestStatus.DRAFT) {
+            throw new BadRequestException("Request " + req.getReferenceNumber() + " is " + req.getStatus()
+                    + "; only a DRAFT can be edited.");
+        }
+        Citizen citizen = citizenRepository.findById(request.citizenId())
+                .orElseThrow(() -> new NotFoundException("Citizen not found: " + request.citizenId()));
+        DocumentType docType = documentTypeRepository.findById(request.documentTypeId())
+                .orElseThrow(() -> new NotFoundException("Document type not found: " + request.documentTypeId()));
+        Office office = officeRepository.findById(request.officeId())
+                .orElseThrow(() -> new NotFoundException("Office not found: " + request.officeId()));
+        Department department = request.departmentId() == null ? null
+                : departmentRepository.findById(request.departmentId())
+                        .orElseThrow(() -> new NotFoundException("Department not found: " + request.departmentId()));
+        CorrespondenceDirection direction = req.getDirection();
+        if (request.direction() != null && !request.direction().isBlank()) {
+            try {
+                direction = CorrespondenceDirection.valueOf(request.direction().trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Unknown direction: " + request.direction());
+            }
+        }
+        AppUser editor = currentUser(actor);
+        boolean typeChanged = req.getDocumentType() == null || !req.getDocumentType().getId().equals(docType.getId());
+        req.setCitizen(citizen);
+        req.setDocumentType(docType);
+        req.setOffice(office);
+        req.setDepartment(department);
+        req.setDirection(direction);
+        req.setPriority(normalizePriority(request.priority()));
+        req.setNotes(request.notes() == null || request.notes().isBlank() ? null : request.notes());
+        req.setSubject(request.subject() == null || request.subject().isBlank() ? null : request.subject().trim());
+        if (typeChanged) {
+            req.setDueAt(Instant.now().plus(docType.getSlaDays(), ChronoUnit.DAYS));
+        }
+        req = requestRepository.save(req);
+        auditService.log("CorrespondenceRequest", req.getId(), "UPDATE", editor,
+                "reference=" + req.getReferenceNumber() + " draft edited");
+        return toDetail(req);
+    }
+
+    @Transactional
+    public RequestDetailDto assign(Long id, AssignRequest request, AppUserPrincipal actor) {
+        // Assignment is a field on the request, independent of its workflow
+        // status -- a request can be pre-assigned while still DRAFT, or
+        // reassigned later while it is still open. Status changes go through transition() only,
+        // which is where the legal-transition matrix is enforced.
+        CorrespondenceRequest req = findForUpdate(id);
+        // Once a request is decided or archived it is closed to further work, so it
+        // cannot be (re)assigned. Open states (DRAFT, SUBMITTED, UNDER_REVIEW) can.
+        if (req.getStatus() == RequestStatus.APPROVED || req.getStatus() == RequestStatus.REJECTED
+                || req.getStatus() == RequestStatus.ARCHIVED) {
+            throw new BadRequestException("Request " + req.getReferenceNumber() + " is "
+                    + req.getStatus() + " and can no longer be assigned.");
+        }
+        AppUser assignee = userRepository.findById(request.userId())
+                .orElseThrow(() -> new NotFoundException("User not found: " + request.userId()));
+        if (!assignee.isEnabled()) {
+            throw new BadRequestException(assignee.getFullName() + " is deactivated and cannot be assigned work.");
+        }
+        if (!canWorkRequests(assignee)) {
+            throw new BadRequestException(assignee.getFullName()
+                    + " holds no request-workflow permission, so cannot be assigned work.");
+        }
+        AppUser assignedBy = currentUser(actor);
+        req.setAssignedTo(assignee);
+        requestRepository.save(req);
+
+        RequestAssignmentHistory h = new RequestAssignmentHistory();
+        h.setRequest(req);
+        h.setAssignedTo(assignee);
+        h.setAssignedBy(assignedBy);
+        h.setNote(request.note());
+        assignmentHistoryRepository.save(h);
+
+        Notification n = new Notification();
+        n.setRecipient(assignee);
+        n.setRelatedRequest(req);
+        n.setMessage("You were assigned request " + req.getReferenceNumber());
+        notificationRepository.save(n);
+
+        auditService.log("CorrespondenceRequest", req.getId(), "ASSIGN", assignedBy,
+                "assignedTo=" + assignee.getUsername());
+        return toDetail(req);
+    }
+
+    /** The status changes the signed-in user may make on this request now, read from the workflow catalog. */
+    public List<AvailableRequestTransitionDto> availableTransitions(Long id, AppUserPrincipal actor) {
+        CorrespondenceRequest req = find(id);
+        java.util.Set<String> permissions = permissionCodes(actor);
+        boolean actorSubmitted = actor.getId().equals(submitterId(id));
+        return workflowTransitionRepository.findActiveFromStateCode(req.getStatus().name()).stream()
+                .filter(t -> isRequestStatus(t.getToState().getCode()))
+                .filter(t -> !(actorSubmitted && needsAnotherUser(RequestStatus.valueOf(t.getToState().getCode()))))
+                .filter(t -> t.isPermittedFor(permissions))
+                .map(t -> new AvailableRequestTransitionDto(t.getToState().getCode(), t.getActionCode(),
+                        t.getLabelEn(), t.getLabelAr(), t.isRequiresComment()))
+                .toList();
+    }
+
+    private java.util.Set<String> permissionCodes(AppUserPrincipal actor) {
+        return actor.getUser().getRoles().stream()
+                .flatMap(r -> r.getPermissions().stream())
+                .map(Permission::getCode)
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
+    private boolean isRequestStatus(String code) {
+        try {
+            RequestStatus.valueOf(code);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    @Transactional
+    public RequestDetailDto transition(Long id, TransitionRequest request, AppUserPrincipal actor) {
+        CorrespondenceRequest req = findForUpdate(id);
+        RequestStatus from = req.getStatus();
+        RequestStatus to = parseStatus(request.toStatus());
+
+        // The workflow engine's catalog (admin-configurable states and transitions) decides
+        // which moves are legal and which permission each one needs. Request statuses are
+        // matched to engine states by code.
+        WorkflowTransition transition = workflowTransitionRepository
+                .findActiveByStateCodes(from.name(), to.name())
+                .orElseThrow(() -> new IllegalTransitionException(
+                        "Cannot move a request from " + from + " to " + to + "."));
+
+        // Permission-based: does any role this user holds grant a permission this
+        // transition requires? There is no separate ADMIN override: ADMIN can do every
+        // transition because DataSeeder grants the ADMIN role every permission.
+        java.util.Set<String> actorPermissions = permissionCodes(actor);
+        if (!transition.isPermittedFor(actorPermissions)) {
+            String needed = transition.getRequiredPermissions().stream()
+                    .map(p -> "'" + p.getCode() + "'").sorted()
+                    .collect(java.util.stream.Collectors.joining(" or "));
+            throw new IllegalTransitionException("This transition requires the " + needed + " permission.");
+        }
+
+        // Four-eyes: whoever submitted a request may not start its review or decide it.
+        // (The role design already keeps submitting and deciding apart; this also covers a
+        // user who holds both sets of permissions, e.g. through more than one role.)
+        if (needsAnotherUser(to) && actor.getId().equals(submitterId(id))) {
+            throw new IllegalTransitionException(
+                    "You submitted this request, so another user must review and decide it.");
+        }
+
+        if (to == RequestStatus.REJECTED
+                && (request.rejectionReason() == null || request.rejectionReason().isBlank())) {
+            throw new BadRequestException("A rejection reason is required.");
+        }
+        // Any other transition the catalog marks as requiring a comment needs a note.
+        if (transition.isRequiresComment() && to != RequestStatus.REJECTED
+                && (request.note() == null || request.note().isBlank())
+                && (request.rejectionReason() == null || request.rejectionReason().isBlank())) {
+            throw new BadRequestException("This transition requires a comment.");
+        }
+
+        AppUser actorUser = currentUser(actor);
+        req.setStatus(to);
+        if (to == RequestStatus.SUBMITTED) {
+            Instant now = Instant.now();
+            req.setSubmittedAt(now);
+            // The SLA clock starts when the request is submitted, not when the draft was created,
+            // so a draft that waited a few days does not arrive already late.
+            if (req.getDocumentType() != null) {
+                req.setDueAt(now.plus(req.getDocumentType().getSlaDays(), ChronoUnit.DAYS));
+            }
+        }
+        if (to == RequestStatus.REJECTED) req.setRejectionReason(request.rejectionReason());
+        // The request closes when it is decided. Archiving afterwards is filing, not closing, so it
+        // must not move the close time (that would turn an on-time decision into a late one).
+        if (to == RequestStatus.APPROVED || to == RequestStatus.REJECTED) {
+            req.setClosedAt(Instant.now());
+        } else if (to == RequestStatus.ARCHIVED && req.getClosedAt() == null) {
+            req.setClosedAt(Instant.now());
+        }
+        requestRepository.save(req);
+        recordHistory(req, from, to, actorUser, request.note());
+        auditService.log("CorrespondenceRequest", req.getId(), "TRANSITION",
+                actorUser, from + " -> " + to);
+        return toDetail(req);
+    }
+
+    private void recordHistory(CorrespondenceRequest req, RequestStatus from, RequestStatus to,
+                                AppUser actor, String note) {
+        RequestStateHistory h = new RequestStateHistory();
+        h.setRequest(req);
+        h.setFromStatus(from);
+        h.setToStatus(to);
+        h.setChangedBy(actor);
+        h.setNote(note);
+        historyRepository.save(h);
+    }
+
+    private String normalizePriority(String raw) {
+        if (raw == null || raw.isBlank()) return "NORMAL";
+        String p = raw.trim().toUpperCase(Locale.ROOT);
+        if (!List.of("NORMAL", "HIGH", "URGENT").contains(p)) {
+            throw new BadRequestException("Unknown priority: " + raw);
+        }
+        return p;
+    }
+
+    /** Locks the row for the rest of the transaction so concurrent changes to one request are serialized. */
+    private CorrespondenceRequest findForUpdate(Long id) {
+        return requestRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new NotFoundException("Request not found: " + id));
+    }
+
+    /** The user who most recently moved this request to SUBMITTED, or null if it was never submitted. */
+    private Long submitterId(Long requestId) {
+        return historyRepository.findByRequestIdOrderByChangedAtAsc(requestId).stream()
+                .filter(h -> h.getToStatus() == RequestStatus.SUBMITTED)
+                .reduce((first, latest) -> latest)
+                .map(h -> h.getChangedBy() == null ? null : h.getChangedBy().getId())
+                .orElse(null);
+    }
+
+    /** Four-eyes: moves the person who submitted a request may not make on it themselves. */
+    private static boolean needsAnotherUser(RequestStatus to) {
+        return to == RequestStatus.UNDER_REVIEW || to == RequestStatus.APPROVED || to == RequestStatus.REJECTED;
+    }
+
+    private boolean canWorkRequests(AppUser user) {
+        return user.getRoles().stream()
+                .flatMap(r -> r.getPermissions().stream())
+                .map(Permission::getCode)
+                .anyMatch(WORK_PERMISSIONS::contains);
+    }
+
+    private CorrespondenceRequest find(Long id) {
+        return requestRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Request not found: " + id));
+    }
+
+    private AppUser currentUser(AppUserPrincipal principal) {
+        return userRepository.findById(principal.getId())
+                .orElseThrow(() -> new NotFoundException("Authenticated user vanished: " + principal.getId()));
+    }
+
+    private RequestStatus parseStatus(String raw) {
+        try {
+            return RequestStatus.valueOf(raw.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Unknown status: " + raw);
+        }
+    }
+
+    private RequestSummaryDto toSummary(CorrespondenceRequest r) {
+        return new RequestSummaryDto(r.getId(), r.getReferenceNumber(),
+                r.getCitizen().getFirstNameEn() + " " + safe(r.getCitizen().getLastNameEn()),
+                r.getDocumentType().getNameEn(), r.getStatus().name(), r.getPriority(),
+                r.getAssignedTo() != null ? r.getAssignedTo().getFullName() : null,
+                r.getDueAt(), r.isOverdue(), r.getSlaStatus().name(), r.getCreatedAt(),
+                r.getDirection().name(), r.getSubject());
+    }
+
+    RequestDetailDto toDetail(CorrespondenceRequest r) {
+        var citizenDto = citizenService.toDto(r.getCitizen());
+        var docTypeDto = new com.moi.cts.dto.ReferenceDtos.DocumentTypeDto(
+                r.getDocumentType().getId(), r.getDocumentType().getCode(), r.getDocumentType().getNameEn(),
+                r.getDocumentType().getNameAr(), r.getDocumentType().getSlaDays());
+        var officeDto = new com.moi.cts.dto.ReferenceDtos.OfficeDto(
+                r.getOffice().getId(), r.getOffice().getCode(), r.getOffice().getNameEn(), r.getOffice().getNameAr(),
+                r.getOffice().getDistrict() != null ? r.getOffice().getDistrict().getId() : null);
+
+        return new RequestDetailDto(r.getId(), r.getReferenceNumber(), citizenDto, docTypeDto, officeDto,
+                r.getAssignedTo() != null ? r.getAssignedTo().getFullName() : null,
+                r.getAssignedTo() != null ? r.getAssignedTo().getId() : null,
+                r.getCreatedBy().getFullName(), r.getStatus().name(), r.getPriority(), r.getNotes(),
+                r.getRejectionReason(), r.getCreatedAt(), r.getSubmittedAt(), r.getDueAt(), r.getClosedAt(),
+                r.isOverdue(), r.getSlaStatus().name(), r.getBreachedAt(),
+                r.getDirection().name(), r.getSubject(),
+                r.getDepartment() != null ? r.getDepartment().getId() : null,
+                r.getDepartment() != null ? r.getDepartment().getNameEn() : null);
+    }
+
+    private String safe(String s) { return s == null ? "" : s; }
+}

@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(ApiExceptions.NotFoundException.class)
     public ResponseEntity<MiscDtos.ApiError> notFound(ApiExceptions.NotFoundException e) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new MiscDtos.ApiError(e.getMessage()));
@@ -40,7 +42,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<MiscDtos.ApiError> generic(Exception e) {
+        // The detail (SQL, class names, paths) goes to the server log only; the caller gets a
+        // reference they can quote, never the raw exception message.
+        String ref = java.util.UUID.randomUUID().toString().substring(0, 8);
+        LOG.error("Unexpected error (ref {})", ref, e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new MiscDtos.ApiError("Unexpected error: " + e.getMessage()));
+                .body(new MiscDtos.ApiError("Unexpected error. Please try again; if it keeps happening, quote reference " + ref + "."));
     }
 }

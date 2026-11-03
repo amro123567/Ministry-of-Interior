@@ -1,0 +1,39 @@
+package com.moi.cts.controller;
+
+import com.moi.cts.audit.Audited;
+import com.moi.cts.dto.UserDtos.*;
+import com.moi.cts.security.AppUserPrincipal;
+import com.moi.cts.service.UserService;
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+
+    private final UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+
+    @GetMapping
+    public List<UserDto> all() { return userService.all(); }
+
+    @PatchMapping("/{id}/enabled")
+    public UserDto setEnabled(@PathVariable Long id, @RequestBody SetEnabledRequest request,
+                              @AuthenticationPrincipal AppUserPrincipal actor) {
+        return userService.setEnabled(id, request.enabled(), actor != null ? actor.getUser() : null);
+    }
+
+    @PostMapping
+    @Audited(entityType = "AppUser", action = "CREATE")
+    public ResponseEntity<UserDto> create(@Valid @RequestBody CreateUserRequest request,
+                                           @AuthenticationPrincipal AppUserPrincipal actor) {
+        return ResponseEntity.ok(userService.create(request));
+    }
+}

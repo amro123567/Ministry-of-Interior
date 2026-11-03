@@ -4,6 +4,7 @@ import com.moi.cts.security.AppUserDetailsService;
 import com.moi.cts.security.JwtAuthFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -15,6 +16,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -73,6 +75,9 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // No / expired / invalid token -> 401 ("sign in again"). Without this entry point Spring
+            // answers 403, which clients cannot tell apart from "signed in but not allowed".
+            .exceptionHandling(eh -> eh.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
@@ -168,16 +173,20 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/payments").hasAuthority("PAYMENT_RECORD")
                 .requestMatchers(HttpMethod.PATCH, "/api/payments/*/reverse").hasAuthority("PAYMENT_REVERSE")
                 // Correspondence-request writes. Transitions are gated inside
-                // RequestService.transition(), but create, assign and attachment
-                // upload had no rule and fell through to authenticated(), so a
-                // VIEWER could write. Gate them on the request-workflow
-                // permissions (held by OFFICER/MANAGER/ADMIN, never VIEWER).
+                // RequestService.transition() (per-transition permission from the workflow
+                // catalog). The other writes each have their own permission, so a reviewer
+                // can no longer create or edit drafts and an officer can no longer assign.
+                //   REQUEST_CREATE : create / edit a draft, attach documents (OFFICER)
+                //   REQUEST_ASSIGN : assign or reassign an open request (MANAGER, ADMIN override)
                 .requestMatchers(HttpMethod.POST, "/api/requests", "/api/requests/*/documents")
-                    .hasAnyAuthority("REQUEST_TRANSITION_SUBMIT", "REQUEST_TRANSITION_REVIEW", "REQUEST_TRANSITION_DECIDE", "REQUEST_TRANSITION_ARCHIVE")
+                    .hasAuthority("REQUEST_CREATE")
                 .requestMatchers(HttpMethod.PUT, "/api/requests/*")
-                    .hasAnyAuthority("REQUEST_TRANSITION_SUBMIT", "REQUEST_TRANSITION_REVIEW", "REQUEST_TRANSITION_DECIDE", "REQUEST_TRANSITION_ARCHIVE")
+                    .hasAuthority("REQUEST_CREATE")
                 .requestMatchers(HttpMethod.PATCH, "/api/requests/*/assign")
-                    .hasAnyAuthority("REQUEST_TRANSITION_SUBMIT", "REQUEST_TRANSITION_REVIEW", "REQUEST_TRANSITION_DECIDE", "REQUEST_TRANSITION_ARCHIVE")
+                    .hasAuthority("REQUEST_ASSIGN")
+                // Exporting every request as CSV is reporting, not reading one request:
+                // it used to be open to any signed-in user, including the read-only VIEWER.
+                .requestMatchers(HttpMethod.GET, "/api/requests/export").hasAuthority("REPORTS_VIEW")
                 .anyRequest().authenticated())
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

@@ -26,13 +26,13 @@ public class JwtService {
     public JwtService(@Value("${cts.jwt.secret}") String secret,
                        @Value("${cts.jwt.access-token-minutes}") long accessTokenMinutes,
                        @Value("${cts.jwt.refresh-token-days}") long refreshTokenDays) {
-        // Padded so a short secret in a dev .env still yields a valid HS256 key;
-        // production deployments should set a real 256-bit+ random JWT_SECRET.
-        byte[] raw = secret.getBytes(StandardCharsets.UTF_8);
-        if (raw.length < 32) {
-            byte[] padded = new byte[32];
-            System.arraycopy(raw, 0, padded, 0, raw.length);
-            raw = padded;
+        // Refuse to start with a secret anyone could guess: tokens signed with it could be forged.
+        byte[] raw = secret == null ? new byte[0] : secret.getBytes(StandardCharsets.UTF_8);
+        String lowered = secret == null ? "" : secret.toLowerCase(java.util.Locale.ROOT);
+        if (raw.length < 32 || lowered.contains("change-this") || lowered.contains("generate-a-long-random")) {
+            throw new IllegalStateException("JWT_SECRET is missing, too short (need 32+ characters) or still a "
+                    + "placeholder. Set it to a long random value, e.g. in PowerShell: "
+                    + "[Convert]::ToBase64String((1..48|%{Get-Random -Max 256}))");
         }
         this.key = Keys.hmacShaKeyFor(raw);
         this.accessTokenMinutes = accessTokenMinutes;

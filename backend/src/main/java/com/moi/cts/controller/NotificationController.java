@@ -27,6 +27,6 @@ public class NotificationController {
     @PatchMapping("/{id}/read")
     @Audited(entityType = "Notification", action = "READ")
     public void markRead(@PathVariable Long id, @AuthenticationPrincipal AppUserPrincipal actor) {
-        notificationService.markRead(id);
+        notificationService.markRead(id, actor.getId());
     }
 }

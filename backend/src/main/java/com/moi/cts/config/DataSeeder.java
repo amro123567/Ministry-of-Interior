@@ -36,6 +36,36 @@ import java.util.Set;
 @Component
 public class DataSeeder implements CommandLineRunner {
 
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(DataSeeder.class);
+
+    // ---- Role design: ONE place that says what each role may do. ----------
+    // OFFICER  prepares the case   : register citizens, create/edit drafts, submit, take payments
+    // MANAGER  distributes+decides : assign, start review, approve/reject, decide registry changes
+    // ADMIN    runs the system and closes the case: users, audit, reports, ARCHIVE, reverse payments,
+    //          plus an emergency override on assign/review/decide (a submitter can never review or
+    //          decide their own request -- see RequestService.transition()).
+    // VIEWER   read-only.
+    // Used for a fresh database AND to bring an existing one in line at startup (syncRoleGrants).
+    private static final Map<RoleName, Set<String>> ROLE_GRANTS = Map.of(
+            RoleName.ADMIN, Set.of("USER_VIEW", "USER_MANAGE", "AUDIT_VIEW", "REPORTS_VIEW",
+                    "REQUEST_ASSIGN", "REQUEST_TRANSITION_REVIEW", "REQUEST_TRANSITION_DECIDE",
+                    "REQUEST_TRANSITION_ARCHIVE", "PAYMENT_REVERSE"),
+            RoleName.MANAGER, Set.of("USER_VIEW", "REPORTS_VIEW", "REQUEST_ASSIGN",
+                    "REQUEST_TRANSITION_REVIEW", "REQUEST_TRANSITION_DECIDE", "CITIZEN_REGISTRY_DECIDE"),
+            RoleName.OFFICER, Set.of("REQUEST_CREATE", "REQUEST_TRANSITION_SUBMIT", "CITIZEN_MANAGE", "PAYMENT_RECORD"),
+            RoleName.VIEWER, Set.of());
+
+    private static final Map<RoleName, String> ROLE_DESCRIPTIONS = Map.of(
+            RoleName.ADMIN, "System administration; archives closed requests; emergency override",
+            RoleName.MANAGER, "Assigns, reviews and approves/rejects requests",
+            RoleName.OFFICER, "Registers and submits requests, records payments",
+            RoleName.VIEWER, "Read-only access");
+
+    // Permissions added after the first release; created on existing databases by syncRoleGrants().
+    private static final Map<String, String> ADDED_PERMISSIONS = Map.of(
+            "REQUEST_CREATE", "Create and edit draft requests and attach documents",
+            "REQUEST_ASSIGN", "Assign or reassign an open request to a staff member");
+
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
     private final OfficeRepository officeRepository;
@@ -157,6 +187,7 @@ public class DataSeeder implements CommandLineRunner {
     @Transactional
     public void run(String... args) {
         if (roleRepository.count() > 0) {
+            syncRoleGrants(); // existing database: bring permissions and role grants up to the current design
             return;
         }
 
@@ -169,6 +200,9 @@ public class DataSeeder implements CommandLineRunner {
         Permission transitionReview = permission("REQUEST_TRANSITION_REVIEW", "Start review of a submitted request");
         Permission transitionDecide = permission("REQUEST_TRANSITION_DECIDE", "Approve or reject a request under review");
         Permission transitionArchive = permission("REQUEST_TRANSITION_ARCHIVE", "Archive an approved or rejected request");
+        // Separate from the four transition permissions: creating/editing a draft and
+        // assigning work used to be allowed to "anyone holding any transition permission".
+        ADDED_PERMISSIONS.forEach(this::permission);
         // Registering a new citizen or correcting a father/mother lineage
         // link (SecurityConfig gates POST/PATCH /api/citizens/** on this) --
         // added alongside the frontend's first citizen-registry write UI so
@@ -203,33 +237,14 @@ public class DataSeeder implements CommandLineRunner {
                 "Reverse a previously recorded payment");
 
         // ---- roles, defined entirely by which permissions they're granted --
-        // ADMIN gets every permission that exists -- that (not a hardcoded
-        // "role == ADMIN" check anywhere in the code) is what makes ADMIN
-        // able to do everything.
-        Role admin = roleRepository.save(new Role(RoleName.ADMIN, "Full system access"));
-        admin.setPermissions(new HashSet<>(Set.of(userView, userManage, auditView, reportsView,
-                transitionSubmit, transitionReview, transitionDecide, transitionArchive, citizenManage,
-                citizenRegistryDecide, paymentRecord, paymentReverse)));
-        roleRepository.save(admin);
-
-        Role manager = roleRepository.save(new Role(RoleName.MANAGER, "Reviews and approves/rejects requests"));
-        manager.setPermissions(new HashSet<>(Set.of(userView, reportsView, transitionReview, transitionDecide,
-                citizenManage, citizenRegistryDecide, paymentRecord, paymentReverse)));
-        roleRepository.save(manager);
-
-        // OFFICER is the front-line civil-status data-entry role -- this is
-        // also who RequestWorkflowIntegrationTest's own createCitizen() test
-        // helper already logs in as for every fixture citizen it creates, so
-        // CITIZEN_MANAGE has to be here for that whole suite to keep passing,
-        // not just for realism. Holds PAYMENT_RECORD (collects fees at the
-        // counter) but not PAYMENT_REVERSE (see that permission's own note).
-        Role officer = roleRepository.save(new Role(RoleName.OFFICER, "Creates, submits and archives requests"));
-        officer.setPermissions(new HashSet<>(Set.of(transitionSubmit, transitionArchive, citizenManage,
-                paymentRecord)));
-        roleRepository.save(officer);
-
-        Role viewer = roleRepository.save(new Role(RoleName.VIEWER, "Read-only access"));
-        // No permissions granted -- read-only means exactly that.
+        // The grants live in ROLE_GRANTS above; nothing checks a role name directly.
+        Role admin = roleRepository.save(new Role(RoleName.ADMIN, ROLE_DESCRIPTIONS.get(RoleName.ADMIN)));
+        Role manager = roleRepository.save(new Role(RoleName.MANAGER, ROLE_DESCRIPTIONS.get(RoleName.MANAGER)));
+        Role officer = roleRepository.save(new Role(RoleName.OFFICER, ROLE_DESCRIPTIONS.get(RoleName.OFFICER)));
+        Role viewer = roleRepository.save(new Role(RoleName.VIEWER, ROLE_DESCRIPTIONS.get(RoleName.VIEWER)));
+        Map<String, Permission> permissionsByCode = new HashMap<>();
+        permissionRepository.findAll().forEach(p -> permissionsByCode.put(p.getCode(), p));
+        applyRoleGrants(permissionsByCode);
 
         // ---- reference & organizational hierarchy --------------------------
         // Lebanon's real 8 governorates and their ~26 districts (qadas) --
@@ -884,6 +899,33 @@ public class DataSeeder implements CommandLineRunner {
 
     private Permission permission(String code, String description) {
         return permissionRepository.save(new Permission(code, description));
+    }
+
+    /** Existing database: add any missing permission, then make every role match ROLE_GRANTS. */
+    private void syncRoleGrants() {
+        Map<String, Permission> byCode = new HashMap<>();
+        permissionRepository.findAll().forEach(p -> byCode.put(p.getCode(), p));
+        ADDED_PERMISSIONS.forEach((code, description) ->
+                byCode.computeIfAbsent(code, c -> permission(c, description)));
+        applyRoleGrants(byCode);
+    }
+
+    private void applyRoleGrants(Map<String, Permission> byCode) {
+        ROLE_GRANTS.forEach((roleName, codes) -> roleRepository.findByName(roleName).ifPresent(role -> {
+            Set<String> current = new HashSet<>();
+            role.getPermissions().forEach(p -> current.add(p.getCode()));
+            if (current.equals(codes)) {
+                return;
+            }
+            Set<Permission> wanted = new HashSet<>();
+            for (String code : codes) {
+                wanted.add(java.util.Objects.requireNonNull(byCode.get(code), "Unknown permission in ROLE_GRANTS: " + code));
+            }
+            role.setPermissions(wanted);
+            role.setDescription(ROLE_DESCRIPTIONS.get(roleName));
+            roleRepository.save(role);
+            LOG.info("Role {} grants updated: {} -> {}", roleName, current, codes);
+        }));
     }
 
     private Office office(String code, String en, String ar, District district) {
