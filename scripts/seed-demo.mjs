@@ -8,7 +8,7 @@
  *   certificate kinds with review validations and chain-of-custody events,
  *   guardianships (FULL / PARTIAL / TEMPORARY), civil-status amendments
  *   (pending / approved / rejected), registry transfers (pending / approved /
- *   rejected), correspondence requests in every status with assignments,
+ *   rejected), correspondence requests in every status (left unassigned),
  *   attachments and payments (incl. a reversal), and workflow instances.
  *
  * Run from the project root:   node scripts/seed-demo.mjs
@@ -327,13 +327,7 @@ async function main() {
     if (['APPROVED', 'ARCHIVED'].includes(final)) await step(managerKey, 'APPROVED', { note: 'Approved' })
     if (final === 'REJECTED') await step(managerKey, 'REJECTED', { reason: ['Incomplete supporting documents', 'Citizen record does not match the request', 'Outside the Directorate’s competence'][i % 3], note: 'Rejected' })
     if (final === 'ARCHIVED') await step('admin', 'ARCHIVED', { note: 'Filed' })
-    // assignment (open requests only -- closed ones are refused by design)
-    if (['SUBMITTED', 'UNDER_REVIEW'].includes(final)) {
-      const pool = [...officers, ...managers]
-      const assignee = userId(pool[i % pool.length])
-      if (assignee) await attempt(`assign ${key}`, () => call('admin', 'PATCH', `/requests/${rid}/assign`, { userId: assignee, note: 'Assigned by the Directorate' }))
-      if (i % 4 === 0 && userId(officerKey)) await attempt(`reassign ${key}`, () => call('admin', 'PATCH', `/requests/${rid}/assign`, { userId: userId(officerKey), note: 'Reassigned to balance the workload' }))
-    }
+    // No assignment on purpose: every request starts unassigned, so each staff queue is empty and the demo assigns work live.
     // attachment
     if (i % 3 === 0) {
       const form = new FormData()
