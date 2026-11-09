@@ -66,7 +66,6 @@ export default function WorkflowEnginePage() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [view, setView] = useState('diagram') // diagram | list
-  const [tab, setTab] = useState('design') // design | instances
   const [filter, setFilter] = useState('')
 
   function load() {
@@ -218,94 +217,6 @@ export default function WorkflowEnginePage() {
     }
   }
 
-  // ---- instance operator ------------------------------------------------
-  const [lookupId, setLookupId] = useState('')
-  const [newEntityType, setNewEntityType] = useState('')
-  const [newEntityId, setNewEntityId] = useState('')
-  const [instance, setInstance] = useState(null)
-  const [availableTransitions, setAvailableTransitions] = useState([])
-  const [history, setHistory] = useState([])
-  const [instanceError, setInstanceError] = useState(null)
-  const [instanceBusy, setInstanceBusy] = useState(false)
-  const [pendingAction, setPendingAction] = useState(null)
-  const [comment, setComment] = useState('')
-
-  async function loadInstance(id) {
-    setInstanceError(null)
-    setInstanceBusy(true)
-    try {
-      const [inst, avail, hist] = await Promise.all([
-        client.get(`/workflow/instances/${id}`),
-        client.get(`/workflow/instances/${id}/available-transitions`),
-        client.get(`/workflow/instances/${id}/history`),
-      ])
-      setInstance(inst.data)
-      setAvailableTransitions(avail.data)
-      setHistory(hist.data)
-    } catch (err) {
-      setInstance(null)
-      setAvailableTransitions([])
-      setHistory([])
-      setInstanceError(err.response?.data?.message ?? t('workflowEngine.instanceNotFound'))
-    } finally {
-      setInstanceBusy(false)
-    }
-  }
-
-  function handleLookup(e) {
-    e.preventDefault()
-    if (!lookupId) return
-    loadInstance(Number(lookupId))
-  }
-
-  async function handleCreateInstance(e) {
-    e.preventDefault()
-    setInstanceError(null)
-    if (!newEntityType.trim() || !newEntityId) {
-      setInstanceError(t('workflowEngine.errorInstanceRequired'))
-      return
-    }
-    setInstanceBusy(true)
-    try {
-      const res = await client.post('/workflow/instances', {
-        entityType: newEntityType.trim(),
-        entityId: Number(newEntityId),
-      })
-      setNewEntityType('')
-      setNewEntityId('')
-      await loadInstance(res.data.id)
-    } catch (err) {
-      setInstanceError(err.response?.data?.message ?? t('workflowEngine.errorGeneric'))
-      setInstanceBusy(false)
-    }
-  }
-
-  function clickAvailableTransition(avail) {
-    if (avail.requiresComment) {
-      setPendingAction(avail.actionCode)
-      setComment('')
-    } else {
-      executeTransition(avail.actionCode, null)
-    }
-  }
-
-  async function executeTransition(actionCode, commentValue) {
-    setInstanceError(null)
-    setInstanceBusy(true)
-    try {
-      await client.post(`/workflow/instances/${instance.id}/transition`, {
-        actionCode,
-        comment: commentValue || null,
-      })
-      setPendingAction(null)
-      await loadInstance(instance.id)
-    } catch (err) {
-      setInstanceError(err.response?.data?.message ?? t('workflowEngine.errorGeneric'))
-    } finally {
-      setInstanceBusy(false)
-    }
-  }
-
   return (
     <div>
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
@@ -358,17 +269,6 @@ export default function WorkflowEnginePage() {
         </div>
       )}
 
-      {/* ---- tabs ---- */}
-      <div role="tablist" aria-label={t('workflowEngine.title')} className="mb-4 inline-flex rounded-xl border border-hairline bg-white p-1 shadow-sm">
-        {[['design', Workflow], ['instances', Play]].map(([k, Icon]) => (
-          <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
-            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${tab === k ? 'bg-navy text-white shadow-sm' : 'text-slate-600 hover:text-navy'}`}>
-            <Icon size={15} aria-hidden="true" />{t(`workflowEngine.tab_${k}`)}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'design' && (
       <>
       {/* ---- catalog: states ---- */}
       <div className="dash-card p-5 sm:p-6 mb-4">
@@ -595,8 +495,6 @@ export default function WorkflowEnginePage() {
             transitions={transitions}
             lang={lang}
             label={t('workflowEngine.diagramLabel')}
-            currentCode={instance?.currentStateCode}
-            currentLabel={t('workflowEngine.currentTag')}
           />
         ) : (
           <>
@@ -638,119 +536,6 @@ export default function WorkflowEnginePage() {
       </div>
 
       </>
-      )}
-
-      {/* ---- instance operator ---- */}
-      {tab === 'instances' && (
-      <div className="dash-card p-5 sm:p-6">
-        <h2 className="text-base font-bold text-navy mb-0.5">{t('workflowEngine.instances')}</h2>
-        <p className="text-xs text-slate-600 mb-4">{t('workflowEngine.instancesHint')}</p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-          <form onSubmit={handleLookup} className="rounded-lg border border-border-subtle p-4">
-            <label className={labelCls} htmlFor="wi-lookup">{t('workflowEngine.lookupById')}</label>
-            <div className="flex gap-2">
-              <input id="wi-lookup" type="number" className={inputCls} value={lookupId} onChange={(e) => setLookupId(e.target.value)} />
-              <button type="submit" disabled={instanceBusy} className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-border-subtle whitespace-nowrap">
-                {t('workflowEngine.lookup')}
-              </button>
-            </div>
-          </form>
-          <form onSubmit={handleCreateInstance} className="rounded-lg border border-border-subtle p-4">
-            <label className={labelCls}>{t('workflowEngine.startNew')}</label>
-            <div className="flex gap-2">
-              <input placeholder={t('workflowEngine.entityType')} className={inputCls} value={newEntityType} onChange={(e) => setNewEntityType(e.target.value)} />
-              <input type="number" placeholder={t('workflowEngine.entityId')} className={inputCls} value={newEntityId} onChange={(e) => setNewEntityId(e.target.value)} />
-              <button type="submit" disabled={instanceBusy} className="btn-primary whitespace-nowrap ">
-                {t('workflowEngine.start')}
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {instanceError && (
-          <div className="rounded-lg border border-badge-danger-bd bg-badge-danger-bg px-4 py-3 text-sm text-badge-danger-fg mb-4" role="alert">{instanceError}</div>
-        )}
-
-        {instance && (
-          <div className="rounded-lg border border-border-subtle p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-              <div>
-                <div className="text-sm font-bold text-text-primary">{instance.entityType} #{instance.entityId}</div>
-                <div className="text-xs text-text-secondary">{t('workflowEngine.instanceId')} {instance.id}</div>
-              </div>
-              <StateChip state={stateByCode(instance.currentStateCode)} lang={lang} />
-            </div>
-
-            <div className="mb-4">
-              <div className="text-[11px] font-bold uppercase tracking-wide text-text-secondary mb-2">{t('workflowEngine.availableTransitions')}</div>
-              {availableTransitions.length === 0 ? (
-                <p className="text-sm text-text-secondary">{t('workflowEngine.noAvailableTransitions')}</p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {availableTransitions.map((av) => (
-                    <button
-                      key={av.id}
-                      type="button"
-                      disabled={instanceBusy}
-                      onClick={() => clickAvailableTransition(av)}
-                      className="btn-primary "
-                      title={av.requiresDocument ? t('workflowEngine.requiresDocumentHint') : undefined}
-                    >
-                      {(lang === 'ar' ? av.labelAr : av.labelEn) || av.actionCode}
-                      {av.requiresDocument && ' *'}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {pendingAction && (
-              <div className="rounded-lg border border-badge-warning-bd bg-badge-warning-bg p-3 mb-4">
-                <label className={labelCls} htmlFor="wi-comment">{t('workflowEngine.commentRequired')}</label>
-                <textarea id="wi-comment" rows={2} className={inputCls} value={comment} onChange={(e) => setComment(e.target.value)} />
-                <div className="flex justify-end gap-2 mt-2">
-                  <button type="button" onClick={() => setPendingAction(null)} className="btn-secondary btn-sm">
-                    {t('common.cancel')}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!comment.trim() || instanceBusy}
-                    onClick={() => executeTransition(pendingAction, comment.trim())}
-                    className="btn-primary btn-sm "
-                  >
-                    {t('workflowEngine.confirmTransition')}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-wide text-text-secondary mb-2">{t('workflowEngine.history')}</div>
-              {history.length === 0 ? (
-                <p className="text-sm text-text-secondary">{t('workflowEngine.noHistory')}</p>
-              ) : (
-                <ul className="divide-y divide-slate-100">
-                  {history.map((h) => (
-                    <li key={h.id} className="py-2 text-sm">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <StateChip state={stateByCode(h.fromStateCode)} lang={lang} />
-                        <span className="text-slate-300">→</span>
-                        <StateChip state={stateByCode(h.toStateCode)} lang={lang} />
-                        <span className="text-xs text-text-secondary">
-                          {h.actorName ?? t('workflowEngine.unknownActor')} · {fmtDate(h.occurredAt, 'MMM d, yyyy HH:mm')}
-                        </span>
-                      </div>
-                      {h.comment && <div className="text-xs text-text-secondary mt-1">{h.comment}</div>}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-      )}
     </div>
   )
 }

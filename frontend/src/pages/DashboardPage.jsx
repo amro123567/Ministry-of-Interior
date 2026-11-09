@@ -20,7 +20,7 @@ import {
 // Read-only users have nothing assigned, so they see the requests that need attention instead.
 function queueFor(hasPermission) {
   if (hasPermission('REQUEST_TRANSITION_SUBMIT', 'REQUEST_TRANSITION_REVIEW', 'REQUEST_TRANSITION_DECIDE', 'REQUEST_TRANSITION_ARCHIVE')) {
-    return { key: 'mine', params: { assignedToMe: true }, keep: (r) => r.status !== 'ARCHIVED' && r.status !== 'REJECTED' && r.status !== 'APPROVED', more: '/requests?mine=1' }
+    return { key: 'mine', params: { assignedToMe: true }, keep: (r) => r.status !== 'ARCHIVED' && (hasPermission('REQUEST_TRANSITION_ARCHIVE') || (r.status !== 'REJECTED' && r.status !== 'APPROVED')), more: '/requests?mine=1' }
   }
   return { key: 'watch', params: {}, keep: (r) => r.slaStatus !== 'ON_TRACK', more: '/requests?sla=OVERDUE' }
 }

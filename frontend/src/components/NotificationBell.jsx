@@ -6,6 +6,7 @@ import { Bell, ChevronRight, CheckCircle2, AlertTriangle, Clock, FileText, UserR
 import client from '../api/client.js'
 import StatusBadge from './StatusBadge.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import { fmtDate, toDate } from '../utils/dates.js'
 
 const REFRESH_MS = 30_000
@@ -41,6 +42,9 @@ export default function NotificationBell() {
   const { pathname } = useLocation()
   const panelId = useId()
   const [open, setOpen] = useState(false)
+  const { hasPermission } = useAuth()
+  // Whoever can archive also sees decided (approved/rejected) requests: those are theirs to archive.
+  const canArchive = hasPermission('REQUEST_TRANSITION_ARCHIVE')
   const [items, setItems] = useState([])
   const [loaded, setLoaded] = useState(false)
   const [filter, setFilter] = useState('ALL')
@@ -57,12 +61,12 @@ export default function NotificationBell() {
       .then((res) => {
         if (mine !== latest.current) return
         const rows = Array.isArray(res.data) ? res.data : []
-        setItems(rows.filter((r) => !CLOSED.has(r.status)))
+        setItems(rows.filter((r) => (canArchive ? r.status !== 'ARCHIVED' : !CLOSED.has(r.status))))
         setLoaded(true)
       })
       // Keep showing the last known count on a failed refresh instead of flashing 0.
       .catch(() => {})
-  }, [])
+  }, [canArchive])
 
   useEffect(() => {
     load()

@@ -65,7 +65,7 @@ const CLOSED_STATUSES = ['APPROVED', 'REJECTED', 'ARCHIVED']
 
 export default function RequestDetailPage() {
   const { id } = useParams()
-  const { hasPermission } = useAuth()
+  const { hasPermission, hasRole } = useAuth()
   const { t } = useLanguage()
   const [request, setRequest] = useState(null)
   const [history, setHistory] = useState([])
@@ -143,6 +143,10 @@ export default function RequestDetailPage() {
     } finally { setBusy(false) }
   }
 
+  // A manager may hand a request over only to another manager or an admin.
+  // Admins (and anyone else holding REQUEST_ASSIGN) can pick any active user.
+  const managerOnly = hasRole('MANAGER') && !hasRole('ADMIN')
+  const canAssignTo = (u) => !managerOnly || (u.roles ?? []).some((r) => r === 'MANAGER' || r === 'ADMIN')
   const canEditDraft = hasPermission('REQUEST_CREATE')
 
   function startEditing() {
@@ -441,7 +445,7 @@ export default function RequestDetailPage() {
                 <label className={labelCls} htmlFor="rd-reassign">{t('requestDetail.reassignTo')}</label>
                 <select id="rd-reassign" className={inputCls} value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
                   <option value="">{t('requestDetail.selectUser')}</option>
-                  {users.filter((u) => u.enabled !== false).map((u) => <option key={u.id} value={u.id}>{u.fullName} ({(u.roles ?? []).join(',')})</option>)}
+                  {users.filter((u) => u.enabled !== false && canAssignTo(u)).map((u) => <option key={u.id} value={u.id}>{u.fullName} ({(u.roles ?? []).join(',')})</option>)}
                 </select>
               </div>
               <div>

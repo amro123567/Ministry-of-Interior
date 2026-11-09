@@ -43,8 +43,8 @@ function serve(overrides = {}) {
   client.get.mockImplementation((url) => (url in data ? Promise.resolve({ data: data[url] }) : Promise.reject(new Error(`unexpected GET ${url}`))))
 }
 
-function renderPage(permissions) {
-  signInAs({ roles: ['OFFICER'], permissions })
+function renderPage(permissions, roles = ['OFFICER']) {
+  signInAs({ roles, permissions })
   return renderWithProviders(
     <Routes><Route path="/requests/:id" element={<RequestDetailPage />} /></Routes>,
     { route: '/requests/5' },
@@ -97,6 +97,40 @@ describe('RequestDetailPage', () => {
     renderPage(['REQUEST_ASSIGN', 'USER_VIEW'])
     expect(await screen.findByRole('option', { name: /Active Officer/ })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: /Deactivated Officer/ })).toBeNull()
+  })
+
+  it('lets a manager reassign only to managers or admins; an admin sees everyone', async () => {
+    const users = [
+      { id: 1, fullName: 'Some Officer', roles: ['OFFICER'], enabled: true },
+      { id: 2, fullName: 'Other Manager', roles: ['MANAGER'], enabled: true },
+      { id: 3, fullName: 'The Admin', roles: ['ADMIN'], enabled: true },
+      { id: 4, fullName: 'Some Viewer', roles: ['VIEWER'], enabled: true },
+    ]
+    serve({ '/requests/5': { ...REQUEST, status: 'SUBMITTED' }, '/users': users })
+    const first = renderPage(['REQUEST_ASSIGN', 'USER_VIEW'], ['MANAGER'])
+    expect(await screen.findByRole('option', { name: /Other Manager/ })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /The Admin/ })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /Some Officer/ })).toBeNull()
+    expect(screen.queryByRole('option', { name: /Some Viewer/ })).toBeNull()
+    first.unmount()
+    renderPage(['REQUEST_ASSIGN', 'USER_VIEW'], ['ADMIN'])
+    expect(await screen.findByRole('option', { name: /Some Officer/ })).toBeInTheDocument()
+  })
+
+  it('hands an approved request to an admin for archiving', async () => {
+    client.patch.mockResolvedValue({ data: {} })
+    serve({
+      '/requests/5': { ...REQUEST, status: 'UNDER_REVIEW' },
+      '/requests/5/transitions': [{ toStatus: 'APPROVED', actionCode: 'Approve', labelEn: 'Approve', requiresComment: false }],
+      '/users': [
+        { id: 2, fullName: 'Other Manager', roles: ['MANAGER'], enabled: true },
+        { id: 3, fullName: 'The Admin', roles: ['ADMIN'], enabled: true },
+      ],
+    })
+    renderPage(['REQUEST_TRANSITION_DECIDE', 'REQUEST_ASSIGN', 'USER_VIEW'], ['MANAGER'])
+    await screen.findByRole('option', { name: /The Admin/ })
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Approve' }))
+    await vi.waitFor(() => expect(client.patch).toHaveBeenCalledWith('/requests/5/assign', { userId: 3, note: 'Decision made: ready to archive' }))
   })
 
   it('offers exactly the next steps the server allows and sends the chosen one', async () => {

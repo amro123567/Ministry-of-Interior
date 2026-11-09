@@ -30,7 +30,10 @@ export default function LoginPage() {
     setError(null)
     setBusy(true)
     try {
-      await login(username, password)
+      // Read the DOM values: browser autofill can fill the fields without firing
+      // onChange, which left stale/empty React state behind after a logout.
+      const form = e.currentTarget
+      await login(form.elements.username.value.trim() || username, form.elements.password.value || password)
       navigate(location.state?.from ?? '/', { replace: true })
     } catch (err) {
       setError(err.response?.data?.message ?? t('login.errorDefault'))
@@ -99,7 +102,7 @@ export default function LoginPage() {
             )}
             {error && <div className="alert alert-error mt-5">{error}</div>}
 
-            <form onSubmit={handleSubmit} noValidate className="mt-6 space-y-5">
+            <form onSubmit={handleSubmit} noValidate autoComplete="off" className="mt-6 space-y-5">
               <div>
                 <div className="mb-1.5 flex items-baseline justify-between gap-2">
                   <label className="text-sm font-semibold text-slate-800" htmlFor="login-username">{en.username}</label>
@@ -107,12 +110,13 @@ export default function LoginPage() {
                 </div>
                 <input
                   id="login-username"
+                  name="username"
                   className={inputCls}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder={en.usernamePlaceholder}
                   autoFocus
-                  autoComplete="username"
+                  autoComplete="off"
                   required
                 />
               </div>
@@ -125,11 +129,12 @@ export default function LoginPage() {
                 <div className="relative">
                   <input
                     id="login-password"
+                    name="password"
                     className={`${inputCls} pe-12`}
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="current-password"
+                    autoComplete="new-password"
                     required
                   />
                   <button
