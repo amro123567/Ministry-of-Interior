@@ -9,7 +9,18 @@ import { ar } from 'date-fns/locale/ar'
  */
 export function toDate(value) {
   if (value == null || value === '') return null
-  const d = value instanceof Date ? value : typeof value === 'number' ? new Date(value) : parseISO(String(value))
+  if (value instanceof Date || typeof value === 'number') {
+    const d = value instanceof Date ? value : new Date(value)
+    return isValid(d) ? d : null
+  }
+  let s = String(value)
+  // The API sends server timestamps in UTC. When one arrives without a zone marker
+  // ("2026-11-03T22:41:00"), parseISO would read it as local time and show it hours
+  // off, so mark it as UTC first. Date-only values keep their local-midnight handling.
+  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(s) && !/(Z|[+-]\d{2}:?\d{2})$/i.test(s)) {
+    s = s.replace(' ', 'T') + 'Z'
+  }
+  const d = parseISO(s)
   return isValid(d) ? d : null
 }
 

@@ -166,6 +166,16 @@ describe('small helpers', () => {
     expect(parseDate('nope')).toBeNull()
     expect(parseDate(null)).toBeNull()
   })
+  it('reads a zone-less API timestamp as UTC, exactly like the rest of the app', () => {
+    expect(parseDate('2026-11-03T10:00:00').toISOString()).toBe('2026-11-03T10:00:00.000Z')
+    expect(parseDate('2026-11-03T10:00:00').getTime()).toBe(parseDate('2026-11-03T10:00:00Z').getTime())
+  })
+  it('counts an SLA window the same whatever zone the server timestamps lack', () => {
+    const now = Date.parse('2026-11-03T12:00:00Z')
+    const sla = slaCountdown({ status: 'SUBMITTED', createdAt: '2026-11-03T10:00:00', dueAt: '2026-11-03T14:00:00' }, now)
+    expect(sla.state).toBe('soon')
+    expect(Math.round(sla.hours)).toBe(2)
+  })
   it('writes CSV with quoting, and defuses spreadsheet formulas', () => {
     const csv = toCsv(['a', 'b'], [['x,y', 'say "hi"'], ['=SUM(A1)', '+1'], [null, 'line\nbreak']])
     expect(csv).toBe('a,b\r\n"x,y","say ""hi"""\r\n\'=SUM(A1),\'+1\r\n,"line\nbreak"')

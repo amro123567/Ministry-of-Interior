@@ -25,6 +25,8 @@ const rows = Array.from({ length: 12 }, (_, i) => ({
   slaStatus: 'ON_TRACK',
   assignedToName: null,
   dueAt: null,
+  // id 1 is the newest, so the default newest-first order matches the id order
+  createdAt: new Date(Date.UTC(2026, 10, 20 - i, 9, 0)).toISOString(),
 }))
 
 function renderList(route = '/requests') {
@@ -67,6 +69,18 @@ describe('RequestsListPage', () => {
 
     await waitFor(() => expect(table().getByText('CTS-2026-000011')).toBeInTheDocument())
     expect(bodyRows()).toHaveLength(2)
+  })
+
+  it('lists the newest request first and shows the date filters without opening "More filters"', async () => {
+    renderList()
+    await waitForTable()
+    expect(within(bodyRows()[0]).getByText('CTS-2026-000001')).toBeInTheDocument()
+    expect(screen.getByLabelText(en.requests.dateFrom)).toBeInTheDocument()
+    expect(screen.getByLabelText(en.requests.dateTo)).toBeInTheDocument()
+
+    await userEvent.setup().click(screen.getByRole('button', { name: new RegExp(en.requests.colCreated, 'i') }))
+    // clicking the active Created header flips to oldest first
+    expect(within(bodyRows()[0]).getByText('CTS-2026-000012')).toBeInTheDocument()
   })
 
   it('sorts by a column header, ascending then descending', async () => {

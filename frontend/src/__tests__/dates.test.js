@@ -13,6 +13,12 @@ describe('fmtDate', () => {
     expect(toDate(iso).getTime()).toBe(Date.parse(iso))
   })
 
+  it('reads a server timestamp without a zone marker as UTC', () => {
+    expect(toDate('2026-11-03T22:41:00').getTime()).toBe(Date.parse('2026-11-03T22:41:00Z'))
+    expect(toDate('2026-11-03T22:41:00.123456').getTime()).toBe(Date.parse('2026-11-03T22:41:00.123Z'))
+    expect(toDate('2026-11-03T22:41:00+02:00').getTime()).toBe(Date.parse('2026-11-03T20:41:00Z'))
+  })
+
   it('uses Arabic month names when the interface language is Arabic', () => {
     document.documentElement.lang = 'ar'
     try {

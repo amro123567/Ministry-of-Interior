@@ -2,16 +2,15 @@
 // already returns -- nothing is estimated or invented.
 
 import { saveBlob } from '../../api/download.js'
+import { toDate } from '../../utils/dates.js'
 
 export const DAY = 86400000
 export const ACTIVE_STATUSES = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW']
 export const CHART_STATUSES = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'ARCHIVED']
 
-export const parseDate = (v) => {
-  if (!v) return null
-  const d = new Date(v)
-  return Number.isNaN(d.getTime()) ? null : d
-}
+// Same parser as the rest of the app: the API sends zone-less timestamps in UTC, and reading
+// them as local time would skew every SLA countdown and "age" by the viewer's UTC offset.
+export const parseDate = (v) => toDate(v)
 
 /** Initials for the avatar badge ("Rami Haddad" -> "RH"). */
 export function initials(name) {

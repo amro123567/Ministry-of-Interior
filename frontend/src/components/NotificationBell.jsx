@@ -6,7 +6,7 @@ import { Bell, ChevronRight, CheckCircle2, AlertTriangle, Clock, FileText, UserR
 import client from '../api/client.js'
 import StatusBadge from './StatusBadge.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
-import { fmtDate } from '../utils/dates.js'
+import { fmtDate, toDate } from '../utils/dates.js'
 
 const REFRESH_MS = 30_000
 const CLOSED = new Set(['APPROVED', 'REJECTED', 'ARCHIVED'])
@@ -111,7 +111,7 @@ export default function NotificationBell() {
   // Filter, then overdue first / due-soon next / earliest deadline.
   const shown = useMemo(() => {
     const rank = (r) => (r.slaStatus === 'OVERDUE' ? 0 : r.slaStatus === 'DUE_SOON' ? 1 : 2)
-    const due = (r) => (r.dueAt ? new Date(r.dueAt).getTime() : Number.POSITIVE_INFINITY)
+    const due = (r) => toDate(r.dueAt)?.getTime() ?? Number.POSITIVE_INFINITY
     return items
       .filter((r) => filter === 'ALL' || slaGroup(r) === filter)
       .sort((a, b) => rank(a) - rank(b) || due(a) - due(b))
@@ -131,7 +131,7 @@ export default function NotificationBell() {
           const rows = Array.isArray(res.data) ? res.data : []
           const newest = rows
             .filter((a) => typeof a?.assignedByName === 'string' && a.assignedByName)
-            .sort((a, b) => new Date(b.assignedAt) - new Date(a.assignedAt))[0]
+            .sort((a, b) => (toDate(b.assignedAt)?.getTime() ?? 0) - (toDate(a.assignedAt)?.getTime() ?? 0))[0]
           setAssigners((m) => ({ ...m, [id]: newest ? { by: newest.assignedByName, at: newest.assignedAt } : null }))
         })
         .catch(() => { if (!cancelled) setAssigners((m) => ({ ...m, [id]: null })) })
@@ -141,7 +141,9 @@ export default function NotificationBell() {
 
   function dueText(r) {
     if (!r.dueAt) return t('notifications.noDeadline')
-    const days = differenceInCalendarDays(new Date(r.dueAt), new Date())
+    const dueDate = toDate(r.dueAt)
+    if (!dueDate) return t('notifications.noDeadline')
+    const days = differenceInCalendarDays(dueDate, new Date())
     const unit = t('notifications.dayUnit')
     if (r.slaStatus === 'OVERDUE' || days < 0) {
       return days < 0 ? `${t('notifications.overdueBy')} ${Math.abs(days)}${unit}` : t('notifications.overdueToday')
@@ -150,8 +152,8 @@ export default function NotificationBell() {
   }
 
   function ago(at) {
-    const d = new Date(at)
-    if (Number.isNaN(d.getTime())) return null
+    const d = toDate(at)
+    if (!d) return null
     return formatDistanceToNowStrict(d, { addSuffix: true, locale: lang === 'ar' ? arLocale : undefined })
   }
 

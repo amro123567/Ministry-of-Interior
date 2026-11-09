@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * CTS demo-data seeder -- creates extra staff accounts (one admin, several
- * managers, officers and viewers), registers 34 citizens in many different
+ * managers, officers and viewers), registers 24 citizens in many different
  * states and exercises every part of the system through the real REST API:
  *   citizens (4 marital states, alive/deceased, registered + unregistered
  *   parents, minors), family records (members joining / leaving), all 7
@@ -21,7 +21,8 @@
  * To reseed from scratch:  docker compose down -v ; docker compose up --build -d
  *
  * Extra staff (password = <Role>1234!, e.g. officer2 / Officer1234!):
- *   officer2-5, manager2-4, viewer2-5. The only admin stays "admin".
+ *   officer2-3, manager2-3, viewer2-3. With the built-in admin / officer / manager / viewer
+ *   accounts that makes 1 admin, 3 officers, 3 managers and 3 viewers.
  */
 const API = process.env.CTS_API ?? 'http://localhost:8080/api'
 const PASS = { admin: 'Admin1234!', manager: 'Manager1234!', officer: 'Officer1234!' }
@@ -30,11 +31,8 @@ const ROLE_PASS = { OFFICER: 'Officer1234!', MANAGER: 'Manager1234!', VIEWER: 'V
 // username, full name, role
 const STAFF = [
   ['officer2', 'Rami Khoury', 'OFFICER'], ['officer3', 'Nour Haddad', 'OFFICER'],
-  ['officer4', 'Hassan Mansour', 'OFFICER'], ['officer5', 'Tala Fakhoury', 'OFFICER'],
   ['manager2', 'Maya Saab', 'MANAGER'], ['manager3', 'Ziad Hamdan', 'MANAGER'],
-  ['manager4', 'Dina Rahme', 'MANAGER'],
   ['viewer2', 'Karim Nasr', 'VIEWER'], ['viewer3', 'Lara Daher', 'VIEWER'],
-  ['viewer4', 'Fadi Aoun', 'VIEWER'], ['viewer5', 'Joumana Sarkis', 'VIEWER'],
 ]
 const officers = ['officer']
 const managers = ['manager']
@@ -76,9 +74,7 @@ const P = [
   ['marie', 'Marie', 'Khoury', 'ماري', 'خوري', dt(1956, 7, 2), 'F', 'Christian', 'Maronite', 'MARRIED', 'Jounieh'],
   ['georges', 'Georges', 'Haddad', 'جورج', 'حداد', dt(1980, 11, 21), 'M', 'Christian', 'Maronite', 'MARRIED', 'Beirut', 'antoine', 'marie'],
   ['rita', 'Rita', 'Haddad', 'ريتا', 'حداد', dt(1984, 5, 9), 'F', 'Christian', 'Maronite', 'SINGLE', 'Beirut', 'antoine', 'marie'],
-  ['nadine', 'Nadine', 'Haddad', 'نادين', 'حداد', dt(1988, 1, 30), 'F', 'Christian', 'Maronite', 'DIVORCED', 'Beirut', 'antoine', 'marie'],
   ['carla', 'Carla', 'Saab', 'كارلا', 'صعب', dt(1982, 9, 17), 'F', 'Christian', 'Maronite', 'MARRIED', 'Zahle'],
-  ['elie', 'Elie', 'Haddad', 'إيلي', 'حداد', dt(2012, 4, 5), 'M', 'Christian', 'Maronite', 'SINGLE', 'Beirut', 'georges', 'carla'],
   ['maya', 'Maya', 'Haddad', 'مايا', 'حداد', dt(2016, 8, 12), 'F', 'Christian', 'Maronite', 'SINGLE', 'Beirut', 'georges', 'carla'],
   // Mansour (Sunni, Tripoli)
   ['khaled', 'Khaled', 'Mansour', 'خالد', 'منصور', dt(1948, 2, 11), 'M', 'Muslim', 'Sunni', 'WIDOWED', 'Tripoli', null, null, { dies: dt(2024, 12, 3) }],
@@ -89,25 +85,18 @@ const P = [
   // Hamdan (Shia, Sidon)
   ['ali', 'Ali', 'Hamdan', 'علي', 'حمدان', dt(1975, 4, 1), 'M', 'Muslim', 'Shia', 'MARRIED', 'Sidon'],
   ['zeinab', 'Zeinab', 'Jaber', 'زينب', 'جابر', dt(1979, 9, 14), 'F', 'Muslim', 'Shia', 'MARRIED', 'Nabatieh'],
-  ['hadi', 'Hadi', 'Hamdan', 'هادي', 'حمدان', dt(2005, 1, 22), 'M', 'Muslim', 'Shia', 'SINGLE', 'Sidon', 'ali', 'zeinab'],
   ['jana', 'Jana', 'Hamdan', 'جنى', 'حمدان', dt(2010, 6, 6), 'F', 'Muslim', 'Shia', 'SINGLE', 'Sidon', 'ali', 'zeinab'],
   // Others
   ['nabil', 'Nabil', 'Fakhoury', 'نبيل', 'فاخوري', dt(1940, 1, 30), 'M', 'Christian', 'Greek Orthodox', 'WIDOWED', 'Beirut', null, null, { dies: dt(2023, 5, 18) }],
   ['rima', 'Rima', 'Fakhoury', 'ريما', 'فاخوري', dt(1999, 2, 3), 'F', 'Christian', 'Greek Orthodox', 'SINGLE', 'Beirut', 'nabil', null, { amend: ['lastNameEn', 'Fakhoury', 'Fakhoury-Nassar', 'Marriage-related surname addition', 'APPROVE'] }],
-  ['samir', 'Samir', 'Aoun', 'سمير', 'عون', dt(1990, 7, 15), 'M', 'Muslim', 'Druze', 'MARRIED', 'Aley'],
-  ['lina', 'Lina', 'Abou Zeid', 'لينا', 'أبو زيد', dt(1993, 11, 9), 'F', 'Muslim', 'Druze', 'MARRIED', 'Aley'],
   ['karim', 'Karim', 'Sarkis', 'كريم', 'سركيس', dt(1968, 8, 23), 'M', 'Christian', 'Greek Orthodox', 'DIVORCED', 'Beirut'],
   ['dalia', 'Dalia', 'Rahal', 'داليا', 'رحال', dt(1972, 12, 2), 'F', 'Christian', 'Greek Orthodox', 'DIVORCED', 'Beirut'],
   ['vartan', 'Vartan', 'Boghossian', 'فارتان', 'بوغوصيان', dt(1985, 5, 28), 'M', 'Christian', 'Armenian Orthodox', 'MARRIED', 'Bourj Hammoud', null, null, { amend: ['firstNameEn', 'Vartan', 'Vahan', 'Spelling correction per civil registry', 'PENDING'] }],
-  ['anahit', 'Anahit', 'Kalayjian', 'أناهيد', 'قلايجيان', dt(1988, 10, 16), 'F', 'Christian', 'Armenian Orthodox', 'MARRIED', 'Bourj Hammoud'],
   ['mohammad', 'Mohammad', 'Al-Ahmad', 'محمد', 'الأحمد', dt(1990, 3, 8), 'M', 'Muslim', 'Sunni', 'SINGLE', 'Aleppo', null, null, { naturalized: true, amend: ['religion', 'Muslim', 'Muslim - Sunni', 'Clerical correction', 'REJECT'] }],
   ['fatima', 'Fatima', 'Sayed', 'فاطمة', 'السيد', dt(1996, 4, 20), 'F', 'Muslim', 'Shia', 'SINGLE', 'Baalbek', null, null, { transfer: 'PENDING' }],
   ['joseph', 'Joseph', 'Rahme', 'يوسف', 'رحمة', dt(1960, 9, 5), 'M', 'Christian', 'Melkite', 'MARRIED', 'Zahle', null, null, { transfer: 'APPROVE' }],
   ['tony', 'Tony', 'Khalil', 'طوني', 'خليل', dt(2001, 6, 30), 'M', 'Christian', 'Maronite', 'SINGLE', 'Jbeil', null, null, { transfer: 'REJECT' }],
-  ['yasmine', 'Yasmine', 'Nasr', 'ياسمين', 'نصر', dt(1950, 12, 12), 'F', 'Christian', 'Maronite', 'WIDOWED', 'Beirut'],
-  ['michel', 'Michel', 'Daher', 'ميشال', 'ضاهر', dt(1944, 4, 9), 'M', 'Christian', 'Maronite', 'WIDOWED', 'Beirut', null, null, { dies: dt(2022, 9, 27) }],
   ['sara', 'Sara', 'Ibrahim', 'سارة', 'ابراهيم', dt(2010, 2, 14), 'F', 'Christian', 'Maronite', 'SINGLE', 'Beirut', null, null, { unregFather: 'Fadi Ibrahim', unregMother: 'Mona Ibrahim' }],
-  ['ziad', 'Ziad', 'Barakat', 'زياد', 'بركات', dt(1999, 8, 1), 'M', 'Muslim', 'Sunni', 'SINGLE', 'Saida', null, null, { unregFather: 'Hussein Barakat' }],
 ]
 
 async function main() {
@@ -178,10 +167,10 @@ async function main() {
   // ----------------------------------------------------- family records --
   log('\nFamily records…')
   const families = [
-    ['FB-3001', 'antoine', [['marie', 'SPOUSE'], ['georges', 'CHILD'], ['rita', 'CHILD'], ['nadine', 'CHILD']]],
-    ['FB-3002', 'georges', [['carla', 'SPOUSE'], ['elie', 'CHILD'], ['maya', 'CHILD']]],
+    ['FB-3001', 'antoine', [['marie', 'SPOUSE'], ['georges', 'CHILD'], ['rita', 'CHILD']]],
+    ['FB-3002', 'georges', [['carla', 'SPOUSE'], ['maya', 'CHILD']]],
     ['FB-3003', 'omar', [['salma', 'OTHER'], ['layla', 'OTHER'], ['hiba', 'OTHER']]],
-    ['FB-3004', 'ali', [['zeinab', 'SPOUSE'], ['hadi', 'CHILD'], ['jana', 'CHILD']]],
+    ['FB-3004', 'ali', [['zeinab', 'SPOUSE'], ['jana', 'CHILD']]],
   ]
   for (const [book, head, members] of families) {
     if (!have(head)) continue
@@ -208,7 +197,7 @@ async function main() {
     if (r) docs.push({ label, id: r.document?.id ?? r.documentId, raw: r })
     return r
   }
-  for (const k of ['antoine', 'georges', 'rita', 'omar', 'layla', 'ali', 'hadi', 'samir', 'elie', 'maya', 'hiba', 'jana']) {
+  for (const k of ['antoine', 'georges', 'rita', 'omar', 'layla', 'ali', 'maya', 'hiba', 'jana']) {
     if (!id[k]) continue
     di++
     await make(`birth ${k}`, '/documents/birth-certificates', {
@@ -216,7 +205,7 @@ async function main() {
       birthAttendant: 'Dr. Rami Khalil', fatherFullNameSnapshot: null, motherFullNameSnapshot: null, registrationNumber: `BR-3${di}`, registrarName: 'Registrar Office',
     })
   }
-  const couples = [['georges', 'carla', 2005], ['omar', null, 2003], ['ali', 'zeinab', 2002], ['samir', 'lina', 2018], ['vartan', 'anahit', 2012], ['karim', 'dalia', 1996], ['antoine', 'marie', 1977]]
+  const couples = [['georges', 'carla', 2005], ['omar', null, 2003], ['ali', 'zeinab', 2002], ['karim', 'dalia', 1996], ['antoine', 'marie', 1977]]
   const marriages = {}
   for (const [h, w, year] of couples) {
     if (!w || !have(h, w)) continue
@@ -227,7 +216,7 @@ async function main() {
     })
     if (m) marriages[h] = m.document?.id ?? m.documentId
   }
-  for (const [h, why, type] of [['karim', 'Irreconcilable differences', 'RELIGIOUS'], ['nadine', null, null]]) {
+  for (const [h, why, type] of [['karim', 'Irreconcilable differences', 'RELIGIOUS']]) {
     if (!marriages[h]) continue
     di++
     await make(`divorce ${h}`, '/documents/divorce-certificates', {
@@ -235,14 +224,14 @@ async function main() {
       divorceType: type ?? 'MUTUAL_CONSENT', divorceReason: why, childCustodyAgreement: 'Joint custody', financialSettlement: 'Settled', settlementAmount: 12000, settlementCurrency: 'USD', religiousAuthorityId: authority(di), shariaCourtApproval: null,
     })
   }
-  for (const k of Object.entries({ khaled: 'Cardiac arrest', nabil: 'Natural causes', michel: 'Long illness' })) {
+  for (const k of Object.entries({ khaled: 'Cardiac arrest', nabil: 'Natural causes' })) {
     const [key, cause] = k
     if (!id[key]) continue
     di++
     const p = P.find((r) => r[0] === key)[13]
     await make(`death ${key}`, '/documents/death-certificates', { citizenId: id[key], ...issue('DEATH_CERT', di), issueDate: plusDays(p.dies, 3), deathDate: p.dies, deathPlace: 'Beirut', deathCause: cause, certifyingPhysician: 'Dr. Hanna Karam', burialPlace: 'Local cemetery', burialDate: p.dies })
   }
-  for (const k of ['georges', 'rita', 'omar', 'ali', 'samir', 'lina', 'vartan', 'karim']) {
+  for (const k of ['georges', 'rita', 'omar', 'ali', 'vartan', 'karim']) {
     if (!id[k]) continue
     di++
     await make(`national id ${k}`, '/documents/national-id-cards', { citizenId: id[k], ...issue('NATIONAL_ID', di), expiryDate: dt(2034, 6, 30), cardNumber: `ID-3${String(di).padStart(6, '0')}`, chipSerialNumber: `CHIP-${9000 + di}` })
@@ -287,7 +276,7 @@ async function main() {
 
   // ------------------------------------------------------- guardianships --
   log('\nGuardianships…')
-  for (const [minor, guardian, type, end] of [['hiba', 'omar', 'PARTIAL', null], ['jana', 'zeinab', 'FULL', null], ['sara', 'yasmine', 'FULL', null], ['maya', 'rita', 'TEMPORARY', dt(2027, 1, 1)], ['elie', 'nadine', 'TEMPORARY', dt(2026, 12, 31)]]) {
+  for (const [minor, guardian, type, end] of [['hiba', 'omar', 'PARTIAL', null], ['jana', 'zeinab', 'FULL', null], ['maya', 'rita', 'TEMPORARY', dt(2027, 1, 1)]]) {
     if (!have(minor, guardian)) continue
     await attempt(`guardianship ${minor}`, () => call('officer', 'POST', '/guardianships', { minorCitizenId: id[minor], guardianCitizenId: id[guardian], guardianshipType: type, courtDecisionNumber: `GD-${minor.toUpperCase()}-26`, courtId: court(1), startDate: dt(2025, 9, 1), endDate: end }))
   }
@@ -307,13 +296,13 @@ async function main() {
   log('\nCorrespondence requests…')
   const types = ['BIRTH_CERT', 'MARRIAGE_CERT', 'DIVORCE_CERT', 'DEATH_CERT', 'NATIONAL_ID', 'NAME_CHANGE', 'NATURALIZATION']
   const subjects = ['Request for a civil status extract', 'Reply to the Governorate on a family record amendment', 'Certified copy of an individual civil record', 'Verification of marital status for embassy', 'Correction of a registry entry', 'Request to reissue a lost certificate', 'Inheritance proceedings: family-record extract', 'Court request for citizen data', 'Municipality inquiry on residence', 'Pension eligibility verification']
-  const plan = [ // [citizenKey, finalStatus]
-    ['georges', 'DRAFT'], ['rita', 'DRAFT'], ['hadi', 'DRAFT'], ['jana', 'DRAFT'], ['samir', 'DRAFT'], ['lina', 'DRAFT'],
-    ['omar', 'SUBMITTED'], ['layla', 'SUBMITTED'], ['ali', 'SUBMITTED'], ['vartan', 'SUBMITTED'], ['anahit', 'SUBMITTED'], ['karim', 'SUBMITTED'], ['dalia', 'SUBMITTED'],
-    ['mohammad', 'UNDER_REVIEW'], ['fatima', 'UNDER_REVIEW'], ['joseph', 'UNDER_REVIEW'], ['tony', 'UNDER_REVIEW'], ['yasmine', 'UNDER_REVIEW'], ['sara', 'UNDER_REVIEW'],
-    ['nadine', 'APPROVED'], ['carla', 'APPROVED'], ['elie', 'APPROVED'], ['maya', 'APPROVED'], ['hiba', 'APPROVED'], ['ziad', 'APPROVED'],
-    ['antoine', 'REJECTED'], ['marie', 'REJECTED'], ['salma', 'REJECTED'],
-    ['khaled', 'ARCHIVED'], ['nabil', 'ARCHIVED'], ['michel', 'ARCHIVED'], ['rima', 'ARCHIVED'],
+  const plan = [ // [citizenKey, finalStatus]  -- 20 requests, every status
+    ['georges', 'DRAFT'], ['rita', 'DRAFT'], ['jana', 'DRAFT'],
+    ['omar', 'SUBMITTED'], ['layla', 'SUBMITTED'], ['ali', 'SUBMITTED'], ['karim', 'SUBMITTED'],
+    ['mohammad', 'UNDER_REVIEW'], ['fatima', 'UNDER_REVIEW'], ['joseph', 'UNDER_REVIEW'], ['tony', 'UNDER_REVIEW'],
+    ['carla', 'APPROVED'], ['maya', 'APPROVED'], ['hiba', 'APPROVED'], ['dalia', 'APPROVED'],
+    ['antoine', 'REJECTED'], ['salma', 'REJECTED'],
+    ['khaled', 'ARCHIVED'], ['nabil', 'ARCHIVED'], ['rima', 'ARCHIVED'],
   ]
   const priorities = ['NORMAL', 'HIGH', 'URGENT', 'NORMAL']
   const requests = []
@@ -370,7 +359,7 @@ async function main() {
 
   // ----------------------------------------------------- workflow instances --
   log('\nWorkflow engine instances…')
-  for (const [type, key] of [['CITIZEN', 'ziad'], ['CITIZEN', 'fatima'], ['CITIZEN', 'tony']]) {
+  for (const [type, key] of [['CITIZEN', 'joseph'], ['CITIZEN', 'fatima'], ['CITIZEN', 'tony']]) {
     if (!id[key]) continue
     const inst = await attempt(`instance ${key}`, () => call('admin', 'POST', '/workflow/instances', { entityType: type, entityId: id[key] }))
     if (!inst) continue

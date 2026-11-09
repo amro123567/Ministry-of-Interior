@@ -38,21 +38,13 @@ const refsIn = (region) => within(region).getAllByRole('link').map((a) => a.text
 describe('Dashboard work queue', () => {
   beforeEach(() => { client.get.mockReset(); client.patch.mockReset() })
 
-  it('shows reviewers the open requests, most urgent first', async () => {
-    renderAs(['REQUEST_TRANSITION_REVIEW'])
-    const region = await queueRegion(en.dashboard.queue.review.title)
-    expect(refsIn(region)).toEqual(['REQ-LATE', 'REQ-ON']) // approved one is not waiting on anyone
-    expect(within(region).queryByRole('button', { name: /Batch approve/ })).toBeNull() // reviewing is not deciding
-  })
-
-  it('shows whoever archives the approved and rejected requests that are ready to close', async () => {
-    renderAs(['REQUEST_TRANSITION_ARCHIVE'])
-    const region = await queueRegion(en.dashboard.queue.archive.title)
-    expect(refsIn(region)).toEqual(['REQ-DONE']) // only the approved one; open requests are not archivable yet
-  })
-
-  it('shows officers only their own assigned requests', async () => {
-    renderAs(['REQUEST_TRANSITION_SUBMIT'])
+  it.each([
+    ['reviewers', ['REQUEST_TRANSITION_REVIEW']],
+    ['approvers', ['REQUEST_TRANSITION_DECIDE']],
+    ['archivers', ['REQUEST_TRANSITION_ARCHIVE']],
+    ['officers', ['REQUEST_TRANSITION_SUBMIT']],
+  ])('shows %s only the requests assigned to them', async (_who, permissions) => {
+    renderAs(permissions)
     await queueRegion(en.dashboard.queue.mine.title)
     expect(client.get).toHaveBeenCalledWith('/requests', { params: { assignedToMe: true } })
   })
@@ -66,7 +58,7 @@ describe('Dashboard work queue', () => {
   it('filters the queue with the inline search box and filter pills', async () => {
     const user = userEvent.setup()
     renderAs(['REQUEST_TRANSITION_REVIEW'])
-    const region = await queueRegion(en.dashboard.queue.review.title)
+    const region = await queueRegion(en.dashboard.queue.mine.title)
     await user.type(within(region).getByRole('searchbox'), 'layla')
     expect(refsIn(region)).toEqual(['REQ-LATE'])
     await user.clear(within(region).getByRole('searchbox'))
@@ -76,7 +68,7 @@ describe('Dashboard work queue', () => {
 
   it('has no row selection or batch actions, even for people who may approve', async () => {
     renderAs(['REQUEST_TRANSITION_DECIDE'])
-    const region = await queueRegion(en.dashboard.queue.review.title)
+    const region = await queueRegion(en.dashboard.queue.mine.title)
     expect(within(region).queryAllByRole('checkbox')).toHaveLength(0)
     expect(within(region).queryByRole('button', { name: /Batch approve/ })).toBeNull()
   })

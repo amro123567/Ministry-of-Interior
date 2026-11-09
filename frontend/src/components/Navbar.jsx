@@ -144,7 +144,7 @@ export default function Navbar() {
         </NavLink>
 
         <nav className="hidden min-w-0 items-center gap-1 xl:flex" aria-label={t('nav.brand')}>
-          {links.map(({ to, end, label, icon: Icon }) => (
+          {links.map(({ to, end, label }) => (
             <NavLink key={to} to={to} end={end} className={linkCls(to)}>
               {label}
             </NavLink>

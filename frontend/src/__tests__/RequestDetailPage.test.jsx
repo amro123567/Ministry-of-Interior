@@ -70,6 +70,35 @@ describe('RequestDetailPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(en.common.noPermission)
   })
 
+  it('does not call a rejected request "Approved" once it has been archived', async () => {
+    serve({
+      '/requests/5': { ...REQUEST, status: 'ARCHIVED', rejectionReason: 'Incomplete documents' },
+      '/requests/5/history': [
+        { id: 1, fromStatus: null, toStatus: 'DRAFT', changedByName: 'Officer One', changedAt: '2026-11-03T08:00:00' },
+        { id: 2, fromStatus: 'UNDER_REVIEW', toStatus: 'REJECTED', changedByName: 'Manager', changedAt: '2026-11-04T08:00:00' },
+        { id: 3, fromStatus: 'REJECTED', toStatus: 'ARCHIVED', changedByName: 'Admin', changedAt: '2026-11-05T08:00:00' },
+      ],
+      '/requests/5/transitions': [],
+    })
+    renderPage([])
+    const steps = within(await screen.findByRole('list', { name: en.requestDetail.progress }))
+    expect(steps.getByText(en.status.REJECTED)).toBeInTheDocument()
+    expect(steps.queryByText(en.status.APPROVED)).toBeNull()
+  })
+
+  it('only offers active staff when reassigning', async () => {
+    serve({
+      '/requests/5': { ...REQUEST, status: 'SUBMITTED' },
+      '/users': [
+        { id: 1, fullName: 'Active Officer', roles: ['OFFICER'], enabled: true },
+        { id: 2, fullName: 'Deactivated Officer', roles: ['OFFICER'], enabled: false },
+      ],
+    })
+    renderPage(['REQUEST_ASSIGN', 'USER_VIEW'])
+    expect(await screen.findByRole('option', { name: /Active Officer/ })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /Deactivated Officer/ })).toBeNull()
+  })
+
   it('offers exactly the next steps the server allows and sends the chosen one', async () => {
     client.patch.mockResolvedValue({ data: {} })
     renderPage(['REQUEST_TRANSITION_SUBMIT'])

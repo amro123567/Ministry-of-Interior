@@ -29,15 +29,17 @@ function Field({ label, children }) {
 // APPROVED share the "decision" step; the label shows whichever applies.
 const LIFECYCLE = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'DECISION', 'ARCHIVED']
 
-function Stepper({ status, t }) {
+function Stepper({ status, wasRejected, t }) {
+  // An archived request keeps the decision it was archived with, so a rejected one must not read "Approved".
+  const rejectedOutcome = status === 'REJECTED' || (status === 'ARCHIVED' && wasRejected)
   const current = ['APPROVED', 'REJECTED'].includes(status) ? 3 : LIFECYCLE.indexOf(status)
   return (
     <ol className="flex items-center" aria-label={t('requestDetail.progress')}>
       {LIFECYCLE.map((step, i) => {
         const done = i < current
         const active = i === current
-        const rejected = step === 'DECISION' && status === 'REJECTED'
-        const label = step === 'DECISION' ? t(`status.${status === 'REJECTED' ? 'REJECTED' : 'APPROVED'}`) : t(`status.${step}`, step)
+        const rejected = step === 'DECISION' && rejectedOutcome
+        const label = step === 'DECISION' ? t(`status.${rejectedOutcome ? 'REJECTED' : 'APPROVED'}`) : t(`status.${step}`, step)
         const dot = rejected && active ? 'bg-badge-danger-fg text-white'
           : active ? 'bg-primary text-white'
           : done ? 'bg-badge-success-fg text-white' : 'bg-border-subtle text-text-secondary'
@@ -121,7 +123,7 @@ export default function RequestDetailPage() {
   async function doTransition(to, reason) {
     setBusy(true); setError(null)
     try {
-      await client.patch(`/requests/${id}/transition`, { toStatus: to, rejectionReason: reason ?? null, note: reason ?? null })
+      await client.patch(`/requests/${id}/transition`, { toStatus: to, rejectionReason: to === 'REJECTED' ? (reason ?? null) : null, note: reason ?? null })
       setPendingReject(false); setPendingTo(null); setRejectionReason('')
       load()
     } catch (err) {
@@ -300,7 +302,7 @@ export default function RequestDetailPage() {
       )}
 
       <div className="card p-5 mb-4">
-        <Stepper status={request.status} t={t} />
+        <Stepper status={request.status} wasRejected={Boolean(request.rejectionReason) || history.some((h) => h.toStatus === 'REJECTED')} t={t} />
         <div className={available.length > 0 || pendingReject ? 'mt-4 pt-4 border-t border-row-divider' : 'hidden'}>
         {available.length > 0 && (
           <div className="flex flex-wrap gap-2.5 mb-0">
@@ -439,7 +441,7 @@ export default function RequestDetailPage() {
                 <label className={labelCls} htmlFor="rd-reassign">{t('requestDetail.reassignTo')}</label>
                 <select id="rd-reassign" className={inputCls} value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
                   <option value="">{t('requestDetail.selectUser')}</option>
-                  {users.map((u) => <option key={u.id} value={u.id}>{u.fullName} ({u.roles.join(',')})</option>)}
+                  {users.filter((u) => u.enabled !== false).map((u) => <option key={u.id} value={u.id}>{u.fullName} ({(u.roles ?? []).join(',')})</option>)}
                 </select>
               </div>
               <div>
@@ -604,7 +606,7 @@ export default function RequestDetailPage() {
             {attachments.map((a) => (
               <li key={a.id} className="py-3">
                 <button type="button" className="text-sm font-semibold text-primary hover:underline" onClick={() => download(a.id, a.fileName)}>{a.fileName}</button>
-                <div className="text-xs text-text-secondary mt-0.5">{(a.sizeBytes / 1024).toFixed(1)} KB · SHA-256 {a.sha256.slice(0, 12)}… · {a.uploadedByName}</div>
+                <div className="text-xs text-text-secondary mt-0.5">{((a.sizeBytes ?? 0) / 1024).toFixed(1)} KB{a.sha256 ? ` · SHA-256 ${a.sha256.slice(0, 12)}…` : ''} · {a.uploadedByName}</div>
               </li>
             ))}
           </ul>

@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { Badge, IconButton } from '../components/ui/index.jsx'
 import { ActiveFilterChips, FilterField } from '../components/FilterBar.jsx'
 import Pagination from '../components/Pagination.jsx'
-import { fmtDate } from '../utils/dates.js'
+import { fmtDate, toDate } from '../utils/dates.js'
 import { downloadCsv } from '../api/download.js'
 
 const STATUSES = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'ARCHIVED']
@@ -17,14 +17,16 @@ const PRIORITIES = ['NORMAL', 'HIGH', 'URGENT']
 const SLA_STATES = ['ON_TRACK', 'DUE_SOON', 'OVERDUE']
 
 // Column key -> how to read a sortable value from a row.
+const time = (v) => toDate(v)?.getTime() ?? NaN
 const SORTERS = {
+  createdAt: (r) => (Number.isFinite(time(r.createdAt)) ? time(r.createdAt) : Number.NEGATIVE_INFINITY),
   referenceNumber: (r) => r.referenceNumber ?? '',
   direction: (r) => r.direction ?? '',
   citizenName: (r) => (r.citizenName ?? '').toLowerCase(),
   documentTypeName: (r) => (r.documentTypeName ?? '').toLowerCase(),
   status: (r) => r.status ?? '',
   assignedToName: (r) => (r.assignedToName ?? '').toLowerCase(),
-  dueAt: (r) => (r.dueAt ? new Date(r.dueAt).getTime() : Number.POSITIVE_INFINITY),
+  dueAt: (r) => (Number.isFinite(time(r.dueAt)) ? time(r.dueAt) : Number.POSITIVE_INFINITY),
 }
 
 export default function RequestsListPage() {
@@ -36,7 +38,7 @@ export default function RequestsListPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [exportError, setExportError] = useState(null)
-  const [sort, setSort] = useState({ key: null, dir: 'asc' })
+  const [sort, setSort] = useState({ key: 'createdAt', dir: 'desc' })
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
 
@@ -53,7 +55,7 @@ export default function RequestsListPage() {
   const from = get('from')
   const to = get('to')
   // Secondary filters live behind a toggle, but open by default when the URL already uses one.
-  const [moreOpen, setMoreOpen] = useState(Boolean(officeId || direction || from || to))
+  const [moreOpen, setMoreOpen] = useState(Boolean(officeId || direction))
 
   function setParam(key, value) {
     const next = new URLSearchParams(searchParams)
@@ -111,7 +113,10 @@ export default function RequestsListPage() {
   }
 
   function toggleSort(key) {
-    setSort((cur) => (cur.key === key ? { key, dir: cur.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
+    // Dates start newest-first; every other column starts A-Z.
+    setSort((cur) => (cur.key === key
+      ? { key, dir: cur.dir === 'asc' ? 'desc' : 'asc' }
+      : { key, dir: key === 'createdAt' || key === 'dueAt' ? 'desc' : 'asc' }))
     setPage(1)
   }
 
@@ -121,7 +126,10 @@ export default function RequestsListPage() {
     const factor = sort.dir === 'asc' ? 1 : -1
     return [...requests].sort((x, y) => {
       const a = read(x); const b = read(y)
-      return a < b ? -factor : a > b ? factor : 0
+      if (a < b) return -factor
+      if (a > b) return factor
+      // Equal dates (for example rows seeded in the same minute): newest id first when sorting by date.
+      return sort.key === 'createdAt' ? (y.id ?? 0) - (x.id ?? 0) : 0
     })
   }, [requests, sort])
 
@@ -151,7 +159,7 @@ export default function RequestsListPage() {
 
   const showEmpty = !loading && !error && requests.length === 0
 
-  const secondaryCount = [officeId, direction, from, to].filter(Boolean).length
+  const secondaryCount = [officeId, direction].filter(Boolean).length
   const officeName = (id) => {
     const o = offices.find((x) => String(x.id) === String(id))
     return o ? (document.dir === 'rtl' && o.nameAr ? o.nameAr : o.nameEn) : id
@@ -235,7 +243,13 @@ export default function RequestsListPage() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-5">
+          <FilterField label={t('requests.dateFrom')}>
+            <input type="date" value={from} max={to || undefined} onChange={(e) => setParam('from', e.target.value)} className="field" aria-label={t('requests.dateFrom')} />
+          </FilterField>
+          <FilterField label={t('requests.dateTo')}>
+            <input type="date" value={to} min={from || undefined} onChange={(e) => setParam('to', e.target.value)} className="field" aria-label={t('requests.dateTo')} />
+          </FilterField>
           <FilterField label={t('requests.colStatus')}>
             <select value={status} onChange={(e) => setParam('status', e.target.value)} className="field select-field" aria-label={t('requests.colStatus')}>
               <option value="">{t('requests.allStatuses')}</option>
@@ -257,7 +271,7 @@ export default function RequestsListPage() {
         </div>
 
         {moreOpen && (
-          <div id="more-filters" className="grid grid-cols-1 gap-3 bg-app/60 p-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div id="more-filters" className="grid grid-cols-1 gap-3 bg-app/60 p-4 sm:grid-cols-2">
             <FilterField label={t('requests.labelOffice')}>
               <select value={officeId} onChange={(e) => setParam('office', e.target.value)} className="field select-field" aria-label={t('requests.filterOffice')}>
                 <option value="">{t('requests.allOffices')}</option>
@@ -272,12 +286,6 @@ export default function RequestsListPage() {
                 <option value="INCOMING">{t('requests.directionIncoming')}</option>
                 <option value="OUTGOING">{t('requests.directionOutgoing')}</option>
               </select>
-            </FilterField>
-            <FilterField label={t('requests.dateFrom')}>
-              <input type="date" value={from} max={to || undefined} onChange={(e) => setParam('from', e.target.value)} className="field" aria-label={t('requests.dateFrom')} />
-            </FilterField>
-            <FilterField label={t('requests.dateTo')}>
-              <input type="date" value={to} min={from || undefined} onChange={(e) => setParam('to', e.target.value)} className="field" aria-label={t('requests.dateTo')} />
             </FilterField>
           </div>
         )}
@@ -311,13 +319,14 @@ export default function RequestsListPage() {
                     {sortHeader('documentTypeName', t('requests.colDocType'))}
                     {sortHeader('status', t('requests.colStatus'), "center")}
                     {sortHeader('assignedToName', t('requests.colAssignedTo'))}
+                    {sortHeader('createdAt', t('requests.colCreated', 'Created'), "end")}
                     {sortHeader('dueAt', t('requests.colDue'), "end")}
                     <th className="th-cell !text-end" aria-hidden="true"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
-                    <SkeletonTableRows rows={6} cols={8} />
+                    <SkeletonTableRows rows={6} cols={9} />
                   ) : visible.map((r) => (
 <tr key={r.id} className="data-row">
                       <td className="td-cell font-semibold text-primary">
@@ -339,6 +348,7 @@ export default function RequestsListPage() {
                       <td className="td-cell">
                         {r.assignedToName ?? <span className="text-text-secondary">{t('requests.unassigned')}</span>}
                       </td>
+                      <td className="td-cell num-cell whitespace-nowrap">{r.createdAt ? fmtDate(r.createdAt, 'MMM d, yyyy HH:mm') : '—'}</td>
                       <td className="td-cell num-cell whitespace-nowrap">{r.dueAt ? fmtDate(r.dueAt, 'MMM d, yyyy') : '—'}</td>
                       <td className="td-cell">
                         <div className="flex justify-end">
@@ -372,7 +382,7 @@ export default function RequestsListPage() {
                   <div className="text-sm text-text-primary mb-1.5">{r.citizenName}</div>
                   <div className="flex justify-between text-xs text-text-secondary mb-2">
                     <span>{r.documentTypeName}</span>
-                    <span>{r.dueAt ? fmtDate(r.dueAt, 'MMM d, yyyy') : '—'}</span>
+                    <span>{r.createdAt ? fmtDate(r.createdAt, 'MMM d, yyyy') : '—'} · {r.dueAt ? fmtDate(r.dueAt, 'MMM d, yyyy') : '—'}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-text-secondary">{r.assignedToName ?? t('requests.unassigned')}</span>

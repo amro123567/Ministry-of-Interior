@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, BarChart3, CheckCircle2, CirclePlus, Clock, Gauge as GaugeIcon, Layers, RefreshCw } from 'lucide-react'
 import client from '../api/client.js'
+import { toDate } from '../utils/dates.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLanguage } from '../context/LanguageContext.jsx'
 import { SkeletonKpiRow, SkeletonLine } from '../components/Skeleton.jsx'
@@ -15,20 +16,10 @@ import {
   activeCount, approvalRate, bucketByPeriod, humanizeHours, slaHealth, sortBySla, weekOverWeek,
 } from '../components/dashboard/dashboardUtils.js'
 
-const OPEN = ['SUBMITTED', 'UNDER_REVIEW']
-
-// What the signed-in person should look at first, decided by what they are allowed to do:
-// the archiver sees what is ready to archive, reviewers see what is waiting for review, officers see what is assigned to them, and
-// read-only users see the most urgent requests in the system.
+// What the signed-in person should look at first: the work assigned to them.
+// Read-only users have nothing assigned, so they see the requests that need attention instead.
 function queueFor(hasPermission) {
-  // Archiving is the last step of the path: whoever holds it (ADMIN) sees what is ready to close.
-  if (hasPermission('REQUEST_TRANSITION_ARCHIVE')) {
-    return { key: 'archive', params: {}, keep: (r) => r.status === 'APPROVED' || r.status === 'REJECTED', more: '/requests?status=APPROVED' }
-  }
-  if (hasPermission('REQUEST_TRANSITION_REVIEW', 'REQUEST_TRANSITION_DECIDE')) {
-    return { key: 'review', params: {}, keep: (r) => OPEN.includes(r.status), more: '/requests?status=SUBMITTED' }
-  }
-  if (hasPermission('REQUEST_TRANSITION_SUBMIT')) {
+  if (hasPermission('REQUEST_TRANSITION_SUBMIT', 'REQUEST_TRANSITION_REVIEW', 'REQUEST_TRANSITION_DECIDE', 'REQUEST_TRANSITION_ARCHIVE')) {
     return { key: 'mine', params: { assignedToMe: true }, keep: (r) => r.status !== 'ARCHIVED' && r.status !== 'REJECTED' && r.status !== 'APPROVED', more: '/requests?mine=1' }
   }
   return { key: 'watch', params: {}, keep: (r) => r.slaStatus !== 'ON_TRACK', more: '/requests?sla=OVERDUE' }
@@ -133,7 +124,7 @@ export default function DashboardPage() {
   const avg = humanizeHours(summary.avgResolutionHours || 0)
   const approved = summary.byStatus.APPROVED ?? 0
   const rejected = summary.byStatus.REJECTED ?? 0
-  const nextDueHours = nextDue ? Math.max(0, (new Date(nextDue.dueAt).getTime() - Date.now()) / 3600000) : null
+  const nextDueHours = nextDue ? Math.max(0, ((toDate(nextDue.dueAt)?.getTime() ?? Date.now()) - Date.now()) / 3600000) : null
   const nextDueLabel = nextDueHours == null ? null : humanizeHours(nextDueHours)
 
   return (
